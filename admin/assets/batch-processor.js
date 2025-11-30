@@ -1,0 +1,605 @@
+/**
+ * Media Toolkit - Reusable Batch Processor Component
+ * 
+ * A flexible component for handling batch operations with progress tracking,
+ * pause/resume/cancel functionality, and real-time logging.
+ * 
+ * Usage:
+ *   const processor = new BatchProcessor({
+ *       name: 'migration',
+ *       actions: {
+ *           start: 'media_toolkit_start_migration',
+ *           process: 'media_toolkit_process_batch',
+ *           pause: 'media_toolkit_pause_migration',
+ *           resume: 'media_toolkit_resume_migration',
+ *           stop: 'media_toolkit_stop_migration',
+ *           status: 'media_toolkit_get_status',
+ *           retry: 'media_toolkit_retry_failed'
+ *       },
+ *       selectors: {
+ *           startBtn: '#btn-start',
+ *           pauseBtn: '#btn-pause',
+ *           resumeBtn: '#btn-resume',
+ *           stopBtn: '#btn-stop',
+ *           retryBtn: '#btn-retry',
+ *           progressBar: '#progress-bar',
+ *           progressText: '#progress-text',
+ *           statusPanel: '#status-panel',
+ *           logContainer: '#log-container'
+ *       },
+ *       onStart: (options) => {},
+ *       onBatchComplete: (result) => {},
+ *       onComplete: (state) => {},
+ *       onError: (error) => {}
+ *   });
+ */
+
+(function($, window) {
+    'use strict';
+
+    /**
+     * BatchProcessor Class
+     */
+    class BatchProcessor {
+        constructor(config) {
+            this.config = Object.assign({
+                name: 'batch',
+                batchInterval: 2000,
+                statusPollInterval: 5000,
+                actions: {},
+                selectors: {},
+                confirmStop: true,
+                confirmStopMessage: 'Are you sure you want to stop? Progress will be saved.',
+                onStart: null,
+                onBatchComplete: null,
+                onComplete: null,
+                onError: null,
+                onStatusUpdate: null,
+                getStartOptions: null
+            }, config);
+
+            this.isRunning = false;
+            this.isPaused = false;
+            this.intervalId = null;
+            this.pendingCallback = null;
+
+            this.init();
+        }
+
+        /**
+         * Initialize the processor
+         */
+        init() {
+            this.cacheElements();
+            this.bindEvents();
+            this.checkCurrentStatus();
+        }
+
+        /**
+         * Cache DOM elements
+         */
+        cacheElements() {
+            const s = this.config.selectors;
+            this.$startBtn = $(s.startBtn);
+            this.$pauseBtn = $(s.pauseBtn);
+            this.$resumeBtn = $(s.resumeBtn);
+            this.$stopBtn = $(s.stopBtn);
+            this.$retryBtn = $(s.retryBtn);
+            this.$progressBar = $(s.progressBar);
+            this.$progressText = $(s.progressText);
+            this.$statusPanel = $(s.statusPanel);
+            this.$logContainer = $(s.logContainer);
+            this.$modal = $(s.modal || '#confirm-modal');
+        }
+
+        /**
+         * Bind event handlers
+         */
+        bindEvents() {
+            if (this.$startBtn.length) {
+                this.$startBtn.on('click', () => this.start());
+            }
+            if (this.$pauseBtn.length) {
+                this.$pauseBtn.on('click', () => this.pause());
+            }
+            if (this.$resumeBtn.length) {
+                this.$resumeBtn.on('click', () => this.resume());
+            }
+            if (this.$stopBtn.length) {
+                this.$stopBtn.on('click', () => this.stop());
+            }
+            if (this.$retryBtn.length) {
+                this.$retryBtn.on('click', () => this.retry());
+            }
+
+            // Modal events
+            $(document).on('click', '#btn-confirm-yes', () => this.confirmAction());
+            $(document).on('click', '#btn-confirm-no, .s3-modal-close', () => this.closeModal());
+        }
+
+        /**
+         * Set buttons state based on processor status
+         */
+        setButtonsState(state) {
+            const states = {
+                idle: {
+                    start: true, pause: false, resume: false, stop: false, retry: false
+                },
+                running: {
+                    start: false, pause: true, resume: false, stop: true, retry: false
+                },
+                paused: {
+                    start: false, pause: false, resume: true, stop: true, retry: true
+                },
+                completed: {
+                    start: true, pause: false, resume: false, stop: false, retry: false
+                }
+            };
+
+            const buttonState = states[state] || states.idle;
+
+            this.$startBtn.prop('disabled', !buttonState.start);
+            this.$pauseBtn.prop('disabled', !buttonState.pause);
+            this.$resumeBtn.prop('disabled', !buttonState.resume);
+            this.$stopBtn.prop('disabled', !buttonState.stop);
+            
+            if (this.$retryBtn.length) {
+                this.$retryBtn.prop('disabled', !buttonState.retry);
+            }
+
+            // Show/hide status panel
+            if (this.$statusPanel.length) {
+                if (state === 'idle') {
+                    this.$statusPanel.hide();
+                } else {
+                    this.$statusPanel.show();
+                }
+            }
+        }
+
+        /**
+         * Check current status on page load
+         */
+        checkCurrentStatus() {
+            if (!this.config.actions.status) return;
+
+            this.ajax(this.config.actions.status, {}, (response) => {
+                if (response.success && response.data) {
+                    if (response.data.stats) {
+                        this.updateStats(response.data.stats);
+                    }
+
+                    if (response.data.state) {
+                        this.updateUI(response.data.state);
+
+                        if (response.data.state.status === 'running') {
+                            this.isRunning = true;
+                            this.isPaused = false;
+                            this.startBatchProcessing();
+                        } else if (response.data.state.status === 'paused') {
+                            this.isPaused = true;
+                            this.isRunning = false;
+                        }
+                    }
+                }
+            });
+        }
+
+        /**
+         * Start the batch process
+         */
+        start() {
+            let options = {};
+            
+            if (typeof this.config.getStartOptions === 'function') {
+                options = this.config.getStartOptions();
+                
+                // Check if we need confirmation
+                if (options._needsConfirmation) {
+                    this.showConfirmModal(
+                        options._confirmTitle || 'Confirm Action',
+                        options._confirmMessage || 'Are you sure you want to continue?',
+                        () => this.doStart(options)
+                    );
+                    return;
+                }
+            }
+
+            this.doStart(options);
+        }
+
+        /**
+         * Execute start action
+         */
+        doStart(options) {
+            // Clean up internal properties
+            delete options._needsConfirmation;
+            delete options._confirmTitle;
+            delete options._confirmMessage;
+
+            this.setButtonsState('running');
+            this.log('Starting...', 'info');
+
+            if (typeof this.config.onStart === 'function') {
+                this.config.onStart(options);
+            }
+
+            this.ajax(this.config.actions.start, options, (response) => {
+                if (response.success) {
+                    this.isRunning = true;
+                    this.isPaused = false;
+                    this.updateUI(response.data.state);
+                    this.log('Started successfully', 'success');
+                    this.startBatchProcessing();
+                } else {
+                    this.log('Failed to start: ' + (response.data?.message || 'Unknown error'), 'error');
+                    this.setButtonsState('idle');
+                    
+                    if (typeof this.config.onError === 'function') {
+                        this.config.onError(response.data);
+                    }
+                }
+            }, () => {
+                this.log('Failed to start', 'error');
+                this.setButtonsState('idle');
+            });
+        }
+
+        /**
+         * Start batch processing loop
+         */
+        startBatchProcessing() {
+            this.stopInterval();
+
+            const processBatch = () => {
+                if (!this.isRunning || this.isPaused) {
+                    return;
+                }
+
+                this.ajax(this.config.actions.process, {}, (response) => {
+                    if (response.success) {
+                        if (response.data.stats) {
+                            this.updateStats(response.data.stats);
+                        }
+
+                        this.updateUI(response.data.state);
+
+                        if (typeof this.config.onBatchComplete === 'function') {
+                            this.config.onBatchComplete(response.data);
+                        }
+
+                        // Log batch results
+                        if (response.data.batch_processed > 0) {
+                            this.log(`Processed ${response.data.batch_processed} items`, 'success');
+                        }
+
+                        if (response.data.batch_failed > 0) {
+                            this.log(`${response.data.batch_failed} items failed`, 'warning');
+                            if (response.data.batch_errors) {
+                                response.data.batch_errors.forEach(err => {
+                                    this.log(`  Error: ${err.error}`, 'error');
+                                });
+                            }
+                        }
+
+                        // Check if complete
+                        if (response.data.complete) {
+                            this.handleComplete(response.data.state);
+                        }
+                    } else {
+                        this.log('Batch processing failed: ' + (response.data?.message || 'Unknown error'), 'error');
+                    }
+                }, () => {
+                    this.log('Batch processing error', 'error');
+                });
+            };
+
+            // Process immediately then at interval
+            processBatch();
+            this.intervalId = setInterval(processBatch, this.config.batchInterval);
+        }
+
+        /**
+         * Handle process completion
+         */
+        handleComplete(state) {
+            this.isRunning = false;
+            this.isPaused = false;
+            this.stopInterval();
+            this.log('Completed!', 'success');
+            this.setButtonsState('completed');
+
+            if (typeof this.config.onComplete === 'function') {
+                this.config.onComplete(state);
+            }
+        }
+
+        /**
+         * Pause the batch process
+         */
+        pause() {
+            this.setButtonsState('paused');
+            this.log('Pausing...', 'info');
+
+            this.ajax(this.config.actions.pause, {}, (response) => {
+                if (response.success) {
+                    this.isPaused = true;
+                    this.isRunning = false;
+                    this.log('Paused', 'warning');
+                } else {
+                    this.setButtonsState('running');
+                    this.log('Failed to pause', 'error');
+                }
+            }, () => {
+                this.setButtonsState('running');
+                this.log('Failed to pause', 'error');
+            });
+        }
+
+        /**
+         * Resume the batch process
+         */
+        resume() {
+            this.setButtonsState('running');
+            this.log('Resuming...', 'info');
+
+            this.ajax(this.config.actions.resume, {}, (response) => {
+                if (response.success) {
+                    this.isPaused = false;
+                    this.isRunning = true;
+
+                    if (response.data.stats) {
+                        this.updateStats(response.data.stats);
+                    }
+
+                    this.log('Resumed', 'success');
+                    this.startBatchProcessing();
+                } else {
+                    const msg = response.data?.message || 'Failed to resume';
+                    this.log(msg, 'error');
+                    this.checkCurrentStatus();
+                }
+            }, () => {
+                this.setButtonsState('paused');
+                this.log('Failed to resume', 'error');
+            });
+        }
+
+        /**
+         * Stop the batch process
+         */
+        stop() {
+            if (this.config.confirmStop) {
+                this.showConfirmModal(
+                    'Stop Process?',
+                    this.config.confirmStopMessage,
+                    () => this.doStop()
+                );
+            } else {
+                this.doStop();
+            }
+        }
+
+        /**
+         * Execute stop action
+         */
+        doStop() {
+            this.setButtonsState('idle');
+            this.log('Stopping...', 'info');
+            this.stopInterval();
+
+            this.ajax(this.config.actions.stop, {}, (response) => {
+                this.isRunning = false;
+                this.isPaused = false;
+                this.log('Stopped', 'warning');
+                this.checkCurrentStatus();
+            }, () => {
+                this.log('Error stopping', 'error');
+            });
+        }
+
+        /**
+         * Retry failed operations
+         */
+        retry() {
+            if (!this.config.actions.retry) return;
+
+            this.log('Retrying failed operations...', 'info');
+            this.$retryBtn.prop('disabled', true);
+
+            this.ajax(this.config.actions.retry, {}, (response) => {
+                if (response.success) {
+                    this.log('Retry completed', 'success');
+                    this.checkCurrentStatus();
+                } else {
+                    this.log('Retry failed', 'error');
+                    this.$retryBtn.prop('disabled', false);
+                }
+            }, () => {
+                this.log('Retry failed', 'error');
+                this.$retryBtn.prop('disabled', false);
+            });
+        }
+
+        /**
+         * Update UI based on state
+         */
+        updateUI(state) {
+            if (!state) return;
+
+            // Update status text
+            const $statusText = $('#status-text, [data-status-text]');
+            if ($statusText.length && state.status) {
+                $statusText.text(state.status.charAt(0).toUpperCase() + state.status.slice(1));
+            }
+
+            // Update counts
+            $('#processed-count, [data-processed]').text(state.processed || 0);
+            $('#total-count, [data-total]').text(state.total_files || state.total || 0);
+            $('#failed-count, [data-failed]').text(state.failed || 0);
+
+            // Update progress bar
+            if (state.total_files > 0 || state.total > 0) {
+                const total = state.total_files || state.total;
+                const progress = Math.round((state.processed / total) * 100);
+                this.$progressBar.css('width', progress + '%');
+                this.$progressText.text(progress + '%');
+            }
+
+            // Show/hide failed badge
+            const $failedBadge = $('#failed-badge, [data-failed-badge]');
+            if (state.failed > 0) {
+                $failedBadge.show();
+            } else {
+                $failedBadge.hide();
+            }
+
+            // Set buttons state
+            this.setButtonsState(state.status || 'idle');
+
+            // Call custom status update handler
+            if (typeof this.config.onStatusUpdate === 'function') {
+                this.config.onStatusUpdate(state);
+            }
+        }
+
+        /**
+         * Update stats (can be overridden)
+         */
+        updateStats(stats) {
+            // Default implementation - update common stat elements
+            Object.keys(stats).forEach(key => {
+                $(`#stat-${key}, [data-stat="${key}"]`).text(
+                    typeof stats[key] === 'number' 
+                        ? stats[key].toLocaleString() 
+                        : stats[key]
+                );
+            });
+        }
+
+        /**
+         * Log message to the log container
+         */
+        log(message, type = 'info') {
+            if (!this.$logContainer.length) return;
+
+            const timestamp = new Date().toLocaleTimeString();
+            
+            // Remove placeholder
+            this.$logContainer.find('.s3-terminal-muted').first().remove();
+
+            const typeClass = {
+                success: 's3-terminal-success',
+                error: 's3-terminal-error',
+                warning: 's3-terminal-warning',
+                info: 's3-terminal-muted'
+            }[type] || 's3-terminal-muted';
+
+            const $entry = $(`
+                <div class="s3-terminal-line ${typeClass}">
+                    <span class="s3-terminal-timestamp">[${timestamp}]</span> ${this.escapeHtml(message)}
+                </div>
+            `);
+
+            this.$logContainer.append($entry);
+            this.$logContainer.scrollTop(this.$logContainer[0].scrollHeight);
+        }
+
+        /**
+         * Clear log
+         */
+        clearLog() {
+            if (!this.$logContainer.length) return;
+            
+            this.$logContainer.html(`
+                <div class="s3-terminal-line s3-terminal-muted">
+                    <span class="s3-terminal-prompt">$</span> Log will appear here...
+                </div>
+            `);
+        }
+
+        /**
+         * Show confirmation modal
+         */
+        showConfirmModal(title, message, callback) {
+            this.pendingCallback = callback;
+            $('#confirm-title').text(title);
+            $('#confirm-message').text(message);
+            this.$modal.show();
+        }
+
+        /**
+         * Confirm modal action
+         */
+        confirmAction() {
+            this.closeModal();
+            if (this.pendingCallback) {
+                this.pendingCallback();
+                this.pendingCallback = null;
+            }
+        }
+
+        /**
+         * Close modal
+         */
+        closeModal() {
+            $('.s3-modal').hide();
+        }
+
+        /**
+         * AJAX helper
+         */
+        ajax(action, data, success, error) {
+            $.ajax({
+                url: mediaMediaToolkit.ajaxUrl,
+                method: 'POST',
+                data: Object.assign({
+                    action: action,
+                    nonce: mediaMediaToolkit.nonce
+                }, data),
+                success: success,
+                error: error || function() {}
+            });
+        }
+
+        /**
+         * Stop interval
+         */
+        stopInterval() {
+            if (this.intervalId) {
+                clearInterval(this.intervalId);
+                this.intervalId = null;
+            }
+        }
+
+        /**
+         * Escape HTML
+         */
+        escapeHtml(str) {
+            if (!str) return '';
+            return str
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        /**
+         * Destroy the processor
+         */
+        destroy() {
+            this.stopInterval();
+            this.$startBtn.off('click');
+            this.$pauseBtn.off('click');
+            this.$resumeBtn.off('click');
+            this.$stopBtn.off('click');
+            this.$retryBtn.off('click');
+        }
+    }
+
+    // Export to window
+    window.BatchProcessor = BatchProcessor;
+
+})(jQuery, window);
+

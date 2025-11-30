@@ -1,0 +1,27 @@
+{
+    "name": "metodo/media-toolkit",
+    "description": "WordPress plugin for complete media management - S3 offloading, CDN integration, image optimization",
+    "type": "wordpress-plugin",
+    "license": "GPL-2.0-or-later",
+    "authors": [
+        {
+            "name": "Metodo",
+            "email": "plugins@metodo.dev",
+            "homepage": "https://metodo.dev"
+        }
+    ],
+    "require": {
+        "php": "^8.1",
+        "aws/aws-sdk-php": "^3.300"
+    },
+    "autoload": {
+        "psr-4": {
+            "Metodo\\MediaToolkit\\": "includes/",
+            "Metodo\\MediaToolkit\\Admin\\": "admin/"
+        }
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "sort-packages": true
+    }
+}

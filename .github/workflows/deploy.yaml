@@ -1,0 +1,32 @@
+name: Deploy Plugin
+on:
+  push:
+    branches: [ main, staging ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Install sshpass
+        run: sudo apt-get install -y sshpass
+      
+      - name: Deploy Theme
+        run: |
+          sshpass -p '${{ secrets.SSH_PASSWORD }}' rsync -avz --delete \
+            -e "ssh -o StrictHostKeyChecking=no" \
+            --exclude='.git/' \
+            --exclude='.github/' \
+            --exclude='node_modules/' \
+            --exclude='.gitignore' \
+            ./ ${{ vars.CLOUDWAYS_USER }}@${{ vars.DROPLET_IP }}:public_html/wp-content/plugins/media-s3-offload
+
+      - name: Purge Cloudflare Cache
+        run: |
+          curl -X POST "https://api.cloudflare.com/client/v4/zones/${{ vars.CLOUDFLARE_ZONE }}/purge_cache" \
+            -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            --data '{"purge_everything":true}'
