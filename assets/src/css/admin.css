@@ -1,0 +1,12 @@
+/**
+ * Media Toolkit - Admin Styles
+ * 
+ * Uses Metodo Design System for all components.
+ * 
+ * @package Metodo\MediaToolkit
+ * @author  Michele Marri <plugins@metodo.dev>
+ */
+
+/* Import the complete Metodo Design System */
+@import 'metodo-design-system/src/index.css';
+

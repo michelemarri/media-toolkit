@@ -1,0 +1,33 @@
+{
+  "name": "media-toolkit",
+  "version": "1.0.0",
+  "description": "WordPress plugin for complete media management - S3 offloading, CDN integration, image optimization",
+  "private": true,
+  "scripts": {
+    "dev": "npm run build:css -- --watch",
+    "prebuild": "npm update metodo-design-system",
+    "build": "npm run build:css && npm run build:js",
+    "build:css": "postcss assets/src/css/admin.css -o assets/css/admin.css --env production",
+    "build:js": "esbuild assets/src/js/admin.js --bundle --minify --target=es2020 --outfile=assets/js/admin.js",
+    "watch": "concurrently \"npm run build:css -- --watch\" \"npm run watch:js\"",
+    "watch:js": "esbuild assets/src/js/admin.js --bundle --target=es2020 --outfile=assets/js/admin.js --watch"
+  },
+  "dependencies": {
+    "metodo-design-system": "github:michelemarri/metodo-design-system#main"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.16",
+    "concurrently": "^8.2.2",
+    "cssnano": "^6.0.2",
+    "esbuild": "^0.19.8",
+    "postcss": "^8.4.32",
+    "postcss-cli": "^11.0.0",
+    "postcss-import": "^15.1.0"
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead"
+  ]
+}
+

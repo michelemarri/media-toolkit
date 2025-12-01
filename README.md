@@ -120,7 +120,7 @@ The Tools page provides several maintenance utilities:
 
 ## Requirements
 
-- PHP 8.1 or higher
+- PHP 8.2 or higher
 - WordPress 6.0 or higher
 - Amazon S3 bucket with appropriate permissions
 - AWS IAM credentials with S3 access
@@ -429,7 +429,7 @@ $settings = apply_filters('media_toolkit_optimize_settings', $settings, $attachm
 
 ## License
 
-GPL-2.0+
+GPL-3.0-or-later
 
 ## Credits
 

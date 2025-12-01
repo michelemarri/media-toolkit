@@ -12,105 +12,92 @@ if (!defined('ABSPATH')) {
 }
 ?>
 
-<div class="wrap s3-offload-wrap s3-modern">
-    <div class="s3-page-header">
-        <div class="s3-page-title">
-            <div class="s3-icon-wrapper s3-icon-logs">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                    <polyline points="14 2 14 8 20 8"></polyline>
-                    <line x1="16" y1="13" x2="8" y2="13"></line>
-                    <line x1="16" y1="17" x2="8" y2="17"></line>
-                    <polyline points="10 9 9 9 8 9"></polyline>
-                </svg>
-            </div>
-            <div>
-                <h1>Activity Logs</h1>
-                <p class="s3-subtitle">Real-time operations • Auto-cleans after 24 hours</p>
-            </div>
-        </div>
-        <div class="s3-header-actions">
-            <button type="button" class="s3-btn s3-btn-ghost" id="btn-clear-logs">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="3 6 5 6 21 6"></polyline>
-                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                </svg>
-                Clear All
-            </button>
-        </div>
-    </div>
+<div class="wrap mds-wrap">
+    <div class="mds-page">
+        <header class="mds-page-header">
+            <h1 class="mds-page-title">
+                <span class="mds-logo"><span class="dashicons dashicons-text-page"></span></span>
+                <?php esc_html_e('Activity Logs', 'media-toolkit'); ?>
+            </h1>
+            <p class="mds-description"><?php esc_html_e('Real-time operations • Auto-cleans after 24 hours', 'media-toolkit'); ?></p>
+        </header>
 
-    <div class="s3-filters-bar">
-        <div class="s3-filter-group">
-            <div class="s3-select-wrapper">
-                <select id="filter-log-level" class="s3-select">
-                    <option value="">All Levels</option>
-                    <option value="info">Info</option>
-                    <option value="warning">Warning</option>
-                    <option value="error">Error</option>
-                    <option value="success">Success</option>
-                </select>
+        <div class="mds-card">
+            <div class="mds-card-header mds-cluster mds-cluster-between">
+                <div class="mds-cluster">
+                    <select id="filter-log-level" class="mds-select mds-select-auto">
+                        <option value=""><?php esc_html_e('All Levels', 'media-toolkit'); ?></option>
+                        <option value="info"><?php esc_html_e('Info', 'media-toolkit'); ?></option>
+                        <option value="warning"><?php esc_html_e('Warning', 'media-toolkit'); ?></option>
+                        <option value="error"><?php esc_html_e('Error', 'media-toolkit'); ?></option>
+                        <option value="success"><?php esc_html_e('Success', 'media-toolkit'); ?></option>
+                    </select>
+                    
+                    <select id="filter-log-operation" class="mds-select mds-select-auto">
+                        <option value=""><?php esc_html_e('All Operations', 'media-toolkit'); ?></option>
+                    </select>
+                    
+                    <button type="button" class="mds-btn mds-btn-secondary" id="btn-refresh-logs">
+                        <span class="dashicons dashicons-update"></span>
+                        <?php esc_html_e('Refresh', 'media-toolkit'); ?>
+                    </button>
+                </div>
+                
+                <div class="mds-cluster">
+                    <label class="mds-toggle">
+                        <input type="checkbox" id="auto-refresh-logs" checked>
+                        <span class="mds-toggle-slider"></span>
+                        <span class="mds-toggle-label"><?php esc_html_e('Live updates', 'media-toolkit'); ?></span>
+                    </label>
+                    
+                    <button type="button" class="mds-btn mds-btn-ghost" id="btn-clear-logs">
+                        <span class="dashicons dashicons-trash"></span>
+                        <?php esc_html_e('Clear All', 'media-toolkit'); ?>
+                    </button>
+                </div>
             </div>
             
-            <div class="s3-select-wrapper">
-                <select id="filter-log-operation" class="s3-select">
-                    <option value="">All Operations</option>
-                </select>
+            <div class="mds-table-responsive">
+                <table class="mds-table" id="logs-table">
+                    <thead>
+                        <tr>
+                            <th class="mds-w-datetime"><?php esc_html_e('Time', 'media-toolkit'); ?></th>
+                            <th class="mds-w-badge"><?php esc_html_e('Level', 'media-toolkit'); ?></th>
+                            <th class="mds-w-label"><?php esc_html_e('Operation', 'media-toolkit'); ?></th>
+                            <th class="mds-w-file"><?php esc_html_e('File', 'media-toolkit'); ?></th>
+                            <th><?php esc_html_e('Message', 'media-toolkit'); ?></th>
+                        </tr>
+                    </thead>
+                    <tbody id="logs-tbody">
+                        <tr>
+                            <td colspan="5" class="mds-table-empty">
+                                <span class="dashicons dashicons-text-page mds-empty-icon"></span>
+                                <p><?php esc_html_e('No logs found', 'media-toolkit'); ?></p>
+                                <span class="mds-text-tertiary"><?php esc_html_e('Activity will appear here as operations occur', 'media-toolkit'); ?></span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
             
-            <button type="button" class="s3-btn s3-btn-secondary" id="btn-refresh-logs">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="23 4 23 10 17 10"></polyline>
-                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
-                </svg>
-                Refresh
-            </button>
+            <div class="mds-card-footer mds-flex-between">
+                <div class="mds-cluster">
+                    <span class="mds-badge mds-badge-info" id="logs-count">0</span>
+                    <span class="mds-text-secondary"><?php esc_html_e('log entries', 'media-toolkit'); ?></span>
+                </div>
+                <div id="live-indicator" class="mds-live-indicator">
+                    <span class="mds-live-dot"></span>
+                    <span><?php esc_html_e('Live', 'media-toolkit'); ?></span>
+                </div>
+            </div>
         </div>
-        
-        <label class="s3-toggle-label">
-            <input type="checkbox" id="auto-refresh-logs" class="s3-toggle" checked>
-            <span class="s3-toggle-switch"></span>
-            <span class="s3-toggle-text">Live updates</span>
-        </label>
-    </div>
 
-    <div class="s3-table-card">
-        <div class="s3-table-wrapper">
-            <table class="s3-table" id="logs-table">
-                <thead>
-                    <tr>
-                        <th style="width: 180px;">Time</th>
-                        <th style="width: 100px;">Level</th>
-                        <th style="width: 130px;">Operation</th>
-                        <th style="width: 220px;">File</th>
-                        <th>Message</th>
-                    </tr>
-                </thead>
-                <tbody id="logs-tbody">
-                    <tr>
-                        <td colspan="5">
-                            <div class="s3-empty-state">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                                    <polyline points="14 2 14 8 20 8"></polyline>
-                                </svg>
-                                <p>No logs found</p>
-                                <span>Activity will appear here as operations occur</span>
-                            </div>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-        
-        <div class="s3-table-footer">
-            <div class="s3-table-count">
-                <span class="s3-count-badge" id="logs-count">0</span> log entries
-            </div>
-            <div class="s3-live-indicator" id="live-indicator">
-                <span class="s3-pulse"></span>
-                Live
-            </div>
-        </div>
+        <footer class="mds-footer">
+            <p>
+                <?php printf(esc_html__('Developed by %s', 'media-toolkit'), '<a href="https://metodo.dev" target="_blank" rel="noopener">Michele Marri - Metodo.dev</a>'); ?>
+                &bull;
+                <?php printf(esc_html__('Version %s', 'media-toolkit'), MEDIA_TOOLKIT_VERSION); ?>
+            </p>
+        </footer>
     </div>
 </div>

@@ -31,116 +31,84 @@ if ($settings) {
 $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'environment';
 ?>
 
-<div class="wrap s3-offload-wrap s3-modern">
-    <div class="s3-page-header">
-        <div class="s3-page-title">
-            <div class="s3-icon-wrapper s3-icon-settings">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="3"></circle>
-                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-                </svg>
-            </div>
-            <div>
-                <h1>Settings</h1>
-                <p class="s3-subtitle">Configure AWS S3 and CDN settings</p>
-            </div>
-        </div>
-    </div>
+<div class="wrap mds-wrap">
+    <div class="mds-page">
+        <header class="mds-page-header">
+            <h1 class="mds-page-title">
+                <span class="mds-logo">
+                    <span class="dashicons dashicons-admin-settings"></span>
+                </span>
+                <?php esc_html_e('Settings', 'media-toolkit'); ?>
+            </h1>
+            <p class="mds-description">
+                <?php esc_html_e('Configure AWS S3 and CDN settings for your media files.', 'media-toolkit'); ?>
+            </p>
+        </header>
 
-    <!-- Tab Navigation -->
-    <div class="s3-tabs">
-        <a href="?page=media-toolkit-settings&tab=environment" class="s3-tab <?php echo $active_tab === 'environment' ? 's3-tab-active' : ''; ?>">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="4"></circle>
-                <line x1="1.05" y1="12" x2="7" y2="12"></line>
-                <line x1="17.01" y1="12" x2="22.96" y2="12"></line>
-            </svg>
-            Environment
+        <!-- Tab Navigation -->
+        <nav class="mds-tabs-nav">
+        <a href="?page=media-toolkit-settings&tab=environment" class="mds-tab-link <?php echo $active_tab === 'environment' ? 'active' : ''; ?>">
+            <span class="dashicons dashicons-admin-site-alt3"></span>
+            <?php esc_html_e('Environment', 'media-toolkit'); ?>
         </a>
-        <a href="?page=media-toolkit-settings&tab=credentials" class="s3-tab <?php echo $active_tab === 'credentials' ? 's3-tab-active' : ''; ?>">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-            </svg>
-            Credentials
+        <a href="?page=media-toolkit-settings&tab=credentials" class="mds-tab-link <?php echo $active_tab === 'credentials' ? 'active' : ''; ?>">
+            <span class="dashicons dashicons-lock"></span>
+            <?php esc_html_e('Credentials', 'media-toolkit'); ?>
         </a>
-        <a href="?page=media-toolkit-settings&tab=cdn" class="s3-tab <?php echo $active_tab === 'cdn' ? 's3-tab-active' : ''; ?>">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10"></circle>
-                <line x1="2" y1="12" x2="22" y2="12"></line>
-                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
-            </svg>
-            CDN
+        <a href="?page=media-toolkit-settings&tab=cdn" class="mds-tab-link <?php echo $active_tab === 'cdn' ? 'active' : ''; ?>">
+            <span class="dashicons dashicons-networking"></span>
+            <?php esc_html_e('CDN', 'media-toolkit'); ?>
         </a>
-        <a href="?page=media-toolkit-settings&tab=file-options" class="s3-tab <?php echo $active_tab === 'file-options' ? 's3-tab-active' : ''; ?>">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="17 8 12 3 7 8"></polyline>
-                <line x1="12" y1="3" x2="12" y2="15"></line>
-            </svg>
-            File Options
+        <a href="?page=media-toolkit-settings&tab=file-options" class="mds-tab-link <?php echo $active_tab === 'file-options' ? 'active' : ''; ?>">
+            <span class="dashicons dashicons-upload"></span>
+            <?php esc_html_e('File Options', 'media-toolkit'); ?>
         </a>
-        <a href="?page=media-toolkit-settings&tab=general" class="s3-tab <?php echo $active_tab === 'general' ? 's3-tab-active' : ''; ?>">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="4" y1="21" x2="4" y2="14"></line>
-                <line x1="4" y1="10" x2="4" y2="3"></line>
-                <line x1="12" y1="21" x2="12" y2="12"></line>
-                <line x1="12" y1="8" x2="12" y2="3"></line>
-                <line x1="20" y1="21" x2="20" y2="16"></line>
-                <line x1="20" y1="12" x2="20" y2="3"></line>
-                <line x1="1" y1="14" x2="7" y2="14"></line>
-                <line x1="9" y1="8" x2="15" y2="8"></line>
-                <line x1="17" y1="16" x2="23" y2="16"></line>
-            </svg>
-            General
+        <a href="?page=media-toolkit-settings&tab=general" class="mds-tab-link <?php echo $active_tab === 'general' ? 'active' : ''; ?>">
+            <span class="dashicons dashicons-admin-generic"></span>
+            <?php esc_html_e('General', 'media-toolkit'); ?>
         </a>
-    </div>
+        <a href="?page=media-toolkit-settings&tab=update" class="mds-tab-link <?php echo $active_tab === 'update' ? 'active' : ''; ?>">
+            <span class="dashicons dashicons-update"></span>
+            <?php esc_html_e('Update', 'media-toolkit'); ?>
+        </a>
+    </nav>
 
-    <div class="s3-tab-content">
+    <div class="mds-tab-content">
         <?php if ($active_tab === 'environment'): ?>
             <!-- ==================== ENVIRONMENT TAB ==================== -->
-            <div class="s3-card-panel">
-                <div class="s3-card-header">
+            <div class="mds-card">
+                <div class="mds-card-header">
                     <h3>
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="4"></circle>
-                            <line x1="1.05" y1="12" x2="7" y2="12"></line>
-                            <line x1="17.01" y1="12" x2="22.96" y2="12"></line>
-                        </svg>
-                        Active Environment
+                        <span class="dashicons dashicons-admin-site-alt3"></span>
+                        <?php esc_html_e('Active Environment', 'media-toolkit'); ?>
                     </h3>
                 </div>
-                <div class="s3-card-body">
-                    <p class="s3-muted-text">
-                        Select the active environment. Files will be stored in a separate folder for each environment.
+                <div class="mds-card-body">
+                    <p class="mds-text-secondary">
+                        <?php esc_html_e('Select the active environment. Files will be stored in a separate folder for each environment.', 'media-toolkit'); ?>
                     </p>
-                    <p class="s3-muted-text">
-                        Current path: <code class="s3-code">bucket/media/<strong id="env-preview"><?php echo esc_html($active_environment); ?></strong>/wp-content/uploads/...</code>
+                    <p class="mds-text-secondary">
+                        <?php esc_html_e('Current path:', 'media-toolkit'); ?> 
+                        <code class="mds-code">bucket/media/<strong id="env-preview"><?php echo esc_html($active_environment); ?></strong>/wp-content/uploads/...</code>
                     </p>
                     
                     <form id="s3-environment-form">
-                        <div class="s3-form-group" style="margin-top: 20px;">
-                            <label for="active-environment" class="s3-label">Environment</label>
-                            <div class="s3-select-wrapper" style="max-width: 300px;">
-                                <select name="active_environment" id="active-environment" class="s3-select" style="width: 100%;">
-                                    <?php foreach (Environment::cases() as $env): ?>
-                                        <option value="<?php echo esc_attr($env->value); ?>" <?php selected($active_environment, $env->value); ?>>
-                                            <?php echo esc_html(ucfirst($env->value)); ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                            <span class="s3-help">Different environments allow you to separate development, staging, and production files.</span>
+                        <div class="mds-form-group" style="margin-top: 20px; max-width: 300px;">
+                            <label for="active-environment" class="mds-label"><?php esc_html_e('Environment', 'media-toolkit'); ?></label>
+                            <select name="active_environment" id="active-environment" class="mds-select">
+                                <?php foreach (Environment::cases() as $env): ?>
+                                    <option value="<?php echo esc_attr($env->value); ?>" <?php selected($active_environment, $env->value); ?>>
+                                        <?php echo esc_html(ucfirst($env->value)); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <span class="mds-help"><?php esc_html_e('Different environments allow you to separate development, staging, and production files.', 'media-toolkit'); ?></span>
                         </div>
                         
-                        <div class="s3-form-actions">
-                            <button type="button" class="s3-btn s3-btn-primary" id="btn-save-environment">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-                                    <polyline points="17 21 17 13 7 13 7 21"></polyline>
-                                    <polyline points="7 3 7 8 15 8"></polyline>
-                                </svg>
-                                Save Environment
+                        <div class="mds-actions" style="margin-top: 24px;">
+                            <button type="button" class="mds-btn mds-btn-primary" id="btn-save-environment">
+                                <span class="dashicons dashicons-saved"></span>
+                                <?php esc_html_e('Save Environment', 'media-toolkit'); ?>
                             </button>
                         </div>
                     </form>
@@ -149,84 +117,73 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'environ
 
         <?php elseif ($active_tab === 'credentials'): ?>
             <!-- ==================== CREDENTIALS TAB ==================== -->
-            <div class="s3-card-panel" id="s3-credentials-panel">
-                <div class="s3-card-header">
+            <div class="mds-card" id="s3-credentials-panel">
+                <div class="mds-card-header">
                     <h3>
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                        </svg>
-                        AWS Credentials
-                        <?php if ($is_configured): ?>
-                            <span class="s3-badge s3-badge-success">Configured</span>
-                        <?php endif; ?>
+                        <span class="dashicons dashicons-lock"></span>
+                        <?php esc_html_e('AWS Credentials', 'media-toolkit'); ?>
                     </h3>
+                    <?php if ($is_configured): ?>
+                        <span class="mds-badge mds-badge-success"><?php esc_html_e('Configured', 'media-toolkit'); ?></span>
+                    <?php endif; ?>
                 </div>
-                <div class="s3-card-body">
-                    <p class="s3-muted-text">Configure your AWS credentials for S3 access. A single bucket is shared across all environments.</p>
+                <div class="mds-card-body">
+                    <p class="mds-text-secondary"><?php esc_html_e('Configure your AWS credentials for S3 access. A single bucket is shared across all environments.', 'media-toolkit'); ?></p>
                     
                     <form id="s3-credentials-form">
-                        <div class="s3-form-grid">
-                            <div class="s3-form-group">
-                                <label for="access_key" class="s3-label">AWS Access Key</label>
+                        <div class="mds-form-grid">
+                            <div class="mds-form-group">
+                                <label for="access_key" class="mds-label"><?php esc_html_e('AWS Access Key', 'media-toolkit'); ?></label>
                                 <input type="text" name="access_key" id="access_key" 
                                        value="<?php echo esc_attr($credentials['access_key'] ?? ''); ?>"
-                                       class="s3-input s3-input-full" autocomplete="off"
+                                       class="mds-input" autocomplete="off"
                                        placeholder="AKIAIOSFODNN7EXAMPLE">
                             </div>
                             
-                            <div class="s3-form-group">
-                                <label for="secret_key" class="s3-label">AWS Secret Key</label>
+                            <div class="mds-form-group">
+                                <label for="secret_key" class="mds-label"><?php esc_html_e('AWS Secret Key', 'media-toolkit'); ?></label>
                                 <input type="password" name="secret_key" id="secret_key" 
                                        value="<?php echo esc_attr($credentials['secret_key'] ?? ''); ?>"
-                                       class="s3-input s3-input-full" autocomplete="off"
+                                       class="mds-input" autocomplete="off"
                                        placeholder="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY">
                             </div>
                             
-                            <div class="s3-form-group">
-                                <label for="region" class="s3-label">AWS Region</label>
-                                <div class="s3-select-wrapper s3-select-full">
-                                    <select name="region" id="region" class="s3-select">
-                                        <option value="">Select Region</option>
-                                        <option value="us-east-1" <?php selected($credentials['region'] ?? '', 'us-east-1'); ?>>US East (N. Virginia)</option>
-                                        <option value="us-east-2" <?php selected($credentials['region'] ?? '', 'us-east-2'); ?>>US East (Ohio)</option>
-                                        <option value="us-west-1" <?php selected($credentials['region'] ?? '', 'us-west-1'); ?>>US West (N. California)</option>
-                                        <option value="us-west-2" <?php selected($credentials['region'] ?? '', 'us-west-2'); ?>>US West (Oregon)</option>
-                                        <option value="eu-west-1" <?php selected($credentials['region'] ?? '', 'eu-west-1'); ?>>EU (Ireland)</option>
-                                        <option value="eu-west-2" <?php selected($credentials['region'] ?? '', 'eu-west-2'); ?>>EU (London)</option>
-                                        <option value="eu-west-3" <?php selected($credentials['region'] ?? '', 'eu-west-3'); ?>>EU (Paris)</option>
-                                        <option value="eu-central-1" <?php selected($credentials['region'] ?? '', 'eu-central-1'); ?>>EU (Frankfurt)</option>
-                                        <option value="eu-south-1" <?php selected($credentials['region'] ?? '', 'eu-south-1'); ?>>EU (Milan)</option>
-                                        <option value="ap-northeast-1" <?php selected($credentials['region'] ?? '', 'ap-northeast-1'); ?>>Asia Pacific (Tokyo)</option>
-                                        <option value="ap-southeast-1" <?php selected($credentials['region'] ?? '', 'ap-southeast-1'); ?>>Asia Pacific (Singapore)</option>
-                                        <option value="ap-southeast-2" <?php selected($credentials['region'] ?? '', 'ap-southeast-2'); ?>>Asia Pacific (Sydney)</option>
-                                    </select>
-                                </div>
+                            <div class="mds-form-group">
+                                <label for="region" class="mds-label"><?php esc_html_e('AWS Region', 'media-toolkit'); ?></label>
+                                <select name="region" id="region" class="mds-select">
+                                    <option value=""><?php esc_html_e('Select Region', 'media-toolkit'); ?></option>
+                                    <option value="us-east-1" <?php selected($credentials['region'] ?? '', 'us-east-1'); ?>>US East (N. Virginia)</option>
+                                    <option value="us-east-2" <?php selected($credentials['region'] ?? '', 'us-east-2'); ?>>US East (Ohio)</option>
+                                    <option value="us-west-1" <?php selected($credentials['region'] ?? '', 'us-west-1'); ?>>US West (N. California)</option>
+                                    <option value="us-west-2" <?php selected($credentials['region'] ?? '', 'us-west-2'); ?>>US West (Oregon)</option>
+                                    <option value="eu-west-1" <?php selected($credentials['region'] ?? '', 'eu-west-1'); ?>>EU (Ireland)</option>
+                                    <option value="eu-west-2" <?php selected($credentials['region'] ?? '', 'eu-west-2'); ?>>EU (London)</option>
+                                    <option value="eu-west-3" <?php selected($credentials['region'] ?? '', 'eu-west-3'); ?>>EU (Paris)</option>
+                                    <option value="eu-central-1" <?php selected($credentials['region'] ?? '', 'eu-central-1'); ?>>EU (Frankfurt)</option>
+                                    <option value="eu-south-1" <?php selected($credentials['region'] ?? '', 'eu-south-1'); ?>>EU (Milan)</option>
+                                    <option value="ap-northeast-1" <?php selected($credentials['region'] ?? '', 'ap-northeast-1'); ?>>Asia Pacific (Tokyo)</option>
+                                    <option value="ap-southeast-1" <?php selected($credentials['region'] ?? '', 'ap-southeast-1'); ?>>Asia Pacific (Singapore)</option>
+                                    <option value="ap-southeast-2" <?php selected($credentials['region'] ?? '', 'ap-southeast-2'); ?>>Asia Pacific (Sydney)</option>
+                                </select>
                             </div>
                             
-                            <div class="s3-form-group">
-                                <label for="bucket" class="s3-label">S3 Bucket Name</label>
+                            <div class="mds-form-group">
+                                <label for="bucket" class="mds-label"><?php esc_html_e('S3 Bucket Name', 'media-toolkit'); ?></label>
                                 <input type="text" name="bucket" id="bucket" 
                                        value="<?php echo esc_attr($credentials['bucket'] ?? ''); ?>"
-                                       class="s3-input s3-input-full"
+                                       class="mds-input"
                                        placeholder="my-bucket-name">
                             </div>
                         </div>
                         
-                        <div class="s3-form-actions">
-                            <button type="button" class="s3-btn s3-btn-primary" id="btn-save-credentials">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-                                    <polyline points="17 21 17 13 7 13 7 21"></polyline>
-                                    <polyline points="7 3 7 8 15 8"></polyline>
-                                </svg>
-                                Save Credentials
+                        <div class="mds-actions" style="margin-top: 24px;">
+                            <button type="button" class="mds-btn mds-btn-primary" id="btn-save-credentials">
+                                <span class="dashicons dashicons-saved"></span>
+                                <?php esc_html_e('Save Credentials', 'media-toolkit'); ?>
                             </button>
-                            <button type="button" class="s3-btn s3-btn-secondary" id="btn-test-credentials" disabled>
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-                                </svg>
-                                Test Connection
+                            <button type="button" class="mds-btn mds-btn-secondary" id="btn-test-credentials" disabled>
+                                <span class="dashicons dashicons-admin-plugins"></span>
+                                <?php esc_html_e('Test Connection', 'media-toolkit'); ?>
                             </button>
                         </div>
                     </form>
@@ -235,103 +192,87 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'environ
 
         <?php elseif ($active_tab === 'cdn'): ?>
             <!-- ==================== CDN TAB ==================== -->
-            <div class="s3-card-panel" id="cdn-settings-panel">
-                <div class="s3-card-header">
+            <div class="mds-card" id="cdn-settings-panel">
+                <div class="mds-card-header">
                     <h3>
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <line x1="2" y1="12" x2="22" y2="12"></line>
-                            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
-                        </svg>
-                        CDN Settings
+                        <span class="dashicons dashicons-networking"></span>
+                        <?php esc_html_e('CDN Settings', 'media-toolkit'); ?>
                     </h3>
                 </div>
-                <div class="s3-card-body">
-                    <p class="s3-muted-text">Configure your CDN for serving files (Cloudflare, CloudFront, or custom)</p>
+                <div class="mds-card-body">
+                    <p class="mds-text-secondary"><?php esc_html_e('Configure your CDN for serving files (Cloudflare, CloudFront, or custom)', 'media-toolkit'); ?></p>
                     
                     <form id="s3-cdn-form">
-                        <div class="s3-form-grid">
-                            <div class="s3-form-group">
-                                <label for="cdn_provider" class="s3-label">CDN Provider</label>
-                                <div class="s3-select-wrapper s3-select-full">
-                                    <select name="cdn_provider" id="cdn_provider" class="s3-select">
-                                        <option value="none" <?php selected($credentials['cdn_provider'] ?? 'none', 'none'); ?>>None (direct S3 URLs)</option>
-                                        <option value="cloudflare" <?php selected($credentials['cdn_provider'] ?? '', 'cloudflare'); ?>>Cloudflare</option>
-                                        <option value="cloudfront" <?php selected($credentials['cdn_provider'] ?? '', 'cloudfront'); ?>>CloudFront</option>
-                                        <option value="other" <?php selected($credentials['cdn_provider'] ?? '', 'other'); ?>>Other CDN</option>
-                                    </select>
-                                </div>
+                        <div class="mds-form-grid">
+                            <div class="mds-form-group">
+                                <label for="cdn_provider" class="mds-label"><?php esc_html_e('CDN Provider', 'media-toolkit'); ?></label>
+                                <select name="cdn_provider" id="cdn_provider" class="mds-select">
+                                    <option value="none" <?php selected($credentials['cdn_provider'] ?? 'none', 'none'); ?>><?php esc_html_e('None (direct S3 URLs)', 'media-toolkit'); ?></option>
+                                    <option value="cloudflare" <?php selected($credentials['cdn_provider'] ?? '', 'cloudflare'); ?>>Cloudflare</option>
+                                    <option value="cloudfront" <?php selected($credentials['cdn_provider'] ?? '', 'cloudfront'); ?>>CloudFront</option>
+                                    <option value="other" <?php selected($credentials['cdn_provider'] ?? '', 'other'); ?>><?php esc_html_e('Other CDN', 'media-toolkit'); ?></option>
+                                </select>
                             </div>
                             
-                            <div class="s3-form-group">
-                                <label for="cdn_url" class="s3-label">CDN URL</label>
+                            <div class="mds-form-group">
+                                <label for="cdn_url" class="mds-label"><?php esc_html_e('CDN URL', 'media-toolkit'); ?></label>
                                 <input type="url" name="cdn_url" id="cdn_url" 
                                        value="<?php echo esc_attr($credentials['cdn_url'] ?? ''); ?>"
-                                       class="s3-input s3-input-full"
+                                       class="mds-input"
                                        placeholder="https://media.example.com">
-                                <span class="s3-help">The public URL to access your files through the CDN</span>
+                                <span class="mds-help"><?php esc_html_e('The public URL to access your files through the CDN', 'media-toolkit'); ?></span>
                             </div>
                         </div>
 
                         <!-- Cloudflare Settings -->
-                        <div id="cloudflare-settings" class="s3-subsection" style="display: none;">
-                            <h4 class="s3-subsection-title">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M19.73 14.87a4 4 0 0 0-3.86-3 4 4 0 0 0-2.47.77L8 10a4 4 0 0 0-4 4v2h3"></path>
-                                    <path d="M10.07 19a8 8 0 0 0 3.86.73"></path>
-                                    <path d="M15 21a9 9 0 1 0-4-17.56"></path>
-                                </svg>
-                                Cloudflare Cache Purge
+                        <div id="cloudflare-settings" class="mds-section" style="display: none;">
+                            <h4 class="mds-section-title">
+                                <span class="dashicons dashicons-cloud"></span>
+                                <?php esc_html_e('Cloudflare Cache Purge', 'media-toolkit'); ?>
                             </h4>
-                            <p class="s3-muted-text">Optional. Required only for automatic cache purging when files are updated/deleted.</p>
-                            <div class="s3-form-grid">
-                                <div class="s3-form-group">
-                                    <label for="cloudflare_zone_id" class="s3-label">Zone ID</label>
+                            <p class="mds-text-secondary"><?php esc_html_e('Optional. Required only for automatic cache purging when files are updated/deleted.', 'media-toolkit'); ?></p>
+                            <div class="mds-form-grid">
+                                <div class="mds-form-group">
+                                    <label for="cloudflare_zone_id" class="mds-label"><?php esc_html_e('Zone ID', 'media-toolkit'); ?></label>
                                     <input type="text" name="cloudflare_zone_id" id="cloudflare_zone_id" 
                                            value="<?php echo esc_attr($credentials['cloudflare_zone_id'] ?? ''); ?>"
-                                           class="s3-input s3-input-full"
+                                           class="mds-input"
                                            placeholder="abc123def456...">
-                                    <span class="s3-help">Found in Cloudflare Dashboard → Your site → Overview</span>
+                                    <span class="mds-help"><?php esc_html_e('Found in Cloudflare Dashboard → Your site → Overview', 'media-toolkit'); ?></span>
                                 </div>
                                 
-                                <div class="s3-form-group">
-                                    <label for="cloudflare_api_token" class="s3-label">API Token</label>
+                                <div class="mds-form-group">
+                                    <label for="cloudflare_api_token" class="mds-label"><?php esc_html_e('API Token', 'media-toolkit'); ?></label>
                                     <input type="password" name="cloudflare_api_token" id="cloudflare_api_token" 
                                            value="<?php echo esc_attr($credentials['cloudflare_api_token'] ?? ''); ?>"
-                                           class="s3-input s3-input-full" autocomplete="off">
-                                    <span class="s3-help">Create a token with "Zone.Cache Purge" permission</span>
+                                           class="mds-input" autocomplete="off">
+                                    <span class="mds-help"><?php esc_html_e('Create a token with "Zone.Cache Purge" permission', 'media-toolkit'); ?></span>
                                 </div>
                             </div>
                         </div>
 
                         <!-- CloudFront Settings -->
-                        <div id="cloudfront-settings" class="s3-subsection" style="display: none;">
-                            <h4 class="s3-subsection-title">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-                                </svg>
-                                CloudFront Cache Invalidation
+                        <div id="cloudfront-settings" class="mds-section" style="display: none;">
+                            <h4 class="mds-section-title">
+                                <span class="dashicons dashicons-cloud"></span>
+                                <?php esc_html_e('CloudFront Cache Invalidation', 'media-toolkit'); ?>
                             </h4>
-                            <div class="s3-form-grid">
-                                <div class="s3-form-group">
-                                    <label for="cloudfront_distribution_id" class="s3-label">Distribution ID</label>
+                            <div class="mds-form-grid">
+                                <div class="mds-form-group">
+                                    <label for="cloudfront_distribution_id" class="mds-label"><?php esc_html_e('Distribution ID', 'media-toolkit'); ?></label>
                                     <input type="text" name="cloudfront_distribution_id" id="cloudfront_distribution_id" 
                                            value="<?php echo esc_attr($credentials['cloudfront_distribution_id'] ?? ''); ?>"
-                                           class="s3-input s3-input-full"
+                                           class="mds-input"
                                            placeholder="E1A2B3C4D5F6G7">
-                                    <span class="s3-help">Required for cache invalidation</span>
+                                    <span class="mds-help"><?php esc_html_e('Required for cache invalidation', 'media-toolkit'); ?></span>
                                 </div>
                             </div>
                         </div>
                         
-                        <div class="s3-form-actions">
-                            <button type="button" class="s3-btn s3-btn-primary" id="btn-save-cdn">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-                                    <polyline points="17 21 17 13 7 13 7 21"></polyline>
-                                    <polyline points="7 3 7 8 15 8"></polyline>
-                                </svg>
-                                Save CDN Settings
+                        <div class="mds-actions" style="margin-top: 24px;">
+                            <button type="button" class="mds-btn mds-btn-primary" id="btn-save-cdn">
+                                <span class="dashicons dashicons-saved"></span>
+                                <?php esc_html_e('Save CDN Settings', 'media-toolkit'); ?>
                             </button>
                         </div>
                     </form>
@@ -347,207 +288,451 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'environ
             
             <form id="s3-file-options-form">
                 <!-- Cache-Control Section -->
-                <div class="s3-card-panel">
-                    <div class="s3-card-header">
+                <div class="mds-card">
+                    <div class="mds-card-header">
                         <h3>
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="12" cy="12" r="10"></circle>
-                                <polyline points="12 6 12 12 16 14"></polyline>
-                            </svg>
-                            Cache-Control
+                            <span class="dashicons dashicons-clock"></span>
+                            <?php esc_html_e('Cache-Control', 'media-toolkit'); ?>
                         </h3>
                     </div>
-                    <div class="s3-card-body">
-                        <p class="s3-muted-text">Configure browser caching behavior for uploaded files.</p>
+                    <div class="mds-card-body">
+                        <p class="mds-text-secondary"><?php esc_html_e('Configure browser caching behavior for uploaded files.', 'media-toolkit'); ?></p>
                         
-                        <div class="s3-form-group" style="max-width: 500px;">
-                            <label for="cache_control" class="s3-label">Cache-Control for New Uploads</label>
-                            <div class="s3-select-wrapper s3-select-full">
-                                <select name="cache_control" id="cache_control" class="s3-select">
-                                    <option value="0" <?php selected($cache_control, 0); ?>>No cache (no-cache, no-store)</option>
-                                    <option value="86400" <?php selected($cache_control, 86400); ?>>1 day (86,400 seconds)</option>
-                                    <option value="604800" <?php selected($cache_control, 604800); ?>>1 week (604,800 seconds)</option>
-                                    <option value="2592000" <?php selected($cache_control, 2592000); ?>>1 month (2,592,000 seconds)</option>
-                                    <option value="31536000" <?php selected($cache_control, 31536000); ?>>1 year (31,536,000 seconds) — Recommended</option>
-                                </select>
-                            </div>
-                            <span class="s3-help">Sets the Cache-Control header on new uploaded files. To update existing files, go to <a href="<?php echo admin_url('admin.php?page=media-toolkit-tools&tab=cache-sync'); ?>">Tools → Cache Headers</a>.</span>
+                        <div class="mds-form-group" style="max-width: 500px;">
+                            <label for="cache_control" class="mds-label"><?php esc_html_e('Cache-Control for New Uploads', 'media-toolkit'); ?></label>
+                            <select name="cache_control" id="cache_control" class="mds-select">
+                                <option value="0" <?php selected($cache_control, 0); ?>><?php esc_html_e('No cache (no-cache, no-store)', 'media-toolkit'); ?></option>
+                                <option value="86400" <?php selected($cache_control, 86400); ?>><?php esc_html_e('1 day (86,400 seconds)', 'media-toolkit'); ?></option>
+                                <option value="604800" <?php selected($cache_control, 604800); ?>><?php esc_html_e('1 week (604,800 seconds)', 'media-toolkit'); ?></option>
+                                <option value="2592000" <?php selected($cache_control, 2592000); ?>><?php esc_html_e('1 month (2,592,000 seconds)', 'media-toolkit'); ?></option>
+                                <option value="31536000" <?php selected($cache_control, 31536000); ?>><?php esc_html_e('1 year (31,536,000 seconds) — Recommended', 'media-toolkit'); ?></option>
+                            </select>
+                            <span class="mds-help">
+                                <?php 
+                                printf(
+                                    esc_html__('Sets the Cache-Control header on new uploaded files. To update existing files, go to %s.', 'media-toolkit'),
+                                    '<a href="' . esc_url(admin_url('admin.php?page=media-toolkit-tools&tab=cache-sync')) . '">' . esc_html__('Tools → Cache Headers', 'media-toolkit') . '</a>'
+                                );
+                                ?>
+                            </span>
                         </div>
                     </div>
                 </div>
 
                 <!-- Content-Disposition Section -->
-                <div class="s3-card-panel">
-                    <div class="s3-card-header">
+                <div class="mds-card">
+                    <div class="mds-card-header">
                         <h3>
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                <polyline points="7 10 12 15 17 10"></polyline>
-                                <line x1="12" y1="15" x2="12" y2="3"></line>
-                            </svg>
-                            Content-Disposition
+                            <span class="dashicons dashicons-download"></span>
+                            <?php esc_html_e('Content-Disposition', 'media-toolkit'); ?>
                         </h3>
                     </div>
-                    <div class="s3-card-body">
-                        <p class="s3-muted-text">
-                            Configure how browsers handle files when users click on direct links. This setting controls whether files 
-                            are displayed in the browser or downloaded automatically.
+                    <div class="mds-card-body">
+                        <p class="mds-text-secondary">
+                            <?php esc_html_e('Configure how browsers handle files when users click on direct links. This setting controls whether files are displayed in the browser or downloaded automatically.', 'media-toolkit'); ?>
                         </p>
                         
                         <!-- Explanation Box -->
-                        <div class="s3-info-box" style="margin: 20px 0;">
-                            <div class="s3-info-box-grid">
-                                <div class="s3-info-box-item">
-                                    <div class="s3-info-box-header">
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--s3-info);">
-                                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                                            <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                                            <polyline points="21 15 16 10 5 21"></polyline>
-                                        </svg>
-                                        <strong>Inline</strong>
+                        <div class="mds-cards-grid" style="margin: 20px 0;">
+                            <div class="mds-card">
+                                <div class="mds-card-body">
+                                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                                        <span class="dashicons dashicons-visibility" style="color: var(--mds-info);"></span>
+                                        <strong><?php esc_html_e('Inline', 'media-toolkit'); ?></strong>
                                     </div>
-                                    <p>File opens directly in the browser (if supported)</p>
-                                    <div class="s3-pros-cons">
-                                        <span class="s3-pro">✓ Better user experience for previewing</span>
-                                        <span class="s3-pro">✓ Images/PDFs/videos display in browser</span>
-                                        <span class="s3-con">✗ User must right-click to download</span>
-                                    </div>
+                                    <p class="mds-text-secondary"><?php esc_html_e('File opens directly in the browser (if supported)', 'media-toolkit'); ?></p>
+                                    <ul class="mds-list mds-list-check" style="margin-top: 12px;">
+                                        <li><?php esc_html_e('Better user experience for previewing', 'media-toolkit'); ?></li>
+                                        <li><?php esc_html_e('Images/PDFs/videos display in browser', 'media-toolkit'); ?></li>
+                                    </ul>
                                 </div>
-                                <div class="s3-info-box-item">
-                                    <div class="s3-info-box-header">
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--s3-success);">
-                                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                            <polyline points="7 10 12 15 17 10"></polyline>
-                                            <line x1="12" y1="15" x2="12" y2="3"></line>
-                                        </svg>
-                                        <strong>Attachment</strong>
+                            </div>
+                            <div class="mds-card">
+                                <div class="mds-card-body">
+                                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                                        <span class="dashicons dashicons-download" style="color: var(--mds-success);"></span>
+                                        <strong><?php esc_html_e('Attachment', 'media-toolkit'); ?></strong>
                                     </div>
-                                    <p>File downloads automatically with original filename</p>
-                                    <div class="s3-pros-cons">
-                                        <span class="s3-pro">✓ One-click download for users</span>
-                                        <span class="s3-pro">✓ Preserves original filename</span>
-                                        <span class="s3-con">✗ Cannot preview before downloading</span>
-                                    </div>
+                                    <p class="mds-text-secondary"><?php esc_html_e('File downloads automatically with original filename', 'media-toolkit'); ?></p>
+                                    <ul class="mds-list mds-list-check" style="margin-top: 12px;">
+                                        <li><?php esc_html_e('One-click download for users', 'media-toolkit'); ?></li>
+                                        <li><?php esc_html_e('Preserves original filename', 'media-toolkit'); ?></li>
+                                    </ul>
                                 </div>
                             </div>
                         </div>
 
-                        <h4 class="s3-subsection-title" style="margin-top: 24px;">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
-                                <polyline points="13 2 13 9 20 9"></polyline>
-                            </svg>
-                            Settings by File Type
+                        <h4 class="mds-section-title" style="margin-top: 24px;">
+                            <span class="dashicons dashicons-media-default"></span>
+                            <?php esc_html_e('Settings by File Type', 'media-toolkit'); ?>
                         </h4>
                         
-                        <div class="s3-disposition-grid">
-                            <?php foreach ($file_type_categories as $type => $config): ?>
-                                <div class="s3-disposition-item">
-                                    <div class="s3-disposition-label">
-                                        <strong><?php echo esc_html($config['label']); ?></strong>
-                                        <span><?php echo esc_html($config['description']); ?></span>
-                                    </div>
-                                    <div class="s3-select-wrapper">
-                                        <select name="content_disposition_<?php echo esc_attr($type); ?>" 
-                                                id="content_disposition_<?php echo esc_attr($type); ?>" 
-                                                class="s3-select">
-                                            <option value="inline" <?php selected($content_disposition[$type] ?? $config['default'], 'inline'); ?>>
-                                                Inline — Display in browser
-                                            </option>
-                                            <option value="attachment" <?php selected($content_disposition[$type] ?? $config['default'], 'attachment'); ?>>
-                                                Attachment — Force download
-                                            </option>
-                                        </select>
-                                    </div>
-                                </div>
-                            <?php endforeach; ?>
+                        <div class="mds-table-responsive">
+                            <table class="mds-table">
+                                <thead>
+                                    <tr>
+                                        <th><?php esc_html_e('File Type', 'media-toolkit'); ?></th>
+                                        <th><?php esc_html_e('Description', 'media-toolkit'); ?></th>
+                                        <th style="width: 200px;"><?php esc_html_e('Behavior', 'media-toolkit'); ?></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($file_type_categories as $type => $config): ?>
+                                    <tr>
+                                        <td><strong><?php echo esc_html($config['label']); ?></strong></td>
+                                        <td class="mds-text-secondary"><?php echo esc_html($config['description']); ?></td>
+                                        <td>
+                                            <select name="content_disposition_<?php echo esc_attr($type); ?>" 
+                                                    id="content_disposition_<?php echo esc_attr($type); ?>" 
+                                                    class="mds-select mds-select-sm">
+                                                <option value="inline" <?php selected($content_disposition[$type] ?? $config['default'], 'inline'); ?>>
+                                                    <?php esc_html_e('Inline', 'media-toolkit'); ?>
+                                                </option>
+                                                <option value="attachment" <?php selected($content_disposition[$type] ?? $config['default'], 'attachment'); ?>>
+                                                    <?php esc_html_e('Attachment', 'media-toolkit'); ?>
+                                                </option>
+                                            </select>
+                                        </td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
                         </div>
                         
-                        <p class="s3-help" style="margin-top: 16px;">
-                            <strong>Tip:</strong> Use "Attachment" for files that users typically want to download (like ZIP archives), 
-                            and "Inline" for files they usually want to preview (like images and PDFs).
+                        <p class="mds-help" style="margin-top: 16px;">
+                            <strong><?php esc_html_e('Tip:', 'media-toolkit'); ?></strong> 
+                            <?php esc_html_e('Use "Attachment" for files that users typically want to download (like ZIP archives), and "Inline" for files they usually want to preview (like images and PDFs).', 'media-toolkit'); ?>
                         </p>
                     </div>
                 </div>
                 
-                <div class="s3-form-actions" style="margin-top: 0;">
-                    <button type="button" class="s3-btn s3-btn-primary" id="btn-save-file-options">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-                            <polyline points="17 21 17 13 7 13 7 21"></polyline>
-                            <polyline points="7 3 7 8 15 8"></polyline>
-                        </svg>
-                        Save File Options
+                <div class="mds-actions">
+                    <button type="button" class="mds-btn mds-btn-primary" id="btn-save-file-options">
+                        <span class="dashicons dashicons-saved"></span>
+                        <?php esc_html_e('Save File Options', 'media-toolkit'); ?>
                     </button>
                 </div>
             </form>
 
         <?php elseif ($active_tab === 'general'): ?>
             <!-- ==================== GENERAL TAB ==================== -->
-            <div class="s3-card-panel">
-                <div class="s3-card-header">
+            <div class="mds-card">
+                <div class="mds-card-header">
                     <h3>
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="4" y1="21" x2="4" y2="14"></line>
-                            <line x1="4" y1="10" x2="4" y2="3"></line>
-                            <line x1="12" y1="21" x2="12" y2="12"></line>
-                            <line x1="12" y1="8" x2="12" y2="3"></line>
-                            <line x1="20" y1="21" x2="20" y2="16"></line>
-                            <line x1="20" y1="12" x2="20" y2="3"></line>
-                            <line x1="1" y1="14" x2="7" y2="14"></line>
-                            <line x1="9" y1="8" x2="15" y2="8"></line>
-                            <line x1="17" y1="16" x2="23" y2="16"></line>
-                        </svg>
-                        General Options
+                        <span class="dashicons dashicons-admin-generic"></span>
+                        <?php esc_html_e('General Options', 'media-toolkit'); ?>
                     </h3>
                 </div>
-                <div class="s3-card-body">
+                <div class="mds-card-body">
                     <form id="s3-general-form">
-                        <div class="s3-checkbox-group">
-                            <label class="s3-checkbox-label s3-checkbox-warning">
+                        <div class="mds-form-group">
+                            <label class="mds-toggle">
                                 <input type="checkbox" name="remove_local" id="remove_local" value="true"
                                        <?php checked($settings ? $settings->should_remove_local_files() : false); ?>>
-                                <span class="s3-checkbox-box"></span>
-                                <span class="s3-checkbox-text">
-                                    <strong>Delete local files after uploading to S3</strong>
-                                    <span>⚠️ This saves disk space but means files only exist on S3</span>
+                                <span class="mds-toggle-slider"></span>
+                                <span class="mds-toggle-label">
+                                    <strong><?php esc_html_e('Delete local files after uploading to S3', 'media-toolkit'); ?></strong>
                                 </span>
                             </label>
-                            
-                            <label class="s3-checkbox-label">
-                                <input type="checkbox" name="remove_on_uninstall" id="remove_on_uninstall" value="true"
-                                       <?php checked($settings ? $settings->should_remove_on_uninstall() : false); ?>>
-                                <span class="s3-checkbox-box"></span>
-                                <span class="s3-checkbox-text">
-                                    <strong>Delete all plugin data when uninstalling</strong>
-                                    <span>Files on S3 will NOT be deleted</span>
-                                </span>
-                            </label>
+                            <p class="mds-help" style="margin-left: 52px;">
+                                <span class="mds-badge mds-badge-warning"><?php esc_html_e('Warning', 'media-toolkit'); ?></span>
+                                <?php esc_html_e('This saves disk space but means files only exist on S3', 'media-toolkit'); ?>
+                            </p>
                         </div>
                         
-                        <div class="s3-form-actions">
-                            <button type="button" class="s3-btn s3-btn-primary" id="btn-save-general">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-                                    <polyline points="17 21 17 13 7 13 7 21"></polyline>
-                                    <polyline points="7 3 7 8 15 8"></polyline>
-                                </svg>
-                                Save Options
+                        <div class="mds-form-group" style="margin-top: 20px;">
+                            <label class="mds-toggle">
+                                <input type="checkbox" name="remove_on_uninstall" id="remove_on_uninstall" value="true"
+                                       <?php checked($settings ? $settings->should_remove_on_uninstall() : false); ?>>
+                                <span class="mds-toggle-slider"></span>
+                                <span class="mds-toggle-label">
+                                    <strong><?php esc_html_e('Delete all plugin data when uninstalling', 'media-toolkit'); ?></strong>
+                                </span>
+                            </label>
+                            <p class="mds-help" style="margin-left: 52px;">
+                                <?php esc_html_e('Files on S3 will NOT be deleted', 'media-toolkit'); ?>
+                            </p>
+                        </div>
+                        
+                        <div class="mds-actions" style="margin-top: 24px;">
+                            <button type="button" class="mds-btn mds-btn-primary" id="btn-save-general">
+                                <span class="dashicons dashicons-saved"></span>
+                                <?php esc_html_e('Save Options', 'media-toolkit'); ?>
                             </button>
                         </div>
                     </form>
                 </div>
             </div>
 
+        <?php elseif ($active_tab === 'update'): ?>
+            <!-- ==================== UPDATE TAB ==================== -->
+            <?php
+            $update_settings = get_option('media_toolkit_update_settings', []);
+            $has_token = !empty($update_settings['github_token_encrypted']);
+            $token_via_constant = defined('MEDIA_TOOLKIT_GITHUB_TOKEN') && !empty(MEDIA_TOOLKIT_GITHUB_TOKEN);
+            ?>
+            
+            <div class="mds-tab-panel" id="tab-update">
+                <!-- Section: Plugin Updates -->
+                <div class="mds-section">
+                    <h2 class="mds-section-title"><?php esc_html_e('Plugin Updates', 'media-toolkit'); ?></h2>
+                    <p class="mds-section-description"><?php esc_html_e('Configure automatic updates from GitHub repository.', 'media-toolkit'); ?></p>
+                </div>
+
+                <!-- Cards Grid: Current Version + GitHub Authentication -->
+                <div class="mds-cards-grid">
+                    <!-- Current Version Card -->
+                    <div class="mds-card">
+                        <div class="mds-card-header">
+                            <span class="dashicons dashicons-info"></span>
+                            <h3><?php esc_html_e('Current Version', 'media-toolkit'); ?></h3>
+                        </div>
+                        <div class="mds-card-body">
+                            <div class="mds-version-info">
+                                <div class="mds-info-grid">
+                                    <div class="mds-info-item">
+                                        <span class="mds-info-label"><?php esc_html_e('Installed Version', 'media-toolkit'); ?></span>
+                                        <span class="mds-info-value mds-version-badge">
+                                            <span class="mds-badge mds-badge-primary">v<?php echo esc_html(MEDIA_TOOLKIT_VERSION); ?></span>
+                                        </span>
+                                    </div>
+                                    <div class="mds-info-item">
+                                        <span class="mds-info-label"><?php esc_html_e('Repository', 'media-toolkit'); ?></span>
+                                        <span class="mds-info-value">
+                                            <a href="https://github.com/michelemarri/media-toolkit" target="_blank" rel="noopener">
+                                                michelemarri/media-toolkit
+                                                <span class="dashicons dashicons-external"></span>
+                                            </a>
+                                        </span>
+                                    </div>
+                                    <div class="mds-info-item">
+                                        <span class="mds-info-label"><?php esc_html_e('Last Check', 'media-toolkit'); ?></span>
+                                        <span class="mds-info-value">
+                                            <?php
+                                            $last_check = get_site_transient('update_plugins');
+                                            if ($last_check && isset($last_check->last_checked)) {
+                                                echo esc_html(human_time_diff($last_check->last_checked) . ' ' . __('ago', 'media-toolkit'));
+                                            } else {
+                                                esc_html_e('Never', 'media-toolkit');
+                                            }
+                                            ?>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- GitHub Authentication Card -->
+                    <div class="mds-card">
+                        <div class="mds-card-header">
+                            <span class="dashicons dashicons-lock"></span>
+                            <h3><?php esc_html_e('GitHub Authentication', 'media-toolkit'); ?></h3>
+                        </div>
+                        <div class="mds-card-body">
+                            <?php if ($token_via_constant): ?>
+                                <div class="mds-notice mds-notice-info">
+                                    <span class="dashicons dashicons-info"></span>
+                                    <div>
+                                        <strong><?php esc_html_e('Token configured via wp-config.php', 'media-toolkit'); ?></strong>
+                                        <p><?php esc_html_e('Your GitHub token is defined using the MEDIA_TOOLKIT_GITHUB_TOKEN constant. This is the most secure method.', 'media-toolkit'); ?></p>
+                                    </div>
+                                </div>
+                            <?php else: ?>
+                                <div class="mds-field mds-field-text">
+                                    <label class="mds-field-label" for="github_token">
+                                        <?php esc_html_e('GitHub Personal Access Token', 'media-toolkit'); ?>
+                                    </label>
+                                    
+                                    <div class="mds-token-input-wrapper">
+                                        <input type="password"
+                                               name="github_token"
+                                               id="github_token"
+                                               value="<?php echo $has_token ? '••••••••••••••••' : ''; ?>"
+                                               placeholder="<?php esc_attr_e('ghp_xxxxxxxxxxxxxxxxxxxx', 'media-toolkit'); ?>"
+                                               class="mds-input mds-input-token"
+                                               autocomplete="off">
+                                        <button type="button" class="mds-btn mds-btn-icon mds-toggle-password" data-target="github_token" id="btn-toggle-password">
+                                            <span class="dashicons dashicons-visibility"></span>
+                                        </button>
+                                    </div>
+
+                                    <?php if ($has_token): ?>
+                                        <div class="mds-token-status mds-token-status-active">
+                                            <span class="dashicons dashicons-yes-alt"></span>
+                                            <?php esc_html_e('Token configured and encrypted', 'media-toolkit'); ?>
+                                        </div>
+                                    <?php endif; ?>
+
+                                    <span class="mds-field-description">
+                                        <?php
+                                        printf(
+                                            /* translators: %s: GitHub link */
+                                            esc_html__('Required for private repositories. %s', 'media-toolkit'),
+                                            '<a href="https://github.com/settings/tokens?type=beta" target="_blank" rel="noopener">' . 
+                                            esc_html__('Create a token on GitHub', 'media-toolkit') . 
+                                            ' <span class="dashicons dashicons-external"></span></a>'
+                                        );
+                                        ?>
+                                    </span>
+                                </div>
+
+                                <?php if ($has_token): ?>
+                                <div class="mds-field">
+                                    <button type="button" class="mds-btn mds-btn-danger mds-btn-sm" id="btn-remove-token">
+                                        <span class="dashicons dashicons-trash"></span>
+                                        <?php esc_html_e('Remove Token', 'media-toolkit'); ?>
+                                    </button>
+                                </div>
+                                <?php endif; ?>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section: Update Settings -->
+                <div class="mds-section">
+                    <h2 class="mds-section-title"><?php esc_html_e('Update Settings', 'media-toolkit'); ?></h2>
+                    <p class="mds-section-description"><?php esc_html_e('Configure how the plugin handles updates.', 'media-toolkit'); ?></p>
+                </div>
+
+                <!-- Cards Grid: Auto-Update + Manual Check -->
+                <div class="mds-cards-grid">
+                    <!-- Auto-Update Card -->
+                    <div class="mds-card">
+                        <div class="mds-card-header">
+                            <span class="dashicons dashicons-update-alt"></span>
+                            <h3><?php esc_html_e('Auto-Update', 'media-toolkit'); ?></h3>
+                        </div>
+                        <div class="mds-card-body">
+                            <div class="mds-field mds-field-toggle">
+                                <label class="mds-toggle">
+                                    <input type="checkbox"
+                                           name="auto_update"
+                                           id="auto_update"
+                                           value="1"
+                                           <?php checked(!empty($update_settings['auto_update'])); ?>>
+                                    <span class="mds-toggle-slider"></span>
+                                </label>
+                                <div class="mds-field-content">
+                                    <span class="mds-field-label"><?php esc_html_e('Enable Auto-Updates', 'media-toolkit'); ?></span>
+                                    <span class="mds-field-description"><?php esc_html_e('Automatically update the plugin when a new version is available.', 'media-toolkit'); ?></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Manual Check Card -->
+                    <div class="mds-card">
+                        <div class="mds-card-header">
+                            <span class="dashicons dashicons-search"></span>
+                            <h3><?php esc_html_e('Manual Check', 'media-toolkit'); ?></h3>
+                        </div>
+                        <div class="mds-card-body">
+                            <p class="mds-info">
+                                <?php esc_html_e('Force a check for available updates from the GitHub repository.', 'media-toolkit'); ?>
+                            </p>
+                            
+                            <button type="button" class="mds-btn mds-btn-secondary" id="btn-check-updates">
+                                <span class="dashicons dashicons-update"></span>
+                                <?php esc_html_e('Check for Updates', 'media-toolkit'); ?>
+                            </button>
+                            
+                            <div id="update-check-result" class="mds-update-result" style="display: none;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section: Security Information -->
+                <div class="mds-section">
+                    <h2 class="mds-section-title"><?php esc_html_e('Security Information', 'media-toolkit'); ?></h2>
+                    <p class="mds-section-description"><?php esc_html_e('How your GitHub token is protected.', 'media-toolkit'); ?></p>
+                </div>
+
+                <!-- Security Card (single column) -->
+                <div class="mds-cards-grid mds-cards-grid-single">
+                    <div class="mds-card">
+                        <div class="mds-card-header">
+                            <span class="dashicons dashicons-shield"></span>
+                            <h3><?php esc_html_e('Token Security', 'media-toolkit'); ?></h3>
+                        </div>
+                        <div class="mds-card-body">
+                            <div class="mds-security-info">
+                                <ul class="mds-security-list">
+                                    <li>
+                                        <span class="dashicons dashicons-yes"></span>
+                                        <strong><?php esc_html_e('AES-256-CBC Encryption', 'media-toolkit'); ?></strong>
+                                        <span><?php esc_html_e('Your token is encrypted using industry-standard AES-256-CBC encryption before being stored.', 'media-toolkit'); ?></span>
+                                    </li>
+                                    <li>
+                                        <span class="dashicons dashicons-yes"></span>
+                                        <strong><?php esc_html_e('Unique Encryption Key', 'media-toolkit'); ?></strong>
+                                        <span><?php esc_html_e('The encryption uses your WordPress AUTH_KEY, making it unique to your installation.', 'media-toolkit'); ?></span>
+                                    </li>
+                                    <li>
+                                        <span class="dashicons dashicons-yes"></span>
+                                        <strong><?php esc_html_e('Never Displayed', 'media-toolkit'); ?></strong>
+                                        <span><?php esc_html_e('The original token is never displayed after being saved. Only a masked placeholder is shown.', 'media-toolkit'); ?></span>
+                                    </li>
+                                    <li>
+                                        <span class="dashicons dashicons-info"></span>
+                                        <strong><?php esc_html_e('Alternative Method', 'media-toolkit'); ?></strong>
+                                        <span>
+                                            <?php esc_html_e('For maximum security, you can define the token in wp-config.php:', 'media-toolkit'); ?>
+                                            <code>define('MEDIA_TOOLKIT_GITHUB_TOKEN', 'your-token');</code>
+                                        </span>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Save Button -->
+                <div class="mds-actions">
+                    <button type="button" class="mds-btn mds-btn-primary" id="btn-save-update-settings">
+                        <span class="dashicons dashicons-saved"></span>
+                        <?php esc_html_e('Save Settings', 'media-toolkit'); ?>
+                    </button>
+                </div>
+            </div>
+
         <?php endif; ?>
+        </div>
+
+        <footer class="mds-footer">
+        <p>
+            <?php
+            printf(
+                /* translators: %s: Metodo.dev link */
+                esc_html__('Developed by %s', 'media-toolkit'),
+                '<a href="https://metodo.dev" target="_blank" rel="noopener">Michele Marri - Metodo.dev</a>'
+            );
+            ?>
+            &bull;
+            <?php
+            printf(
+                /* translators: %s: version number */
+                esc_html__('Version %s', 'media-toolkit'),
+                MEDIA_TOOLKIT_VERSION
+            );
+            ?>
+        </p>
+        </footer>
     </div>
 </div>
 
 <!-- Test Connection Modal -->
-<div id="test-connection-modal" class="s3-modal" style="display:none;">
-    <div class="s3-modal-content">
-        <button type="button" class="s3-modal-close">&times;</button>
-        <h2>Testing Connection...</h2>
-        <div id="test-results"></div>
+<div id="test-connection-modal" class="mds-modal-overlay" style="display:none;">
+    <div class="mds-modal">
+        <div class="mds-modal-header">
+            <h3 class="mds-modal-title"><?php esc_html_e('Testing Connection...', 'media-toolkit'); ?></h3>
+            <button type="button" class="mds-modal-close">
+                <span class="dashicons dashicons-no-alt"></span>
+            </button>
+        </div>
+        <div class="mds-modal-body">
+            <div id="test-results"></div>
+        </div>
     </div>
 </div>

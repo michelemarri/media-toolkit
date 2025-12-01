@@ -1,0 +1,359 @@
+# Media Toolkit - Documentation
+
+Complete documentation for the Media Toolkit WordPress plugin.
+
+## Table of Contents
+
+1. [Installation](#installation)
+2. [Configuration](#configuration)
+3. [S3 Offloading](#s3-offloading)
+4. [CDN Integration](#cdn-integration)
+5. [Image Optimization](#image-optimization)
+6. [Migration](#migration)
+7. [Reconciliation](#reconciliation)
+8. [Caching & Headers](#caching--headers)
+9. [Troubleshooting](#troubleshooting)
+
+---
+
+## Installation
+
+### Requirements
+
+- PHP 8.2 or higher
+- WordPress 6.0 or higher
+- Amazon S3 bucket with appropriate permissions
+- AWS IAM credentials with S3 access
+- GD Library or ImageMagick for image optimization
+- Composer (for dependency management)
+
+### Installation Steps
+
+1. Download or clone the plugin to `/wp-content/plugins/media-toolkit/`
+2. Run `composer install` to install dependencies
+3. Activate the plugin through the **Plugins** menu
+4. Navigate to **Media Toolkit → Settings** to configure
+
+### Directory Structure
+
+```
+media-toolkit/
+├── media-toolkit.php      # Entry point
+├── src/                   # PHP source code
+│   ├── Plugin.php         # Main plugin class
+│   ├── Admin/             # Admin pages and AJAX handlers
+│   ├── CDN/               # CDN integration (Cloudflare, CloudFront)
+│   ├── Core/              # Core services (Settings, Logger, etc.)
+│   ├── Error/             # Error handling and retry logic
+│   ├── History/           # Operation history tracking
+│   ├── Media/             # Media handlers (Upload, Optimize, etc.)
+│   ├── Migration/         # Bulk migration tools
+│   ├── S3/                # S3 client and operations
+│   └── Stats/             # Statistics and dashboard data
+├── assets/                # CSS and JavaScript files
+├── templates/             # Admin page templates
+└── vendor/                # Composer dependencies
+```
+
+---
+
+## Configuration
+
+### AWS Credentials
+
+Navigate to **Media Toolkit → Settings → Credentials** to configure:
+
+| Field | Description |
+|-------|-------------|
+| Access Key | AWS IAM Access Key ID |
+| Secret Key | AWS IAM Secret Access Key |
+| Region | AWS region (e.g., `eu-west-1`) |
+| Bucket | S3 bucket name |
+
+**Security Note:** Credentials are encrypted using AES-256-CBC with WordPress salts before storage.
+
+### Required IAM Permissions
+
+Create an IAM user with the following policy:
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:PutObject",
+                "s3:GetObject",
+                "s3:DeleteObject",
+                "s3:PutObjectAcl",
+                "s3:CopyObject"
+            ],
+            "Resource": "arn:aws:s3:::your-bucket-name/*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:ListBucket",
+                "s3:HeadBucket"
+            ],
+            "Resource": "arn:aws:s3:::your-bucket-name"
+        }
+    ]
+}
+```
+
+### Environment Support
+
+The plugin supports multiple environments with separate S3 paths:
+
+| Environment | S3 Path |
+|-------------|---------|
+| Production | `media/production/wp-content/uploads/` |
+| Staging | `media/staging/wp-content/uploads/` |
+| Development | `media/development/wp-content/uploads/` |
+
+Switch environments in **Settings → Environment**.
+
+---
+
+## S3 Offloading
+
+### Automatic Upload
+
+Once configured, all new media uploads are automatically offloaded to S3:
+
+1. WordPress handles the initial upload to the server
+2. Plugin uploads file and all thumbnails to S3
+3. URLs are rewritten to serve from S3/CDN
+4. Optionally, local files are deleted
+
+### URL Rewriting
+
+The plugin automatically rewrites URLs to point to S3 or CDN:
+
+```
+Original: https://example.com/wp-content/uploads/2024/01/image.jpg
+Rewritten: https://cdn.example.com/media/production/wp-content/uploads/2024/01/image.jpg
+```
+
+### Post Meta Storage
+
+For each migrated attachment, the plugin stores:
+
+| Meta Key | Description |
+|----------|-------------|
+| `_media_toolkit_migrated` | Boolean flag indicating offload status |
+| `_media_toolkit_key` | S3 object key for main file |
+| `_media_toolkit_url` | Public URL (CDN or S3) |
+| `_media_toolkit_thumb_keys` | Array of thumbnail S3 keys |
+
+---
+
+## CDN Integration
+
+### Cloudflare
+
+1. Select **Cloudflare** as CDN Provider
+2. Enter your CDN URL (e.g., `https://media.yourdomain.com`)
+3. For automatic cache purging:
+   - Enter your Cloudflare Zone ID
+   - Create an API Token with "Zone.Cache Purge" permission
+
+### CloudFront
+
+1. Select **CloudFront** as CDN Provider
+2. Enter your CloudFront distribution URL
+3. Enter the Distribution ID for cache invalidation
+4. Add IAM permission:
+
+```json
+{
+    "Effect": "Allow",
+    "Action": "cloudfront:CreateInvalidation",
+    "Resource": "arn:aws:cloudfront::ACCOUNT_ID:distribution/DISTRIBUTION_ID"
+}
+```
+
+### Cache Invalidation
+
+When files are updated or deleted:
+
+1. The plugin queues paths for invalidation
+2. Paths are batched (up to 15 per request for Cloudflare)
+3. Background cron processes the invalidation queue
+
+---
+
+## Image Optimization
+
+### Supported Formats
+
+| Format | Method | Settings |
+|--------|--------|----------|
+| JPEG | GD/ImageMagick | Quality 60-100% |
+| PNG | GD/ImageMagick | Compression 0-9 |
+| GIF | Preserved | No changes to animated GIFs |
+| WebP | GD/ImageMagick | Quality 60-100% |
+
+### Optimization Process
+
+1. Original image is compressed locally
+2. All thumbnails are optimized
+3. Files are re-uploaded to S3
+4. Space savings are tracked
+
+### Settings
+
+Navigate to **Media Toolkit → Optimize**:
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| JPEG Quality | Compression quality | 82% |
+| PNG Compression | Compression level | 6 |
+| Strip Metadata | Remove EXIF data | Enabled |
+| Min Savings | Minimum % to keep | 5% |
+| Max File Size | Skip larger files | 10 MB |
+
+### Batch Optimization
+
+1. Go to **Media Toolkit → Optimize**
+2. Configure settings
+3. Click **Start Optimization**
+4. Monitor progress in real-time
+
+---
+
+## Migration
+
+### Bulk Migration
+
+Migrate existing media library to S3:
+
+1. Go to **Media Toolkit → Tools → Migration**
+2. Review statistics (total files, pending, size)
+3. Select batch size (10, 25, 50, 100)
+4. Click **Start Migration**
+
+### Migration Process
+
+For each attachment:
+
+1. Main file is uploaded to S3
+2. All thumbnails are uploaded
+3. Post meta is updated with S3 keys
+4. URL is updated in post content (optional)
+5. Local file is deleted (optional)
+
+### Resume Support
+
+Migration can be paused and resumed:
+
+- State is saved in transients
+- Failed uploads are queued for retry
+- Progress is preserved across sessions
+
+---
+
+## Reconciliation
+
+When files exist on S3 but WordPress doesn't know about them (e.g., manual uploads or plugin reinstall):
+
+### Scan S3
+
+1. Go to **Media Toolkit → Tools → Reconciliation**
+2. Click **Scan S3**
+3. Review matched and unmatched files
+4. Click **Start Reconciliation**
+
+### Process
+
+1. List all objects in S3 bucket path
+2. Match S3 keys to WordPress attachments
+3. Update post meta for matched files
+4. Report discrepancies
+
+---
+
+## Caching & Headers
+
+### Cache-Control Headers
+
+Configure HTTP cache headers for uploaded files:
+
+| Value | Header |
+|-------|--------|
+| 1 year | `public, max-age=31536000, immutable` |
+| 1 month | `public, max-age=2592000` |
+| 0 | `no-cache, no-store, must-revalidate` |
+
+### Content-Disposition
+
+Configure how files are served:
+
+| File Type | Options |
+|-----------|---------|
+| Images | Inline (default) |
+| PDFs | Inline / Attachment |
+| Videos | Inline (default) |
+| Archives | Attachment (default) |
+
+### Bulk Update Headers
+
+Update Cache-Control headers on existing S3 files:
+
+1. Go to **Media Toolkit → Tools → Cache Headers**
+2. Set desired max-age value
+3. Click **Start Update**
+4. Files are processed in batches
+
+---
+
+## Troubleshooting
+
+### Connection Test Fails
+
+1. Verify AWS credentials are correct
+2. Check IAM user permissions
+3. Ensure bucket exists in specified region
+4. Check for AWS service outages
+
+### Files Not Uploading
+
+1. Check **Logs** page for error details
+2. Verify PHP memory and execution time limits
+3. Ensure file size doesn't exceed limits
+4. Check S3 bucket permissions
+
+### CDN URLs Not Working
+
+1. Verify CDN URL is correct
+2. Check CDN configuration for S3 origin
+3. Configure CORS on S3 bucket if needed
+4. Verify SSL certificates
+
+### Migration Stops
+
+1. Increase `max_execution_time` in PHP
+2. Increase WordPress memory limit
+3. Reduce batch size
+4. Check server error logs
+
+### Debug Logging
+
+Logs are stored in the database and viewable at **Media Toolkit → Logs**:
+
+- Filter by level (info, warning, error)
+- Filter by operation type
+- Export to CSV
+
+---
+
+## Support
+
+- **Documentation**: [docs/DOCUMENTATION.md](DOCUMENTATION.md)
+- **Hooks Reference**: [docs/HOOKS.md](HOOKS.md)
+- **Extending Guide**: [docs/EXTENDING.md](EXTENDING.md)
+- **Website**: [metodo.dev](https://metodo.dev)
+- **Contact**: plugins@metodo.dev
+
