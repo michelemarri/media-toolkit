@@ -75,6 +75,7 @@ final class Plugin
         // Admin hooks
         add_action('admin_menu', [$this, 'register_admin_menu']);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_admin_assets']);
+        add_action('admin_enqueue_scripts', [$this, 'deregister_third_party_styles'], 999);
         
         // Cron job handlers
         add_action('media_toolkit_cleanup_logs', [$this, 'cleanup_logs']);
@@ -463,6 +464,104 @@ final class Plugin
                 MEDIA_TOOLKIT_VERSION,
                 true
             );
+        }
+    }
+
+    /**
+     * Deregister third-party plugin styles on our admin pages
+     * 
+     * This prevents CSS conflicts from other poorly-coded plugins
+     * that load their styles globally instead of only on their pages.
+     */
+    public function deregister_third_party_styles(string $hook): void
+    {
+        // Only run on our plugin pages
+        if (!str_contains($hook, 'media-toolkit')) {
+            return;
+        }
+
+        global $wp_styles;
+        
+        if (!($wp_styles instanceof \WP_Styles)) {
+            return;
+        }
+
+        // WordPress core handle prefixes to always keep
+        $wp_core_prefixes = [
+            'wp-',
+            'admin-',
+            'common',
+            'dashicons',
+            'buttons',
+            'forms',
+            'l10n',
+            'list-tables',
+            'edit',
+            'media',
+            'nav-menus',
+            'widgets',
+            'site-icon',
+            'colors',
+            'ie',
+            'thickbox',
+            'farbtastic',
+            'jcrop',
+            'imgareaselect',
+            'jquery-ui',
+        ];
+
+        // Our plugin handle prefixes (whitelist)
+        $our_prefixes = [
+            'media-toolkit',
+        ];
+
+        /**
+         * Filter to add additional style handle prefixes to whitelist
+         * 
+         * @param array $prefixes Array of handle prefixes to keep
+         * @param string $hook Current admin page hook
+         */
+        $our_prefixes = apply_filters('media_toolkit_allowed_style_prefixes', $our_prefixes, $hook);
+
+        foreach ($wp_styles->registered as $handle => $style) {
+            // Skip inline styles (src = true means inline/no external file)
+            $src = $style->src ?? '';
+            if ($src === true || $src === '') {
+                continue;
+            }
+
+            // Auto-detect WordPress core styles by file path
+            if (is_string($src) && (str_contains($src, '/wp-admin/') || str_contains($src, '/wp-includes/'))) {
+                continue;
+            }
+
+            // Skip WordPress core handles by prefix
+            $is_wp_core = false;
+            foreach ($wp_core_prefixes as $prefix) {
+                if (str_starts_with($handle, $prefix)) {
+                    $is_wp_core = true;
+                    break;
+                }
+            }
+            if ($is_wp_core) {
+                continue;
+            }
+
+            // Skip our plugin handles
+            $is_ours = false;
+            foreach ($our_prefixes as $prefix) {
+                if (str_starts_with($handle, $prefix)) {
+                    $is_ours = true;
+                    break;
+                }
+            }
+            if ($is_ours) {
+                continue;
+            }
+
+            // Dequeue and deregister third-party styles
+            wp_dequeue_style($handle);
+            wp_deregister_style($handle);
         }
     }
 

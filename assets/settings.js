@@ -69,10 +69,9 @@
             $('#filter-log-level, #filter-log-operation').on('change', this.loadLogs.bind(this));
 
             // Modal close
-            $('.mds-modal-close').on('click', this.closeModal);
-            $('.mds-modal-close').on('click', this.closeModal);
-            $(document).on('click', '.mds-modal, .mds-modal-overlay', function (e) {
-                if ($(e.target).hasClass('mds-modal') || $(e.target).hasClass('mds-modal-overlay')) {
+            $('.modal-close').on('click', this.closeModal);
+            $(document).on('click', '.mt-modal-overlay', function (e) {
+                if ($(e.target).hasClass('mt-modal-overlay')) {
                     MediaToolkit.closeModal();
                 }
             });
@@ -126,7 +125,7 @@
             checkFields();
 
             // Check on input change
-            $('#mds-credentials-panel input, #mds-credentials-panel select').on('input change', checkFields);
+            $('#s3-credentials-panel input, #s3-credentials-panel select').on('input change', checkFields);
         },
 
         // Toggle CDN-specific settings based on provider
@@ -193,7 +192,7 @@
 
             $btn.prop('disabled', true);
             const originalHtml = $btn.html();
-            $btn.html('<span class="dashicons dashicons-update mds-spin"></span> Saving...');
+            $btn.html('<span class="dashicons dashicons-update animate-spin"></span> Saving...');
 
             $.ajax({
                 url: mediaToolkit.ajaxUrl,
@@ -234,7 +233,7 @@
 
             $btn.prop('disabled', true);
             const originalHtml = $btn.html();
-            $btn.html('<span class="dashicons dashicons-update mds-spin"></span> Saving...');
+            $btn.html('<span class="dashicons dashicons-update animate-spin"></span> Saving...');
 
             $.ajax({
                 url: mediaToolkit.ajaxUrl,
@@ -273,7 +272,7 @@
 
             $btn.prop('disabled', true);
             const originalHtml = $btn.html();
-            $btn.html('<span class="dashicons dashicons-update mds-spin"></span> Saving...');
+            $btn.html('<span class="dashicons dashicons-update animate-spin"></span> Saving...');
 
             $.ajax({
                 url: mediaToolkit.ajaxUrl,
@@ -308,7 +307,7 @@
 
             $btn.prop('disabled', true);
             const originalHtml = $btn.html();
-            $btn.html('<span class="dashicons dashicons-update mds-spin"></span> Saving...');
+            $btn.html('<span class="dashicons dashicons-update animate-spin"></span> Saving...');
 
             $.ajax({
                 url: mediaToolkit.ajaxUrl,
@@ -354,8 +353,8 @@
 
             $btn.prop('disabled', true);
             const originalHtml = $btn.html();
-            $btn.html('<span class="dashicons dashicons-update mds-spin"></span> Testing...');
-            $results.html('<div class="mds-loading">Running connection tests...</div>');
+            $btn.html('<span class="dashicons dashicons-update animate-spin"></span> Testing...');
+            $results.html('<div class="text-center py-8 text-gray-500">Running connection tests...</div>');
             $modal.show();
 
             $.ajax({
@@ -366,7 +365,7 @@
                     MediaToolkit.showTestResults($results, response);
                 },
                 error: function () {
-                    $results.html('<div class="test-result error">Connection test failed. Please try again.</div>');
+                    $results.html('<div class="flex gap-4 p-5 rounded-xl border mt-alert-error"><span class="dashicons dashicons-warning text-red-600"></span><p>Connection test failed. Please try again.</p></div>');
                 },
                 complete: function () {
                     $btn.prop('disabled', false).html(originalHtml);
@@ -444,7 +443,7 @@
             }
 
             $btn.prop('disabled', true).text('Testing...');
-            $results.html('<div class="mds-loading">Running connection tests...</div>');
+            $results.html('<div class="text-center py-8 text-gray-500">Running connection tests...</div>');
             $modal.show();
 
             $.ajax({
@@ -455,7 +454,7 @@
                     MediaToolkit.showTestResults($results, response);
                 },
                 error: function () {
-                    $results.html('<div class="test-result error">Connection test failed. Please try again.</div>');
+                    $results.html('<div class="flex gap-4 p-5 rounded-xl border mt-alert-error"><span class="dashicons dashicons-warning text-red-600"></span><p>Connection test failed. Please try again.</p></div>');
                 },
                 complete: function () {
                     $btn.prop('disabled', false).text('Test Connection');
@@ -647,7 +646,7 @@
 
             $('#cache-progress-bar').css('width', '100%');
             $('#cache-progress-percentage').text('100%');
-            $('#cache-status-text').html('<span style="color: #00a32a;">Complete!</span>');
+            $('#cache-status-text').html('<span class="text-green-600">Complete!</span>');
 
             this.addCacheSyncLog(`✓ Complete! Updated ${state.totalSuccess.toLocaleString()} files` +
                 (state.totalFailed > 0 ? ` (${state.totalFailed} failed)` : ''), 'success');
@@ -661,7 +660,7 @@
             const state = this.cacheSyncState;
             state.isRunning = false;
 
-            $('#cache-status-text').html('<span style="color: #d63638;">Error</span>');
+            $('#cache-status-text').html('<span class="text-red-600">Error</span>');
             this.addCacheSyncLog(`✗ Error: ${message}`, 'error');
 
             if (state.totalProcessed > 0) {
@@ -678,19 +677,19 @@
             const timestamp = new Date().toLocaleTimeString();
 
             // Remove placeholder if exists
-            $log.find('.mds-terminal-muted').first().remove();
+            $log.find('.mt-terminal-muted').first().remove();
 
             const typeClass = {
                 'info': '',
-                'success': 'mds-terminal-success',
-                'warning': 'mds-terminal-warning',
-                'error': 'mds-terminal-error'
+                'success': 'mt-terminal-success',
+                'warning': 'mt-terminal-warning',
+                'error': 'mt-terminal-error'
             }[type] || '';
 
             $log.append(`
-                <div class="mds-terminal-line ${typeClass}">
-                    <span class="mds-terminal-timestamp">[${timestamp}]</span>
-                    <span>${message}</span>
+                <div class="mt-terminal-line">
+                    <span class="mt-terminal-prompt">$</span>
+                    <span class="mt-terminal-text ${typeClass}">[${timestamp}] ${message}</span>
                 </div>
             `);
 
@@ -730,7 +729,7 @@
                     cdn: 'networking'
                 };
 
-                let html = '<div class="mds-test-results-grid">';
+                let html = '<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">';
                 let index = 0;
 
                 for (const [key, result] of Object.entries(results)) {
@@ -739,35 +738,34 @@
 
                     // Determine status: success, error, or info (not configured)
                     const isNotConfigured = result.message && result.message.toLowerCase().includes('not configured');
-                    let statusClass, statusIcon;
+                    let statusClass, bgClass, iconColor;
 
                     if (!result.success) {
-                        statusClass = 'error';
-                        statusIcon = 'warning';
+                        statusClass = 'text-red-600';
+                        bgClass = 'bg-red-50 border-red-200';
+                        iconColor = 'text-red-500';
                     } else if (isNotConfigured) {
-                        statusClass = 'info';
-                        statusIcon = 'info-outline';
+                        statusClass = 'text-blue-600';
+                        bgClass = 'bg-blue-50 border-blue-200';
+                        iconColor = 'text-blue-500';
                     } else {
-                        statusClass = 'success';
-                        statusIcon = 'yes-alt';
+                        statusClass = 'text-green-600';
+                        bgClass = 'bg-green-50 border-green-200';
+                        iconColor = 'text-green-500';
                     }
 
                     html += `
-                        <div class="mds-test-card mds-test-card-${statusClass}" style="animation-delay: ${index * 0.1}s">
-                            <div class="mds-test-card-header">
-                                <div class="mds-test-card-icon mds-test-card-icon-${statusClass}">
-                                    <span class="dashicons dashicons-${icon}"></span>
+                        <div class="mt-test-card p-5 border rounded-xl ${bgClass}" style="animation-delay: ${index * 0.1}s">
+                            <div class="flex items-center justify-between mb-3">
+                                <div class="flex items-center justify-center w-10 h-10 rounded-lg bg-white">
+                                    <span class="dashicons dashicons-${icon} ${iconColor}"></span>
                                 </div>
-                                ${statusClass !== 'info' ? `
-                                <span class="mds-test-card-status mds-test-card-status-${statusClass}">
-                                    <span class="dashicons dashicons-${statusIcon}"></span>
-                                </span>
+                                ${!isNotConfigured ? `
+                                <span class="dashicons dashicons-${result.success ? 'yes-alt' : 'warning'} ${statusClass}"></span>
                                 ` : ''}
                             </div>
-                            <div class="mds-test-card-body">
-                                <h4 class="mds-test-card-title">${title}</h4>
-                                <p class="mds-test-card-message">${result.message}</p>
-                            </div>
+                            <h4 class="text-sm font-semibold text-gray-900 mb-1">${title}</h4>
+                            <p class="text-sm text-gray-600">${result.message}</p>
                         </div>
                     `;
                     index++;
@@ -778,9 +776,9 @@
                 $results.html(html);
             } else {
                 $results.html(`
-                    <div class="mds-test-error">
-                        <span class="dashicons dashicons-warning"></span>
-                        <p>${response.data?.message || 'Test failed'}</p>
+                    <div class="flex gap-4 p-5 rounded-xl border mt-alert-error">
+                        <span class="dashicons dashicons-warning text-red-600"></span>
+                        <p class="text-gray-700">${response.data?.message || 'Test failed'}</p>
                     </div>
                 `);
             }
@@ -792,7 +790,7 @@
             const level = $('#filter-log-level').val();
             const operation = $('#filter-log-operation').val();
 
-            $tbody.html('<tr><td colspan="5" class="mds-loading">Loading logs...</td></tr>');
+            $tbody.html('<tr><td colspan="5" class="text-center py-8 text-gray-500">Loading logs...</td></tr>');
 
             $.ajax({
                 url: mediaToolkit.ajaxUrl,
@@ -820,33 +818,36 @@
                         $opFilter.val(currentOp);
 
                         if (logs.length === 0) {
-                            $tbody.html(`<tr><td colspan="5">
-                                <div class="mds-empty-state">
-                                    <span class="dashicons dashicons-media-text"></span>
-                                    <p>No logs found</p>
-                                    <span>Activity will appear here as operations occur</span>
-                                </div>
+                            $tbody.html(`<tr><td colspan="5" class="px-6 py-12 text-center">
+                                <span class="dashicons dashicons-media-text text-5xl text-gray-300 mb-4 block"></span>
+                                <p class="text-gray-600 font-medium">No logs found</p>
+                                <span class="text-sm text-gray-400">Activity will appear here as operations occur</span>
                             </td></tr>`);
                             return;
                         }
 
                         let html = '';
                         logs.forEach(function (log) {
-                            const levelClass = log.level === 'error' ? 'error' : log.level === 'warning' ? 'warning' : log.level === 'success' ? 'success' : 'info';
+                            const levelClass = {
+                                'error': 'mt-badge-error',
+                                'warning': 'mt-badge-warning',
+                                'success': 'mt-badge-success',
+                                'info': 'mt-badge-info'
+                            }[log.level] || 'mt-badge-neutral';
                             const dateObj = new Date(log.timestamp);
                             const dateStr = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
                             const timeStr = dateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 
                             html += `
-                                <tr>
-                                    <td>
-                                        <span class="mds-timestamp">${dateStr}</span>
-                                        <span class="mds-timestamp-time">${timeStr}</span>
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-4 py-3">
+                                        <span class="block text-sm text-gray-900">${dateStr}</span>
+                                        <span class="block text-xs text-gray-500">${timeStr}</span>
                                     </td>
-                                    <td><span class="mds-badge mds-badge-${levelClass}">${log.level}</span></td>
-                                    <td><span class="mds-badge mds-badge-default">${MediaToolkit.escapeHtml(log.operation)}</span></td>
-                                    <td><span class="mds-file-path" title="${MediaToolkit.escapeHtml(log.file_name || '-')}">${MediaToolkit.escapeHtml(log.file_name || '-')}</span></td>
-                                    <td>${MediaToolkit.escapeHtml(log.message)}</td>
+                                    <td class="px-4 py-3"><span class="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full ${levelClass}">${log.level}</span></td>
+                                    <td class="px-4 py-3"><span class="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full mt-badge-neutral">${MediaToolkit.escapeHtml(log.operation)}</span></td>
+                                    <td class="px-4 py-3"><span class="text-sm text-gray-600 font-mono truncate max-w-[200px] block" title="${MediaToolkit.escapeHtml(log.file_name || '-')}">${MediaToolkit.escapeHtml(log.file_name || '-')}</span></td>
+                                    <td class="px-4 py-3 text-sm text-gray-600">${MediaToolkit.escapeHtml(log.message)}</td>
                                 </tr>
                             `;
                         });
@@ -890,7 +891,7 @@
             const dateFrom = $('#filter-date-from').val();
             const dateTo = $('#filter-date-to').val();
 
-            $tbody.html('<tr><td colspan="5" class="mds-loading">Loading history...</td></tr>');
+            $tbody.html('<tr><td colspan="5" class="text-center py-8 text-gray-500">Loading history...</td></tr>');
 
             $.ajax({
                 url: mediaToolkit.ajaxUrl,
@@ -916,12 +917,10 @@
                         $('#btn-next-page').prop('disabled', response.data.page >= response.data.total_pages);
 
                         if (history.length === 0) {
-                            $tbody.html(`<tr><td colspan="5">
-                                <div class="mds-empty-state">
-                                    <span class="dashicons dashicons-clock"></span>
-                                    <p>No history found</p>
-                                    <span>Operations will be recorded here</span>
-                                </div>
+                            $tbody.html(`<tr><td colspan="5" class="px-6 py-12 text-center">
+                                <span class="dashicons dashicons-clock text-5xl text-gray-300 mb-4 block"></span>
+                                <p class="text-gray-600 font-medium">No history found</p>
+                                <span class="text-sm text-gray-400">Operations will be recorded here</span>
                             </td></tr>`);
                             return;
                         }
@@ -931,23 +930,31 @@
                             const dateObj = new Date(item.timestamp);
                             const dateStr = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
                             const timeStr = dateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-                            const actionClass = item.action || 'default';
+                            
+                            const actionClasses = {
+                                'uploaded': 'mt-badge-success',
+                                'migrated': 'mt-badge-info',
+                                'deleted': 'mt-badge-error',
+                                'edited': 'mt-badge-warning'
+                            };
+                            const actionClass = actionClasses[item.action] || 'mt-badge-neutral';
+                            
                             const userName = item.user_name || 'System';
                             const userInitial = userName.charAt(0).toUpperCase();
 
                             html += `
-                                <tr>
-                                    <td>
-                                        <span class="mds-timestamp">${dateStr}</span>
-                                        <span class="mds-timestamp-time">${timeStr}</span>
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-4 py-3">
+                                        <span class="block text-sm text-gray-900">${dateStr}</span>
+                                        <span class="block text-xs text-gray-500">${timeStr}</span>
                                     </td>
-                                    <td><span class="mds-badge mds-badge-${actionClass}">${item.action}</span></td>
-                                    <td><span class="mds-file-path" title="${MediaToolkit.escapeHtml(item.file_path || item.s3_key || '-')}">${MediaToolkit.escapeHtml(item.file_path || item.s3_key || '-')}</span></td>
-                                    <td>${item.file_size ? MediaToolkit.formatBytes(item.file_size) : '-'}</td>
-                                    <td>
-                                        <div class="mds-user-info">
-                                            <span class="mds-user-avatar">${userInitial}</span>
-                                            <span class="mds-user-name">${MediaToolkit.escapeHtml(userName)}</span>
+                                    <td class="px-4 py-3"><span class="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full ${actionClass}">${item.action}</span></td>
+                                    <td class="px-4 py-3"><span class="text-sm text-gray-600 font-mono truncate max-w-[200px] block" title="${MediaToolkit.escapeHtml(item.file_path || item.s3_key || '-')}">${MediaToolkit.escapeHtml(item.file_path || item.s3_key || '-')}</span></td>
+                                    <td class="px-4 py-3 text-sm text-gray-600">${item.file_size ? MediaToolkit.formatBytes(item.file_size) : '-'}</td>
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-2">
+                                            <span class="flex items-center justify-center w-7 h-7 text-xs font-semibold text-white bg-gray-700 rounded-full">${userInitial}</span>
+                                            <span class="text-sm text-gray-600">${MediaToolkit.escapeHtml(userName)}</span>
                                         </div>
                                     </td>
                                 </tr>
@@ -1122,8 +1129,8 @@
             ctx.closePath();
 
             const gradient = ctx.createLinearGradient(0, 0, 0, height);
-            gradient.addColorStop(0, 'rgba(34, 113, 177, 0.2)');
-            gradient.addColorStop(1, 'rgba(34, 113, 177, 0)');
+            gradient.addColorStop(0, 'rgba(31, 41, 55, 0.15)');
+            gradient.addColorStop(1, 'rgba(31, 41, 55, 0)');
             ctx.fillStyle = gradient;
             ctx.fill();
 
@@ -1138,7 +1145,7 @@
                     ctx.lineTo(x, y);
                 }
             });
-            ctx.strokeStyle = '#2271b1';
+            ctx.strokeStyle = '#1f2937';
             ctx.lineWidth = 2;
             ctx.stroke();
 
@@ -1155,17 +1162,17 @@
                 ctx.arc(x, y, 4, 0, Math.PI * 2);
                 ctx.fillStyle = '#fff';
                 ctx.fill();
-                ctx.strokeStyle = '#2271b1';
+                ctx.strokeStyle = '#1f2937';
                 ctx.lineWidth = 2;
                 ctx.stroke();
 
                 // Draw value above the dot
-                ctx.fillStyle = '#1d2327';
+                ctx.fillStyle = '#1f2937';
                 ctx.fillText(value.toString(), x, y - 10);
 
                 // Draw day label below the chart
                 if (labels[i]) {
-                    ctx.fillStyle = '#646970';
+                    ctx.fillStyle = '#6b7280';
                     ctx.fillText(labels[i], x, height - 6);
                 }
             });
@@ -1198,7 +1205,7 @@
 
             $btn.prop('disabled', true);
             const originalHtml = $btn.html();
-            $btn.html('<span class="dashicons dashicons-update mds-spin"></span> Saving...');
+            $btn.html('<span class="dashicons dashicons-update animate-spin"></span> Saving...');
 
             $.ajax({
                 url: mediaToolkit.ajaxUrl,
@@ -1234,7 +1241,7 @@
 
             $btn.prop('disabled', true);
             const originalHtml = $btn.html();
-            $btn.html('<span class="dashicons dashicons-update mds-spin"></span> Removing...');
+            $btn.html('<span class="dashicons dashicons-update animate-spin"></span> Removing...');
 
             $.ajax({
                 url: mediaToolkit.ajaxUrl,
@@ -1269,7 +1276,7 @@
 
             $btn.prop('disabled', true);
             const originalHtml = $btn.html();
-            $btn.html('<span class="dashicons dashicons-update mds-spin"></span> Checking...');
+            $btn.html('<span class="dashicons dashicons-update animate-spin"></span> Checking...');
             $result.hide();
 
             $.ajax({
@@ -1286,21 +1293,21 @@
 
                         if (data.update_available) {
                             html = `
-                                <div style="padding: 16px; background: var(--mds-success-bg, #e7f7e7); border-radius: 8px; display: flex; align-items: center; gap: 12px;">
-                                    <span class="dashicons dashicons-yes-alt" style="color: var(--mds-success, #00a32a); font-size: 24px; width: 24px; height: 24px;"></span>
+                                <div class="flex gap-4 p-4 rounded-lg mt-alert-success">
+                                    <span class="dashicons dashicons-yes-alt text-green-600"></span>
                                     <div>
-                                        <strong>${data.message}</strong>
-                                        <p style="margin: 4px 0 0;"><a href="${data.update_url}" class="button button-primary">Update Now</a></p>
+                                        <strong class="block text-green-800">${data.message}</strong>
+                                        <p class="mt-2"><a href="${data.update_url}" class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg">Update Now</a></p>
                                     </div>
                                 </div>
                             `;
                         } else {
                             html = `
-                                <div style="padding: 16px; background: var(--mds-info-bg, #e7f3ff); border-radius: 8px; display: flex; align-items: center; gap: 12px;">
-                                    <span class="dashicons dashicons-yes" style="color: var(--mds-info, #0073aa); font-size: 24px; width: 24px; height: 24px;"></span>
+                                <div class="flex gap-4 p-4 rounded-lg mt-alert-info">
+                                    <span class="dashicons dashicons-yes text-blue-600"></span>
                                     <div>
-                                        <strong>${data.message}</strong>
-                                        <p style="margin: 4px 0 0; color: var(--mds-text-secondary, #666);">Current version: v${data.current_version}</p>
+                                        <strong class="block text-blue-800">${data.message}</strong>
+                                        <p class="mt-1 text-sm text-blue-600">Current version: v${data.current_version}</p>
                                     </div>
                                 </div>
                             `;
@@ -1309,11 +1316,11 @@
                         $result.html(html).show();
                     } else {
                         $result.html(`
-                            <div style="padding: 16px; background: var(--mds-error-bg, #fce8e8); border-radius: 8px; display: flex; align-items: center; gap: 12px;">
-                                <span class="dashicons dashicons-warning" style="color: var(--mds-error, #d63638); font-size: 24px; width: 24px; height: 24px;"></span>
+                            <div class="flex gap-4 p-4 rounded-lg mt-alert-error">
+                                <span class="dashicons dashicons-warning text-red-600"></span>
                                 <div>
-                                    <strong>Check failed</strong>
-                                    <p style="margin: 4px 0 0;">${response.data?.message || 'Unknown error'}</p>
+                                    <strong class="block text-red-800">Check failed</strong>
+                                    <p class="mt-1 text-sm text-red-600">${response.data?.message || 'Unknown error'}</p>
                                 </div>
                             </div>
                         `).show();
@@ -1321,9 +1328,9 @@
                 },
                 error: function () {
                     $result.html(`
-                        <div style="padding: 16px; background: var(--mds-error-bg, #fce8e8); border-radius: 8px;">
-                            <strong>Connection error</strong>
-                            <p style="margin: 4px 0 0;">Please try again later.</p>
+                        <div class="flex gap-4 p-4 rounded-lg mt-alert-error">
+                            <strong class="text-red-800">Connection error</strong>
+                            <p class="text-sm text-red-600">Please try again later.</p>
                         </div>
                     `).show();
                 },
@@ -1335,13 +1342,13 @@
 
         // Close modal
         closeModal: function () {
-            $('.mds-modal, .mds-modal-overlay').hide();
+            $('.mt-modal-overlay').hide();
         },
 
         // Show notification
         showNotice: function (message, type) {
             const $notice = $(`<div class="notice notice-${type} is-dismissible"><p>${message}</p></div>`);
-            $('.mds-wrap h1').after($notice);
+            $('.mt-wrap h1').after($notice);
 
             setTimeout(function () {
                 $notice.fadeOut(function () {

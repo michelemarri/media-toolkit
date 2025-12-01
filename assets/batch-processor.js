@@ -114,7 +114,7 @@
 
             // Modal events
             $(document).on('click', '#btn-confirm-yes', () => this.confirmAction());
-            $(document).on('click', '#btn-confirm-no, .mds-modal-close', () => this.closeModal());
+            $(document).on('click', '#btn-confirm-no, .modal-close', () => this.closeModal());
         }
 
         /**
@@ -486,18 +486,19 @@
             const timestamp = new Date().toLocaleTimeString();
 
             // Remove placeholder
-            this.$logContainer.find('.mds-terminal-muted').first().remove();
+            this.$logContainer.find('.mt-terminal-muted').first().remove();
 
             const typeClass = {
-                success: 'mds-terminal-success',
-                error: 'mds-terminal-error',
-                warning: 'mds-terminal-warning',
-                info: 'mds-terminal-muted'
-            }[type] || 'mds-terminal-muted';
+                success: 'mt-terminal-success',
+                error: 'mt-terminal-error',
+                warning: 'mt-terminal-warning',
+                info: 'mt-terminal-muted'
+            }[type] || 'mt-terminal-muted';
 
             const $entry = $(`
-                <div class="mds-terminal-line ${typeClass}">
-                    <span class="mds-terminal-timestamp">[${timestamp}]</span> ${this.escapeHtml(message)}
+                <div class="mt-terminal-line">
+                    <span class="mt-terminal-prompt">$</span>
+                    <span class="mt-terminal-text ${typeClass}">[${timestamp}] ${this.escapeHtml(message)}</span>
                 </div>
             `);
 
@@ -512,8 +513,9 @@
             if (!this.$logContainer.length) return;
 
             this.$logContainer.html(`
-                <div class="mds-terminal-line mds-terminal-muted">
-                    <span class="mds-terminal-prompt">$</span> Log will appear here...
+                <div class="mt-terminal-line">
+                    <span class="mt-terminal-prompt">$</span>
+                    <span class="mt-terminal-text mt-terminal-muted">Log will appear here...</span>
                 </div>
             `);
         }
@@ -543,7 +545,7 @@
          * Close modal
          */
         closeModal() {
-            $('.mds-modal').hide();
+            $('.mt-modal-overlay').hide();
         }
 
         /**
@@ -602,4 +604,3 @@
     window.BatchProcessor = BatchProcessor;
 
 })(jQuery, window);
-

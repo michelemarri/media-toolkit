@@ -33,7 +33,7 @@
      */
     function initRowActions() {
         // Upload to S3 (new)
-        $(document).on('click', '.mds-action-upload', function (e) {
+        $(document).on('click', '.mt-action-upload', function (e) {
             e.preventDefault();
 
             var $link = $(this);
@@ -74,7 +74,7 @@
         });
 
         // Re-upload to S3
-        $(document).on('click', '.mds-action-reupload', function (e) {
+        $(document).on('click', '.mt-action-reupload', function (e) {
             e.preventDefault();
 
             var $link = $(this);
@@ -119,7 +119,7 @@
         });
 
         // Download from S3
-        $(document).on('click', '.mds-action-download', function (e) {
+        $(document).on('click', '.mt-action-download', function (e) {
             e.preventDefault();
 
             var $link = $(this);
@@ -193,15 +193,15 @@
                     var data = model.toJSON();
 
                     // Get the template
-                    var template = wp.template('mds-offload-details');
+                    var template = wp.template('mt-offload-details');
 
                     if (!template) {
                         return;
                     }
 
                     // Remove existing S3 info
-                    this.$('.mds-offload-section').remove();
-                    this.$('.settings.mds-offload-section').remove();
+                    this.$('.mt-offload-section').remove();
+                    this.$('.settings.mt-offload-section').remove();
 
                     // Add S3 info after the settings section
                     var $settings = this.$('.attachment-info .settings');
@@ -224,14 +224,14 @@
                     var model = this.model;
 
                     // Upload button (new upload)
-                    this.$('.mds-btn-upload').off('click').on('click', function (e) {
+                    this.$('.mt-btn-upload').off('click').on('click', function (e) {
                         e.preventDefault();
 
                         var $btn = $(this);
                         var attachmentId = $btn.data('id');
 
                         $btn.prop('disabled', true);
-                        $btn.find('.dashicons').removeClass('dashicons-cloud-upload').addClass('dashicons-update mds-spin');
+                        $btn.find('.dashicons').removeClass('dashicons-cloud-upload').addClass('dashicons-update animate-spin');
 
                         $.ajax({
                             url: s3OffloadMedia.ajaxUrl,
@@ -255,26 +255,26 @@
                                 } else {
                                     alert(response.data.message || 'Upload failed');
                                     $btn.prop('disabled', false);
-                                    $btn.find('.dashicons').removeClass('dashicons-update mds-spin').addClass('dashicons-cloud-upload');
+                                    $btn.find('.dashicons').removeClass('dashicons-update animate-spin').addClass('dashicons-cloud-upload');
                                 }
                             },
                             error: function (xhr, status, error) {
                                 alert('Upload failed: ' + error);
                                 $btn.prop('disabled', false);
-                                $btn.find('.dashicons').removeClass('dashicons-update mds-spin').addClass('dashicons-cloud-upload');
+                                $btn.find('.dashicons').removeClass('dashicons-update animate-spin').addClass('dashicons-cloud-upload');
                             }
                         });
                     });
 
                     // Re-upload button
-                    this.$('.mds-btn-reupload').off('click').on('click', function (e) {
+                    this.$('.mt-btn-reupload').off('click').on('click', function (e) {
                         e.preventDefault();
 
                         var $btn = $(this);
                         var attachmentId = $btn.data('id');
 
                         $btn.prop('disabled', true);
-                        $btn.find('.dashicons').addClass('mds-spin');
+                        $btn.find('.dashicons').addClass('animate-spin');
 
                         $.ajax({
                             url: s3OffloadMedia.ajaxUrl,
@@ -292,7 +292,7 @@
                                     }));
 
                                     // Show success briefly
-                                    $btn.find('.dashicons').removeClass('mds-spin');
+                                    $btn.find('.dashicons').removeClass('animate-spin');
                                     $btn.text('✓ Synced');
 
                                     setTimeout(function () {
@@ -301,19 +301,19 @@
                                 } else {
                                     alert(response.data.message || 'Re-upload failed');
                                     $btn.prop('disabled', false);
-                                    $btn.find('.dashicons').removeClass('mds-spin');
+                                    $btn.find('.dashicons').removeClass('animate-spin');
                                 }
                             },
                             error: function (xhr, status, error) {
                                 alert('Re-upload failed: ' + error);
                                 $btn.prop('disabled', false);
-                                $btn.find('.dashicons').removeClass('mds-spin');
+                                $btn.find('.dashicons').removeClass('animate-spin');
                             }
                         });
                     });
 
                     // Download button
-                    this.$('.mds-btn-download').off('click').on('click', function (e) {
+                    this.$('.mt-btn-download').off('click').on('click', function (e) {
                         e.preventDefault();
 
                         var $btn = $(this);
@@ -324,7 +324,7 @@
                         }
 
                         $btn.prop('disabled', true);
-                        $btn.find('.dashicons').removeClass('dashicons-download').addClass('dashicons-update mds-spin');
+                        $btn.find('.dashicons').removeClass('dashicons-download').addClass('dashicons-update animate-spin');
 
                         $.ajax({
                             url: s3OffloadMedia.ajaxUrl,
@@ -346,13 +346,13 @@
                                 } else {
                                     alert(response.data.message || 'Download failed');
                                     $btn.prop('disabled', false);
-                                    $btn.find('.dashicons').removeClass('dashicons-update mds-spin').addClass('dashicons-download');
+                                    $btn.find('.dashicons').removeClass('dashicons-update animate-spin').addClass('dashicons-download');
                                 }
                             },
                             error: function (xhr, status, error) {
                                 alert('Download failed: ' + error);
                                 $btn.prop('disabled', false);
-                                $btn.find('.dashicons').removeClass('dashicons-update mds-spin').addClass('dashicons-download');
+                                $btn.find('.dashicons').removeClass('dashicons-update animate-spin').addClass('dashicons-download');
                             }
                         });
                     });
@@ -374,14 +374,14 @@
                 renderS3Info: function () {
                     var self = this;
                     var data = this.model.toJSON();
-                    var template = wp.template('mds-offload-details');
+                    var template = wp.template('mt-offload-details');
 
                     if (!template || !data.s3Offload) {
                         return;
                     }
 
-                    this.$('.mds-offload-section').remove();
-                    this.$('.settings.mds-offload-section').remove();
+                    this.$('.mt-offload-section').remove();
+                    this.$('.settings.mt-offload-section').remove();
 
                     var $info = this.$('.attachment-info');
                     if ($info.length) {

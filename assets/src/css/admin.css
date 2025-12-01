@@ -1,12 +1,390 @@
 /**
  * Media Toolkit - Admin Styles
  * 
- * Uses Metodo Design System for all components.
+ * Built with Tailwind CSS
+ * Theme: Black & White + Accent Orange (#ff5f01)
  * 
  * @package Metodo\MediaToolkit
  * @author  Michele Marri <plugins@metodo.dev>
  */
 
-/* Import the complete Metodo Design System */
-@import 'metodo-design-system/src/index.css';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
+/* ========================================
+   Base Overrides for WP Admin
+   ======================================== */
+
+.mt-wrap {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.mt-wrap *,
+.mt-wrap *::before,
+.mt-wrap *::after {
+  box-sizing: border-box;
+}
+
+/* Border reset with zero specificity - Tailwind classes will override */
+:where(.mt-wrap) *,
+:where(.mt-wrap) *::before,
+:where(.mt-wrap) *::after {
+  border-style: solid;
+  border-width: 0;
+}
+
+.mt-wrap a {
+  color: #171717;
+  text-decoration: none;
+  transition: color 150ms ease;
+}
+
+.mt-wrap a:hover {
+  color: #ff5f01;
+}
+
+/* ========================================
+   Custom Components
+   ======================================== */
+
+/* Terminal Component */
+.mt-terminal {
+  @apply bg-gray-900 rounded-lg overflow-hidden font-mono text-sm;
+}
+
+.mt-terminal-header {
+  @apply flex items-center gap-2 px-4 py-3 bg-gray-800 border-b border-gray-700;
+}
+
+.mt-terminal-dot {
+  @apply w-3 h-3 rounded-full;
+}
+
+.mt-terminal-dot-red {
+  @apply bg-red-500;
+}
+
+.mt-terminal-dot-yellow {
+  @apply bg-yellow-500;
+}
+
+.mt-terminal-dot-green {
+  @apply bg-green-500;
+}
+
+.mt-terminal-title {
+  @apply flex-1 text-center text-xs text-gray-400 font-medium;
+}
+
+.mt-terminal-body {
+  @apply p-4 max-h-96 overflow-y-auto text-gray-300 leading-relaxed;
+}
+
+.mt-terminal-line {
+  @apply flex items-start gap-2 mb-1;
+}
+
+.mt-terminal-prompt {
+  @apply text-accent-500 select-none flex-shrink-0;
+}
+
+.mt-terminal-text {
+  @apply break-words;
+}
+
+.mt-terminal-success {
+  @apply text-green-400;
+}
+
+.mt-terminal-error {
+  @apply text-red-400;
+}
+
+.mt-terminal-warning {
+  @apply text-amber-400;
+}
+
+.mt-terminal-muted {
+  @apply text-gray-500;
+}
+
+/* Toggle Switch */
+.mt-toggle {
+  @apply cursor-pointer;
+}
+
+.mt-toggle input {
+  @apply absolute opacity-0 w-0 h-0;
+}
+
+.mt-toggle-slider {
+  @apply relative inline-block w-12 h-7 rounded-full bg-gray-300 transition-all duration-200 flex-shrink-0;
+}
+
+.mt-toggle-slider::before {
+  content: '';
+  @apply absolute left-1 top-1 h-5 w-5 rounded-full bg-white shadow transition-transform duration-200;
+}
+
+.mt-toggle input:checked + .mt-toggle-slider {
+  @apply bg-gray-800;
+}
+
+.mt-toggle input:checked + .mt-toggle-slider::before {
+  transform: translateX(20px);
+}
+
+.mt-toggle:hover .mt-toggle-slider {
+  @apply bg-gray-400;
+}
+
+.mt-toggle input:checked + .mt-toggle-slider:hover {
+  @apply bg-gray-700;
+}
+
+/* Progress Bar */
+.mt-progress-bar {
+  @apply h-2 bg-gray-100 rounded-full overflow-hidden;
+}
+
+.mt-progress-fill {
+  @apply h-full bg-gradient-to-r from-gray-700 to-gray-900 rounded-full transition-all duration-300;
+}
+
+.mt-progress-animated .mt-progress-fill {
+  background: linear-gradient(90deg, #374151, #1f2937, #374151);
+  background-size: 200% 100%;
+  animation: shimmer 2s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Hero Banner */
+.mt-hero {
+  @apply relative w-full h-48 rounded-xl overflow-hidden shadow-lg;
+}
+
+.mt-hero-banner {
+  @apply w-full h-full object-cover object-center;
+}
+
+.mt-hero-overlay {
+  @apply absolute inset-0 flex flex-col justify-center p-8;
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.4));
+}
+
+.mt-hero-title {
+  @apply text-3xl font-bold text-white mb-2;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.mt-hero-description {
+  @apply text-lg text-white/90 max-w-xl;
+}
+
+.mt-hero-version {
+  @apply absolute top-4 right-4 px-3 py-1 text-sm font-semibold text-white rounded-full;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Logo */
+.mt-logo {
+  @apply flex items-center justify-center w-12 h-12 bg-gray-900 text-white rounded-xl shadow-lg;
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+
+.mt-logo:hover {
+  transform: scale(1.05);
+  @apply shadow-xl;
+}
+
+/* Modal */
+.mt-modal-overlay {
+  @apply fixed inset-0 z-[100000] flex items-center justify-center;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.2s ease;
+}
+
+.mt-modal {
+  @apply bg-white rounded-xl shadow-xl max-w-lg w-11/12 max-h-[85vh] overflow-hidden flex flex-col;
+  animation: slideIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Live Indicator */
+.mt-live-dot {
+  @apply w-2 h-2 rounded-full bg-green-500;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Scrollbar styling for terminal */
+.mt-terminal-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.mt-terminal-body::-webkit-scrollbar-track {
+  @apply bg-gray-800;
+}
+
+.mt-terminal-body::-webkit-scrollbar-thumb {
+  @apply bg-gray-600 rounded;
+}
+
+.mt-terminal-body::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-500;
+}
+
+/* Badge variants */
+.mt-badge-success {
+  @apply bg-green-100 text-green-700;
+}
+
+.mt-badge-warning {
+  @apply bg-amber-100 text-amber-700;
+}
+
+.mt-badge-error {
+  @apply bg-red-100 text-red-700;
+}
+
+.mt-badge-info {
+  @apply bg-blue-100 text-blue-700;
+}
+
+.mt-badge-neutral {
+  @apply bg-gray-100 text-gray-600;
+}
+
+/* Alert variants */
+.mt-alert-success {
+  @apply bg-green-50 border-green-200 text-green-800;
+}
+
+.mt-alert-warning {
+  @apply bg-amber-50 border-amber-200 text-amber-800;
+}
+
+.mt-alert-error {
+  @apply bg-red-50 border-red-200 text-red-800;
+}
+
+.mt-alert-info {
+  @apply bg-blue-50 border-blue-200 text-blue-800;
+}
+
+/* Button loading state */
+.mt-btn-loading {
+  @apply relative text-transparent pointer-events-none;
+}
+
+.mt-btn-loading::after {
+  content: '';
+  @apply absolute inset-0 m-auto w-4 h-4 border-2 border-white/30 border-t-white rounded-full;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Test card animations */
+.mt-test-card {
+  @apply opacity-0;
+  animation: testCardFadeIn 0.4s ease forwards;
+}
+
+@keyframes testCardFadeIn {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Table hover */
+.mt-table tbody tr:hover td {
+  @apply bg-gray-50;
+}
+
+/* Focus ring */
+.mt-wrap :focus-visible {
+  @apply outline-2 outline-gray-900 outline-offset-2;
+}
+
+/* Range input styling */
+.mt-wrap input[type="range"] {
+  @apply h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer;
+}
+
+.mt-wrap input[type="range"]::-webkit-slider-thumb {
+  @apply appearance-none w-4 h-4 bg-gray-800 rounded-full cursor-pointer;
+  transition: background 150ms ease;
+}
+
+.mt-wrap input[type="range"]::-webkit-slider-thumb:hover {
+  @apply bg-gray-700;
+}
+
+/* File input */
+.mt-wrap input[type="file"] {
+  @apply block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200 cursor-pointer;
+}
+
+/* Responsive table */
+@media (max-width: 768px) {
+  .mt-table-responsive {
+    @apply overflow-x-auto -mx-4;
+  }
+
+  .mt-table-responsive table {
+    @apply min-w-[600px];
+  }
+}

@@ -58,29 +58,29 @@ final class Admin_Dashboard
         $stats = $this->stats->get_dashboard_stats();
         $migration_stats = $this->stats->get_migration_stats();
         ?>
-        <div class="mds-widget">
-            <div class="mds-widget-stats">
-                <div class="mds-widget-stat">
-                    <span class="mds-widget-stat-value"><?php echo esc_html($stats['total_files']); ?></span>
-                    <span class="mds-widget-stat-label"><?php esc_html_e('Files on S3', 'media-toolkit'); ?></span>
+        <div class="mt-widget" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px;">
+                <div style="text-align: center; padding: 12px; background: #f9fafb; border-radius: 8px;">
+                    <span style="display: block; font-size: 24px; font-weight: 700; color: #111827;"><?php echo esc_html($stats['total_files']); ?></span>
+                    <span style="font-size: 12px; color: #6b7280;"><?php esc_html_e('Files on S3', 'media-toolkit'); ?></span>
                 </div>
-                <div class="mds-widget-stat">
-                    <span class="mds-widget-stat-value"><?php echo esc_html($stats['total_storage_formatted']); ?></span>
-                    <span class="mds-widget-stat-label"><?php esc_html_e('Storage Used', 'media-toolkit'); ?></span>
+                <div style="text-align: center; padding: 12px; background: #f9fafb; border-radius: 8px;">
+                    <span style="display: block; font-size: 24px; font-weight: 700; color: #111827;"><?php echo esc_html($stats['total_storage_formatted']); ?></span>
+                    <span style="font-size: 12px; color: #6b7280;"><?php esc_html_e('Storage Used', 'media-toolkit'); ?></span>
                 </div>
-                <div class="mds-widget-stat">
-                    <span class="mds-widget-stat-value"><?php echo esc_html($stats['files_today']); ?></span>
-                    <span class="mds-widget-stat-label"><?php esc_html_e('Uploaded Today', 'media-toolkit'); ?></span>
+                <div style="text-align: center; padding: 12px; background: #f9fafb; border-radius: 8px;">
+                    <span style="display: block; font-size: 24px; font-weight: 700; color: #111827;"><?php echo esc_html($stats['files_today']); ?></span>
+                    <span style="font-size: 12px; color: #6b7280;"><?php esc_html_e('Uploaded Today', 'media-toolkit'); ?></span>
                 </div>
-                <div class="mds-widget-stat">
-                    <span class="mds-widget-stat-value"><?php echo esc_html($stats['errors_last_7_days']); ?></span>
-                    <span class="mds-widget-stat-label"><?php esc_html_e('Errors (7d)', 'media-toolkit'); ?></span>
+                <div style="text-align: center; padding: 12px; background: #f9fafb; border-radius: 8px;">
+                    <span style="display: block; font-size: 24px; font-weight: 700; color: #111827;"><?php echo esc_html($stats['errors_last_7_days']); ?></span>
+                    <span style="font-size: 12px; color: #6b7280;"><?php esc_html_e('Errors (7d)', 'media-toolkit'); ?></span>
                 </div>
             </div>
             
             <?php if ($migration_stats['pending_attachments'] > 0): ?>
-            <div class="mds-alert mds-alert-warning mds-alert-sm">
-                <p>
+            <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: #fffbeb; border: 1px solid #fcd34d; border-radius: 8px; margin-bottom: 16px;">
+                <p style="margin: 0; color: #92400e; font-size: 13px;">
                     <strong><?php echo esc_html($migration_stats['pending_attachments']); ?></strong> 
                     <?php esc_html_e('files pending migration', 'media-toolkit'); ?> 
                     (<?php echo esc_html($migration_stats['pending_size_formatted']); ?>)
@@ -91,27 +91,27 @@ final class Admin_Dashboard
             </div>
             <?php endif; ?>
             
-            <div class="mds-widget-status">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
                 <?php
                 $connection = $stats['connection_status'];
                 if ($connection['connected'] === true):
                 ?>
-                    <span class="mds-badge mds-badge-success">● <?php esc_html_e('Connected', 'media-toolkit'); ?></span>
+                    <span style="display: inline-flex; align-items: center; padding: 4px 10px; font-size: 12px; font-weight: 500; background: #dcfce7; color: #166534; border-radius: 9999px;">● <?php esc_html_e('Connected', 'media-toolkit'); ?></span>
                 <?php elseif ($connection['connected'] === false): ?>
-                    <span class="mds-badge mds-badge-error">● <?php esc_html_e('Disconnected', 'media-toolkit'); ?></span>
+                    <span style="display: inline-flex; align-items: center; padding: 4px 10px; font-size: 12px; font-weight: 500; background: #fee2e2; color: #991b1b; border-radius: 9999px;">● <?php esc_html_e('Disconnected', 'media-toolkit'); ?></span>
                 <?php else: ?>
-                    <span class="mds-badge mds-badge-warning">● <?php esc_html_e('Unknown', 'media-toolkit'); ?></span>
+                    <span style="display: inline-flex; align-items: center; padding: 4px 10px; font-size: 12px; font-weight: 500; background: #fef3c7; color: #92400e; border-radius: 9999px;">● <?php esc_html_e('Unknown', 'media-toolkit'); ?></span>
                 <?php endif; ?>
                 
                 <?php if ($connection['checked_at']): ?>
-                    <small class="mds-text-muted"><?php esc_html_e('Last checked:', 'media-toolkit'); ?> <?php echo esc_html($connection['checked_at']); ?></small>
+                    <small style="color: #6b7280; font-size: 12px;"><?php esc_html_e('Last checked:', 'media-toolkit'); ?> <?php echo esc_html($connection['checked_at']); ?></small>
                 <?php endif; ?>
             </div>
             
-            <p class="mds-widget-footer">
-                <a href="<?php echo admin_url('admin.php?page=media-toolkit'); ?>"><?php esc_html_e('Dashboard', 'media-toolkit'); ?></a> | 
-                <a href="<?php echo admin_url('admin.php?page=media-toolkit-settings'); ?>"><?php esc_html_e('Settings', 'media-toolkit'); ?></a> | 
-                <a href="<?php echo admin_url('admin.php?page=media-toolkit-tools'); ?>"><?php esc_html_e('Tools', 'media-toolkit'); ?></a>
+            <p style="margin: 0; padding-top: 12px; border-top: 1px solid #e5e7eb; font-size: 13px; color: #6b7280;">
+                <a href="<?php echo admin_url('admin.php?page=media-toolkit'); ?>" style="color: #111827; text-decoration: none;"><?php esc_html_e('Dashboard', 'media-toolkit'); ?></a> | 
+                <a href="<?php echo admin_url('admin.php?page=media-toolkit-settings'); ?>" style="color: #111827; text-decoration: none;"><?php esc_html_e('Settings', 'media-toolkit'); ?></a> | 
+                <a href="<?php echo admin_url('admin.php?page=media-toolkit-tools'); ?>" style="color: #111827; text-decoration: none;"><?php esc_html_e('Tools', 'media-toolkit'); ?></a>
             </p>
         </div>
         <?php

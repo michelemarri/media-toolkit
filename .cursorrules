@@ -1,12 +1,10 @@
 # Metodo Workspace Guidelines
 
-## Design System
+## Styling con Tailwind CSS
 
-- **Usare sempre il Design System** - Tutti gli stili vanno in `metodo-design-system/src/components/`, mai stili inline nel JavaScript
-- **Estendere il DS se manca qualcosa** - Il DS è la fonte unica degli stili condivisi tra i plugin
-- **Componenti astratti e riutilizzabili** - Creare classi generiche (es. `.mds-card`, `.mds-grid`) non specifiche per funzione
+- **Usare sempre Tailwind CSS** - Tutti gli stili vanno scritti con classi Tailwind, non usare più il Metodo Design System (classi mds-*)
+- **Mai stili inline nel JavaScript** - Usare solo classi Tailwind
 - **Mai SVG inline** - Usare sempre WordPress Dashicons (`<span class="dashicons dashicons-*">`)
-- **Workflow DS**: dopo modifiche al DS → `npm run build` → copiare `dist/metodo-ds.css` nei plugin
 
 ---
 
