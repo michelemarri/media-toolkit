@@ -58,116 +58,62 @@ final class Admin_Dashboard
         $stats = $this->stats->get_dashboard_stats();
         $migration_stats = $this->stats->get_migration_stats();
         ?>
-        <div class="s3-offload-widget">
-            <div class="s3-stats-grid">
-                <div class="s3-stat">
-                    <span class="s3-stat-value"><?php echo esc_html($stats['total_files']); ?></span>
-                    <span class="s3-stat-label">Files on S3</span>
+        <div class="mds-widget">
+            <div class="mds-widget-stats">
+                <div class="mds-widget-stat">
+                    <span class="mds-widget-stat-value"><?php echo esc_html($stats['total_files']); ?></span>
+                    <span class="mds-widget-stat-label"><?php esc_html_e('Files on S3', 'media-toolkit'); ?></span>
                 </div>
-                <div class="s3-stat">
-                    <span class="s3-stat-value"><?php echo esc_html($stats['total_storage_formatted']); ?></span>
-                    <span class="s3-stat-label">Storage Used</span>
+                <div class="mds-widget-stat">
+                    <span class="mds-widget-stat-value"><?php echo esc_html($stats['total_storage_formatted']); ?></span>
+                    <span class="mds-widget-stat-label"><?php esc_html_e('Storage Used', 'media-toolkit'); ?></span>
                 </div>
-                <div class="s3-stat">
-                    <span class="s3-stat-value"><?php echo esc_html($stats['files_today']); ?></span>
-                    <span class="s3-stat-label">Uploaded Today</span>
+                <div class="mds-widget-stat">
+                    <span class="mds-widget-stat-value"><?php echo esc_html($stats['files_today']); ?></span>
+                    <span class="mds-widget-stat-label"><?php esc_html_e('Uploaded Today', 'media-toolkit'); ?></span>
                 </div>
-                <div class="s3-stat">
-                    <span class="s3-stat-value"><?php echo esc_html($stats['errors_last_7_days']); ?></span>
-                    <span class="s3-stat-label">Errors (7d)</span>
+                <div class="mds-widget-stat">
+                    <span class="mds-widget-stat-value"><?php echo esc_html($stats['errors_last_7_days']); ?></span>
+                    <span class="mds-widget-stat-label"><?php esc_html_e('Errors (7d)', 'media-toolkit'); ?></span>
                 </div>
             </div>
             
             <?php if ($migration_stats['pending_attachments'] > 0): ?>
-            <div class="s3-migration-notice">
+            <div class="mds-alert mds-alert-warning mds-alert-sm">
                 <p>
                     <strong><?php echo esc_html($migration_stats['pending_attachments']); ?></strong> 
-                    files pending migration 
+                    <?php esc_html_e('files pending migration', 'media-toolkit'); ?> 
                     (<?php echo esc_html($migration_stats['pending_size_formatted']); ?>)
                 </p>
                 <a href="<?php echo admin_url('admin.php?page=media-toolkit-migration'); ?>" class="button button-small">
-                    Start Migration
+                    <?php esc_html_e('Start Migration', 'media-toolkit'); ?>
                 </a>
             </div>
             <?php endif; ?>
             
-            <div class="s3-connection-status">
+            <div class="mds-widget-status">
                 <?php
                 $connection = $stats['connection_status'];
                 if ($connection['connected'] === true):
                 ?>
-                    <span class="s3-status-badge s3-status-connected">● Connected</span>
+                    <span class="mds-badge mds-badge-success">● <?php esc_html_e('Connected', 'media-toolkit'); ?></span>
                 <?php elseif ($connection['connected'] === false): ?>
-                    <span class="s3-status-badge s3-status-error">● Disconnected</span>
+                    <span class="mds-badge mds-badge-error">● <?php esc_html_e('Disconnected', 'media-toolkit'); ?></span>
                 <?php else: ?>
-                    <span class="s3-status-badge s3-status-unknown">● Unknown</span>
+                    <span class="mds-badge mds-badge-warning">● <?php esc_html_e('Unknown', 'media-toolkit'); ?></span>
                 <?php endif; ?>
                 
                 <?php if ($connection['checked_at']): ?>
-                    <small>Last checked: <?php echo esc_html($connection['checked_at']); ?></small>
+                    <small class="mds-text-muted"><?php esc_html_e('Last checked:', 'media-toolkit'); ?> <?php echo esc_html($connection['checked_at']); ?></small>
                 <?php endif; ?>
             </div>
             
-            <p class="s3-widget-footer">
-                <a href="<?php echo admin_url('admin.php?page=media-toolkit'); ?>">Dashboard</a> | 
-                <a href="<?php echo admin_url('admin.php?page=media-toolkit-settings'); ?>">Settings</a> | 
-                <a href="<?php echo admin_url('admin.php?page=media-toolkit-tools'); ?>">Tools</a>
+            <p class="mds-widget-footer">
+                <a href="<?php echo admin_url('admin.php?page=media-toolkit'); ?>"><?php esc_html_e('Dashboard', 'media-toolkit'); ?></a> | 
+                <a href="<?php echo admin_url('admin.php?page=media-toolkit-settings'); ?>"><?php esc_html_e('Settings', 'media-toolkit'); ?></a> | 
+                <a href="<?php echo admin_url('admin.php?page=media-toolkit-tools'); ?>"><?php esc_html_e('Tools', 'media-toolkit'); ?></a>
             </p>
         </div>
-        
-        <style>
-            .s3-stats-grid {
-                display: grid;
-                grid-template-columns: repeat(2, 1fr);
-                gap: 15px;
-                margin-bottom: 15px;
-            }
-            .s3-stat {
-                text-align: center;
-                padding: 10px;
-                background: #f6f7f7;
-                border-radius: 4px;
-            }
-            .s3-stat-value {
-                display: block;
-                font-size: 24px;
-                font-weight: 600;
-                color: #1d2327;
-            }
-            .s3-stat-label {
-                display: block;
-                font-size: 11px;
-                color: #646970;
-                text-transform: uppercase;
-            }
-            .s3-migration-notice {
-                background: #fff8e5;
-                border-left: 4px solid #ffb900;
-                padding: 10px;
-                margin-bottom: 15px;
-            }
-            .s3-migration-notice p {
-                margin: 0 0 10px;
-            }
-            .s3-connection-status {
-                display: flex;
-                align-items: center;
-                gap: 10px;
-                margin-bottom: 15px;
-            }
-            .s3-status-badge {
-                font-size: 12px;
-                font-weight: 500;
-            }
-            .s3-status-connected { color: #00a32a; }
-            .s3-status-error { color: #d63638; }
-            .s3-status-unknown { color: #dba617; }
-            .s3-widget-footer {
-                margin: 0;
-                padding-top: 10px;
-                border-top: 1px solid #c3c4c7;
-            }
-        </style>
         <?php
     }
 }

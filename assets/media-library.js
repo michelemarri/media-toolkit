@@ -6,24 +6,24 @@
  * - Row action handlers (upload, re-upload, download)
  * - Bulk action confirmation
  */
-(function($, wp) {
+(function ($, wp) {
     'use strict';
 
     // Utility: Format bytes to human readable
     window.s3OffloadMedia = window.s3OffloadMedia || {};
-    
-    s3OffloadMedia.formatBytes = function(bytes, decimals = 1) {
+
+    s3OffloadMedia.formatBytes = function (bytes, decimals = 1) {
         if (bytes === 0) return '0 B';
-        
+
         const k = 1024;
         const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
         const i = Math.floor(Math.log(bytes) / Math.log(k));
-        
+
         return parseFloat((bytes / Math.pow(k, i)).toFixed(decimals)) + ' ' + sizes[i];
     };
 
     // Initialize when document is ready
-    $(document).ready(function() {
+    $(document).ready(function () {
         initRowActions();
         initAttachmentDetails();
     });
@@ -33,15 +33,15 @@
      */
     function initRowActions() {
         // Upload to S3 (new)
-        $(document).on('click', '.s3-action-upload', function(e) {
+        $(document).on('click', '.mds-action-upload', function (e) {
             e.preventDefault();
-            
+
             var $link = $(this);
             var attachmentId = $link.data('id');
-            
+
             var originalText = $link.text();
             $link.text(s3OffloadMedia.strings.uploading);
-            
+
             $.ajax({
                 url: s3OffloadMedia.ajaxUrl,
                 method: 'POST',
@@ -50,23 +50,23 @@
                     attachment_id: attachmentId,
                     nonce: s3OffloadMedia.nonce
                 },
-                success: function(response) {
+                success: function (response) {
                     if (response.success) {
                         $link.text(s3OffloadMedia.strings.success);
-                        setTimeout(function() {
+                        setTimeout(function () {
                             location.reload();
                         }, 1000);
                     } else {
                         $link.text(s3OffloadMedia.strings.error);
                         alert(response.data.message || 'Upload failed');
-                        setTimeout(function() {
+                        setTimeout(function () {
                             $link.text(originalText);
                         }, 2000);
                     }
                 },
-                error: function() {
+                error: function () {
                     $link.text(s3OffloadMedia.strings.error);
-                    setTimeout(function() {
+                    setTimeout(function () {
                         $link.text(originalText);
                     }, 2000);
                 }
@@ -74,19 +74,19 @@
         });
 
         // Re-upload to S3
-        $(document).on('click', '.s3-action-reupload', function(e) {
+        $(document).on('click', '.mds-action-reupload', function (e) {
             e.preventDefault();
-            
+
             var $link = $(this);
             var attachmentId = $link.data('id');
-            
+
             if (!confirm(s3OffloadMedia.strings.confirmReupload)) {
                 return;
             }
-            
+
             var originalText = $link.text();
             $link.text(s3OffloadMedia.strings.uploading);
-            
+
             $.ajax({
                 url: s3OffloadMedia.ajaxUrl,
                 method: 'POST',
@@ -95,23 +95,23 @@
                     attachment_id: attachmentId,
                     nonce: s3OffloadMedia.nonce
                 },
-                success: function(response) {
+                success: function (response) {
                     if (response.success) {
                         $link.text(s3OffloadMedia.strings.success);
-                        setTimeout(function() {
+                        setTimeout(function () {
                             location.reload();
                         }, 1000);
                     } else {
                         $link.text(s3OffloadMedia.strings.error);
                         alert(response.data.message || 'Upload failed');
-                        setTimeout(function() {
+                        setTimeout(function () {
                             $link.text(originalText);
                         }, 2000);
                     }
                 },
-                error: function() {
+                error: function () {
                     $link.text(s3OffloadMedia.strings.error);
-                    setTimeout(function() {
+                    setTimeout(function () {
                         $link.text(originalText);
                     }, 2000);
                 }
@@ -119,19 +119,19 @@
         });
 
         // Download from S3
-        $(document).on('click', '.s3-action-download', function(e) {
+        $(document).on('click', '.mds-action-download', function (e) {
             e.preventDefault();
-            
+
             var $link = $(this);
             var attachmentId = $link.data('id');
-            
+
             if (!confirm(s3OffloadMedia.strings.confirmDownload)) {
                 return;
             }
-            
+
             var originalText = $link.text();
             $link.text(s3OffloadMedia.strings.downloading);
-            
+
             $.ajax({
                 url: s3OffloadMedia.ajaxUrl,
                 method: 'POST',
@@ -140,23 +140,23 @@
                     attachment_id: attachmentId,
                     nonce: s3OffloadMedia.nonce
                 },
-                success: function(response) {
+                success: function (response) {
                     if (response.success) {
                         $link.text(s3OffloadMedia.strings.success);
-                        setTimeout(function() {
+                        setTimeout(function () {
                             location.reload();
                         }, 1000);
                     } else {
                         $link.text(s3OffloadMedia.strings.error);
                         alert(response.data.message || 'Download failed');
-                        setTimeout(function() {
+                        setTimeout(function () {
                             $link.text(originalText);
                         }, 2000);
                     }
                 },
-                error: function() {
+                error: function () {
                     $link.text(s3OffloadMedia.strings.error);
-                    setTimeout(function() {
+                    setTimeout(function () {
                         $link.text(originalText);
                     }, 2000);
                 }
@@ -174,38 +174,38 @@
 
         // Extend the TwoColumn view to add S3 info
         var AttachmentDetailsTwoColumn = wp.media.view.Attachment.Details.TwoColumn;
-        
+
         if (AttachmentDetailsTwoColumn) {
             wp.media.view.Attachment.Details.TwoColumn = AttachmentDetailsTwoColumn.extend({
-                render: function() {
+                render: function () {
                     // Call parent render
                     AttachmentDetailsTwoColumn.prototype.render.apply(this, arguments);
-                    
+
                     // Add S3 info after render
                     this.renderS3Info();
-                    
+
                     return this;
                 },
-                
-                renderS3Info: function() {
+
+                renderS3Info: function () {
                     var self = this;
                     var model = this.model;
                     var data = model.toJSON();
-                    
+
                     // Get the template
-                    var template = wp.template('s3-offload-details');
-                    
+                    var template = wp.template('mds-offload-details');
+
                     if (!template) {
                         return;
                     }
-                    
+
                     // Remove existing S3 info
-                    this.$('.s3-offload-section').remove();
-                    this.$('.settings.s3-offload-section').remove();
-                    
+                    this.$('.mds-offload-section').remove();
+                    this.$('.settings.mds-offload-section').remove();
+
                     // Add S3 info after the settings section
                     var $settings = this.$('.attachment-info .settings');
-                    
+
                     if ($settings.length) {
                         $settings.after(template(data));
                     } else {
@@ -215,24 +215,24 @@
                             $info.append(template(data));
                         }
                     }
-                    
+
                     this.bindS3Actions();
                 },
-                
-                bindS3Actions: function() {
+
+                bindS3Actions: function () {
                     var self = this;
                     var model = this.model;
-                    
+
                     // Upload button (new upload)
-                    this.$('.s3-btn-upload').off('click').on('click', function(e) {
+                    this.$('.mds-btn-upload').off('click').on('click', function (e) {
                         e.preventDefault();
-                        
+
                         var $btn = $(this);
                         var attachmentId = $btn.data('id');
-                        
+
                         $btn.prop('disabled', true);
-                        $btn.find('.dashicons').removeClass('dashicons-cloud-upload').addClass('dashicons-update s3-spin');
-                        
+                        $btn.find('.dashicons').removeClass('dashicons-cloud-upload').addClass('dashicons-update mds-spin');
+
                         $.ajax({
                             url: s3OffloadMedia.ajaxUrl,
                             method: 'POST',
@@ -241,7 +241,7 @@
                                 attachment_id: attachmentId,
                                 nonce: s3OffloadMedia.nonce
                             },
-                            success: function(response) {
+                            success: function (response) {
                                 if (response.success) {
                                     // Update model data
                                     model.set('s3Offload', $.extend({}, model.get('s3Offload'), {
@@ -249,33 +249,33 @@
                                         s3Key: response.data.s3Key,
                                         s3Url: response.data.s3Url
                                     }));
-                                    
+
                                     // Re-render
                                     self.renderS3Info();
                                 } else {
                                     alert(response.data.message || 'Upload failed');
                                     $btn.prop('disabled', false);
-                                    $btn.find('.dashicons').removeClass('dashicons-update s3-spin').addClass('dashicons-cloud-upload');
+                                    $btn.find('.dashicons').removeClass('dashicons-update mds-spin').addClass('dashicons-cloud-upload');
                                 }
                             },
-                            error: function(xhr, status, error) {
+                            error: function (xhr, status, error) {
                                 alert('Upload failed: ' + error);
                                 $btn.prop('disabled', false);
-                                $btn.find('.dashicons').removeClass('dashicons-update s3-spin').addClass('dashicons-cloud-upload');
+                                $btn.find('.dashicons').removeClass('dashicons-update mds-spin').addClass('dashicons-cloud-upload');
                             }
                         });
                     });
-                    
+
                     // Re-upload button
-                    this.$('.s3-btn-reupload').off('click').on('click', function(e) {
+                    this.$('.mds-btn-reupload').off('click').on('click', function (e) {
                         e.preventDefault();
-                        
+
                         var $btn = $(this);
                         var attachmentId = $btn.data('id');
-                        
+
                         $btn.prop('disabled', true);
-                        $btn.find('.dashicons').addClass('s3-spin');
-                        
+                        $btn.find('.dashicons').addClass('mds-spin');
+
                         $.ajax({
                             url: s3OffloadMedia.ajaxUrl,
                             method: 'POST',
@@ -284,48 +284,48 @@
                                 attachment_id: attachmentId,
                                 nonce: s3OffloadMedia.nonce
                             },
-                            success: function(response) {
+                            success: function (response) {
                                 if (response.success) {
                                     // Update model data
                                     model.set('s3Offload', $.extend({}, model.get('s3Offload'), {
                                         s3Url: response.data.s3Url
                                     }));
-                                    
+
                                     // Show success briefly
-                                    $btn.find('.dashicons').removeClass('s3-spin');
+                                    $btn.find('.dashicons').removeClass('mds-spin');
                                     $btn.text('✓ Synced');
-                                    
-                                    setTimeout(function() {
+
+                                    setTimeout(function () {
                                         self.renderS3Info();
                                     }, 1500);
                                 } else {
                                     alert(response.data.message || 'Re-upload failed');
                                     $btn.prop('disabled', false);
-                                    $btn.find('.dashicons').removeClass('s3-spin');
+                                    $btn.find('.dashicons').removeClass('mds-spin');
                                 }
                             },
-                            error: function(xhr, status, error) {
+                            error: function (xhr, status, error) {
                                 alert('Re-upload failed: ' + error);
                                 $btn.prop('disabled', false);
-                                $btn.find('.dashicons').removeClass('s3-spin');
+                                $btn.find('.dashicons').removeClass('mds-spin');
                             }
                         });
                     });
-                    
+
                     // Download button
-                    this.$('.s3-btn-download').off('click').on('click', function(e) {
+                    this.$('.mds-btn-download').off('click').on('click', function (e) {
                         e.preventDefault();
-                        
+
                         var $btn = $(this);
                         var attachmentId = $btn.data('id');
-                        
+
                         if (!confirm(s3OffloadMedia.strings.confirmDownload)) {
                             return;
                         }
-                        
+
                         $btn.prop('disabled', true);
-                        $btn.find('.dashicons').removeClass('dashicons-download').addClass('dashicons-update s3-spin');
-                        
+                        $btn.find('.dashicons').removeClass('dashicons-download').addClass('dashicons-update mds-spin');
+
                         $.ajax({
                             url: s3OffloadMedia.ajaxUrl,
                             method: 'POST',
@@ -334,25 +334,25 @@
                                 attachment_id: attachmentId,
                                 nonce: s3OffloadMedia.nonce
                             },
-                            success: function(response) {
+                            success: function (response) {
                                 if (response.success) {
                                     // Update model data
                                     model.set('s3Offload', $.extend({}, model.get('s3Offload'), {
                                         localExists: true
                                     }));
-                                    
+
                                     // Re-render
                                     self.renderS3Info();
                                 } else {
                                     alert(response.data.message || 'Download failed');
                                     $btn.prop('disabled', false);
-                                    $btn.find('.dashicons').removeClass('dashicons-update s3-spin').addClass('dashicons-download');
+                                    $btn.find('.dashicons').removeClass('dashicons-update mds-spin').addClass('dashicons-download');
                                 }
                             },
-                            error: function(xhr, status, error) {
+                            error: function (xhr, status, error) {
                                 alert('Download failed: ' + error);
                                 $btn.prop('disabled', false);
-                                $btn.find('.dashicons').removeClass('dashicons-update s3-spin').addClass('dashicons-download');
+                                $btn.find('.dashicons').removeClass('dashicons-update mds-spin').addClass('dashicons-download');
                             }
                         });
                     });
@@ -362,31 +362,31 @@
 
         // Also extend the single column view for edit media page
         var AttachmentDetails = wp.media.view.Attachment.Details;
-        
+
         if (AttachmentDetails) {
             wp.media.view.Attachment.Details = AttachmentDetails.extend({
-                render: function() {
+                render: function () {
                     AttachmentDetails.prototype.render.apply(this, arguments);
                     this.renderS3Info();
                     return this;
                 },
-                
-                renderS3Info: function() {
+
+                renderS3Info: function () {
                     var self = this;
                     var data = this.model.toJSON();
-                    var template = wp.template('s3-offload-details');
-                    
+                    var template = wp.template('mds-offload-details');
+
                     if (!template || !data.s3Offload) {
                         return;
                     }
-                    
-                    this.$('.s3-offload-section').remove();
-                    this.$('.settings.s3-offload-section').remove();
-                    
+
+                    this.$('.mds-offload-section').remove();
+                    this.$('.settings.mds-offload-section').remove();
+
                     var $info = this.$('.attachment-info');
                     if ($info.length) {
                         $info.append(template(data));
-                        
+
                         // Bind actions using the same method
                         if (wp.media.view.Attachment.Details.TwoColumn.prototype.bindS3Actions) {
                             wp.media.view.Attachment.Details.TwoColumn.prototype.bindS3Actions.call(this);

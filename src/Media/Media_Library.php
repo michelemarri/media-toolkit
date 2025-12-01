@@ -232,8 +232,8 @@ final class Media_Library
             'label' => 'S3 Offload',
             'input' => 'html',
             'html' => sprintf(
-                '<div class="s3-offload-info">
-                    <p><strong>Status:</strong> <span class="s3-badge s3-migrated">Offloaded</span></p>
+                '<div class="mds-offload-info">
+                    <p><strong>Status:</strong> <span class="mds-badge mds-badge-success">Offloaded</span></p>
                     <p><strong>S3 Key:</strong> <code>%s</code></p>
                     <p><strong>URL:</strong> <a href="%s" target="_blank">%s</a></p>
                 </div>',

@@ -115,24 +115,24 @@ final class Media_Library_UI
 
         if ($is_migrated) {
             // Green checkmark for synced
-            echo '<span class="dashicons dashicons-yes-alt" style="color:#00a32a;" title="' . esc_attr__('On S3', 'media-toolkit') . '"></span>';
+            echo '<span class="dashicons dashicons-yes-alt mds-text-success" title="' . esc_attr__('On S3', 'media-toolkit') . '"></span>';
             
             // Show savings if optimized
             if ($is_optimized && $bytes_saved > 0) {
-                echo '<br><small style="color:#00a32a;">-' . esc_html(size_format($bytes_saved)) . '</small>';
+                echo '<br><small class="mds-text-success">-' . esc_html(size_format($bytes_saved)) . '</small>';
             }
             
             // Link to CDN
             if (!empty($s3_url)) {
                 echo sprintf(
-                    ' <a href="%s" target="_blank" class="s3-quick-link" title="%s"><span class="dashicons dashicons-external"></span></a>',
+                    ' <a href="%s" target="_blank" class="mds-quick-link" title="%s"><span class="dashicons dashicons-external"></span></a>',
                     esc_url($s3_url),
                     esc_attr__('View on CDN', 'media-toolkit')
                 );
             }
         } else {
             // Gray dash for local only
-            echo '<span class="dashicons dashicons-minus" style="color:#a7aaad;" title="' . esc_attr__('Local only', 'media-toolkit') . '"></span>';
+            echo '<span class="dashicons dashicons-minus mds-text-muted" title="' . esc_attr__('Local only', 'media-toolkit') . '"></span>';
         }
     }
 
@@ -268,7 +268,7 @@ final class Media_Library_UI
         if ($this->s3_client !== null) {
             if ($is_migrated) {
                 $actions['s3_reupload'] = sprintf(
-                    '<a href="#" class="s3-action-reupload" data-id="%d" data-nonce="%s">%s</a>',
+                    '<a href="#" class="mds-action-reupload" data-id="%d" data-nonce="%s">%s</a>',
                     $post->ID,
                     wp_create_nonce('media_toolkit_action_' . $post->ID),
                     __('Re-upload to S3', 'media-toolkit')
@@ -278,7 +278,7 @@ final class Media_Library_UI
                 $file = get_attached_file($post->ID);
                 if (!file_exists($file)) {
                     $actions['s3_download'] = sprintf(
-                        '<a href="#" class="s3-action-download" data-id="%d" data-nonce="%s">%s</a>',
+                        '<a href="#" class="mds-action-download" data-id="%d" data-nonce="%s">%s</a>',
                         $post->ID,
                         wp_create_nonce('media_toolkit_action_' . $post->ID),
                         __('Download from S3', 'media-toolkit')
@@ -286,7 +286,7 @@ final class Media_Library_UI
                 }
             } else {
                 $actions['s3_upload'] = sprintf(
-                    '<a href="#" class="s3-action-upload" data-id="%d" data-nonce="%s">%s</a>',
+                    '<a href="#" class="mds-action-upload" data-id="%d" data-nonce="%s">%s</a>',
                     $post->ID,
                     wp_create_nonce('media_toolkit_action_' . $post->ID),
                     __('Upload to S3', 'media-toolkit')
@@ -382,27 +382,11 @@ final class Media_Library_UI
     }
 
     /**
-     * Get inline CSS - minimal, uses WordPress native styles
+     * Get inline CSS - moved to admin.css, keeping method for compatibility
      */
     private function get_inline_css(): string
     {
-        return '
-            /* S3 Status Column - List View */
-            .column-s3_status { width: 70px; text-align: center; }
-            .s3-status-badges { display: flex; gap: 4px; justify-content: center; flex-wrap: wrap; }
-            .s3-quick-link { margin-left: 4px; }
-            .s3-quick-link .dashicons { font-size: 14px; width: 14px; height: 14px; vertical-align: middle; }
-            
-            /* Attachment Modal - S3 Section */
-            .settings.s3-offload-section h4 { display: flex; align-items: center; gap: 6px; margin: 0 0 8px; font-size: 13px; }
-            .settings.s3-offload-section h4 .dashicons { color: #2271b1; }
-            .settings.s3-offload-section input.s3-success { color: #00a32a !important; }
-            .settings.s3-offload-section input.s3-error { color: #d63638 !important; }
-            
-            /* Spin animation for loading */
-            .s3-spin { animation: s3-spin 1s linear infinite; }
-            @keyframes s3-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        ';
+        return '/* Styles moved to admin.css */';
     }
 
     /**
@@ -437,31 +421,31 @@ final class Media_Library_UI
     public function render_attachment_details_template(): void
     {
         ?>
-        <script type="text/html" id="tmpl-s3-offload-details">
+        <script type="text/html" id="tmpl-mds-offload-details">
             <# if (data.s3Offload) { #>
-            <div class="settings s3-offload-section">
+            <div class="settings mds-offload-section">
                 <h4><span class="dashicons dashicons-cloud"></span> <?php _e('S3 Offload', 'media-toolkit'); ?></h4>
                 
                 <# if (data.s3Offload.migrated) { #>
                     <label class="setting">
                         <span class="name"><?php _e('Status', 'media-toolkit'); ?></span>
-                        <input type="text" value="✓ <?php _e('On S3', 'media-toolkit'); ?><# if (data.s3Offload.optimized) { #> · <?php _e('Optimized', 'media-toolkit'); ?><# } #>" readonly class="s3-success">
+                        <input type="text" value="✓ <?php _e('On S3', 'media-toolkit'); ?><# if (data.s3Offload.optimized) { #> · <?php _e('Optimized', 'media-toolkit'); ?><# } #>" readonly class="mds-text-success">
                     </label>
                     
                     <# if (data.s3Offload.bytesSaved > 0) { #>
                     <label class="setting">
                         <span class="name"><?php _e('Savings', 'media-toolkit'); ?></span>
                         <# var percent = Math.round((data.s3Offload.bytesSaved / data.s3Offload.originalSize) * 100); #>
-                        <input type="text" value="-{{ s3OffloadMedia.formatBytes(data.s3Offload.bytesSaved) }} ({{ percent }}%)" readonly class="s3-success">
+                        <input type="text" value="-{{ s3OffloadMedia.formatBytes(data.s3Offload.bytesSaved) }} ({{ percent }}%)" readonly class="mds-text-success">
                     </label>
                     <# } #>
                     
                     <label class="setting">
                         <span class="name"><?php _e('Local', 'media-toolkit'); ?></span>
                         <# if (data.s3Offload.localExists) { #>
-                            <input type="text" value="<?php _e('Available', 'media-toolkit'); ?>" readonly class="s3-success">
+                            <input type="text" value="<?php _e('Available', 'media-toolkit'); ?>" readonly class="mds-text-success">
                         <# } else { #>
-                            <input type="text" value="<?php _e('Removed', 'media-toolkit'); ?>" readonly class="s3-error">
+                            <input type="text" value="<?php _e('Removed', 'media-toolkit'); ?>" readonly class="mds-text-error">
                         <# } #>
                     </label>
                     
@@ -470,9 +454,9 @@ final class Media_Library_UI
                         <# if (data.s3Offload.s3Url) { #>
                         <a href="{{ data.s3Offload.s3Url }}" target="_blank" class="button"><?php _e('View on CDN', 'media-toolkit'); ?></a>
                         <# } #>
-                        <button type="button" class="button s3-btn-reupload" data-id="{{ data.id }}"><?php _e('Re-sync', 'media-toolkit'); ?></button>
+                        <button type="button" class="button mds-btn-reupload" data-id="{{ data.id }}"><?php _e('Re-sync', 'media-toolkit'); ?></button>
                         <# if (!data.s3Offload.localExists) { #>
-                        <button type="button" class="button s3-btn-download" data-id="{{ data.id }}"><?php _e('Download', 'media-toolkit'); ?></button>
+                        <button type="button" class="button mds-btn-download" data-id="{{ data.id }}"><?php _e('Download', 'media-toolkit'); ?></button>
                         <# } #>
                     </label>
                     
@@ -484,7 +468,7 @@ final class Media_Library_UI
                     
                     <label class="setting">
                         <span class="name">&nbsp;</span>
-                        <button type="button" class="button button-primary s3-btn-upload" data-id="{{ data.id }}"><?php _e('Upload to S3', 'media-toolkit'); ?></button>
+                        <button type="button" class="button button-primary mds-btn-upload" data-id="{{ data.id }}"><?php _e('Upload to S3', 'media-toolkit'); ?></button>
                     </label>
                 <# } #>
             </div>

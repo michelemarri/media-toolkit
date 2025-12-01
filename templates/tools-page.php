@@ -322,7 +322,7 @@ $cache_control = $settings ? $settings->get_cache_control_max_age() : 31536000;
                     </div>
                     
                     <div class="mds-actions" style="margin-top: 24px;">
-                        <button type="button" class="mds-btn mds-btn-primary mds-btn-lg" id="btn-sync-s3-stats">
+                        <button type="button" class="mds-btn mds-btn-primary mds-btn-lg" id="btn-sync-stats">
                             <span class="dashicons dashicons-update"></span>
                             <?php esc_html_e('Sync Now', 'media-toolkit'); ?>
                         </button>

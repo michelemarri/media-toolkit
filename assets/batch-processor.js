@@ -34,7 +34,7 @@
  *   });
  */
 
-(function($, window) {
+(function ($, window) {
     'use strict';
 
     /**
@@ -114,7 +114,7 @@
 
             // Modal events
             $(document).on('click', '#btn-confirm-yes', () => this.confirmAction());
-            $(document).on('click', '#btn-confirm-no, .s3-modal-close', () => this.closeModal());
+            $(document).on('click', '#btn-confirm-no, .mds-modal-close', () => this.closeModal());
         }
 
         /**
@@ -142,7 +142,7 @@
             this.$pauseBtn.prop('disabled', !buttonState.pause);
             this.$resumeBtn.prop('disabled', !buttonState.resume);
             this.$stopBtn.prop('disabled', !buttonState.stop);
-            
+
             if (this.$retryBtn.length) {
                 this.$retryBtn.prop('disabled', !buttonState.retry);
             }
@@ -190,10 +190,10 @@
          */
         start() {
             let options = {};
-            
+
             if (typeof this.config.getStartOptions === 'function') {
                 options = this.config.getStartOptions();
-                
+
                 // Check if we need confirmation
                 if (options._needsConfirmation) {
                     this.showConfirmModal(
@@ -234,7 +234,7 @@
                 } else {
                     this.log('Failed to start: ' + (response.data?.message || 'Unknown error'), 'error');
                     this.setButtonsState('idle');
-                    
+
                     if (typeof this.config.onError === 'function') {
                         this.config.onError(response.data);
                     }
@@ -470,8 +470,8 @@
             // Default implementation - update common stat elements
             Object.keys(stats).forEach(key => {
                 $(`#stat-${key}, [data-stat="${key}"]`).text(
-                    typeof stats[key] === 'number' 
-                        ? stats[key].toLocaleString() 
+                    typeof stats[key] === 'number'
+                        ? stats[key].toLocaleString()
                         : stats[key]
                 );
             });
@@ -484,20 +484,20 @@
             if (!this.$logContainer.length) return;
 
             const timestamp = new Date().toLocaleTimeString();
-            
+
             // Remove placeholder
-            this.$logContainer.find('.s3-terminal-muted').first().remove();
+            this.$logContainer.find('.mds-terminal-muted').first().remove();
 
             const typeClass = {
-                success: 's3-terminal-success',
-                error: 's3-terminal-error',
-                warning: 's3-terminal-warning',
-                info: 's3-terminal-muted'
-            }[type] || 's3-terminal-muted';
+                success: 'mds-terminal-success',
+                error: 'mds-terminal-error',
+                warning: 'mds-terminal-warning',
+                info: 'mds-terminal-muted'
+            }[type] || 'mds-terminal-muted';
 
             const $entry = $(`
-                <div class="s3-terminal-line ${typeClass}">
-                    <span class="s3-terminal-timestamp">[${timestamp}]</span> ${this.escapeHtml(message)}
+                <div class="mds-terminal-line ${typeClass}">
+                    <span class="mds-terminal-timestamp">[${timestamp}]</span> ${this.escapeHtml(message)}
                 </div>
             `);
 
@@ -510,10 +510,10 @@
          */
         clearLog() {
             if (!this.$logContainer.length) return;
-            
+
             this.$logContainer.html(`
-                <div class="s3-terminal-line s3-terminal-muted">
-                    <span class="s3-terminal-prompt">$</span> Log will appear here...
+                <div class="mds-terminal-line mds-terminal-muted">
+                    <span class="mds-terminal-prompt">$</span> Log will appear here...
                 </div>
             `);
         }
@@ -543,7 +543,7 @@
          * Close modal
          */
         closeModal() {
-            $('.s3-modal').hide();
+            $('.mds-modal').hide();
         }
 
         /**
@@ -558,7 +558,7 @@
                     nonce: mediaMediaToolkit.nonce
                 }, data),
                 success: success,
-                error: error || function() {}
+                error: error || function () { }
             });
         }
 

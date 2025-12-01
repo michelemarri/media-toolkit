@@ -1,3 +1,15 @@
+# Metodo Workspace Guidelines
+
+## Design System
+
+- **Usare sempre il Design System** - Tutti gli stili vanno in `metodo-design-system/src/components/`, mai stili inline nel JavaScript
+- **Estendere il DS se manca qualcosa** - Il DS è la fonte unica degli stili condivisi tra i plugin
+- **Componenti astratti e riutilizzabili** - Creare classi generiche (es. `.mds-card`, `.mds-grid`) non specifiche per funzione
+- **Mai SVG inline** - Usare sempre WordPress Dashicons (`<span class="dashicons dashicons-*">`)
+- **Workflow DS**: dopo modifiche al DS → `npm run build` → copiare `dist/metodo-ds.css` nei plugin
+
+---
+
 # Media Toolkit - Project Rules
 
 ## Versioning

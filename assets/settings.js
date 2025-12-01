@@ -42,7 +42,7 @@
             this.toggleCDNSettings();
 
             // Sync S3 stats (Tools page)
-            $('#btn-sync-s3-stats').on('click', this.syncS3Stats.bind(this));
+            $('#btn-sync-stats').on('click', this.syncS3Stats.bind(this));
 
             // Cache sync (Tools page)
             $('#btn-start-cache-sync').on('click', this.startCacheSync.bind(this));
@@ -69,10 +69,10 @@
             $('#filter-log-level, #filter-log-operation').on('change', this.loadLogs.bind(this));
 
             // Modal close
-            $('.s3-modal-close').on('click', this.closeModal);
             $('.mds-modal-close').on('click', this.closeModal);
-            $(document).on('click', '.s3-modal, .mds-modal-overlay', function (e) {
-                if ($(e.target).hasClass('s3-modal') || $(e.target).hasClass('mds-modal-overlay')) {
+            $('.mds-modal-close').on('click', this.closeModal);
+            $(document).on('click', '.mds-modal, .mds-modal-overlay', function (e) {
+                if ($(e.target).hasClass('mds-modal') || $(e.target).hasClass('mds-modal-overlay')) {
                     MediaToolkit.closeModal();
                 }
             });
@@ -126,7 +126,7 @@
             checkFields();
 
             // Check on input change
-            $('#s3-credentials-panel input, #s3-credentials-panel select').on('input change', checkFields);
+            $('#mds-credentials-panel input, #mds-credentials-panel select').on('input change', checkFields);
         },
 
         // Toggle CDN-specific settings based on provider
@@ -193,7 +193,7 @@
 
             $btn.prop('disabled', true);
             const originalHtml = $btn.html();
-            $btn.html('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg> Saving...');
+            $btn.html('<span class="dashicons dashicons-update mds-spin"></span> Saving...');
 
             $.ajax({
                 url: mediaToolkit.ajaxUrl,
@@ -234,7 +234,7 @@
 
             $btn.prop('disabled', true);
             const originalHtml = $btn.html();
-            $btn.html('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg> Saving...');
+            $btn.html('<span class="dashicons dashicons-update mds-spin"></span> Saving...');
 
             $.ajax({
                 url: mediaToolkit.ajaxUrl,
@@ -273,7 +273,7 @@
 
             $btn.prop('disabled', true);
             const originalHtml = $btn.html();
-            $btn.html('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg> Saving...');
+            $btn.html('<span class="dashicons dashicons-update mds-spin"></span> Saving...');
 
             $.ajax({
                 url: mediaToolkit.ajaxUrl,
@@ -308,7 +308,7 @@
 
             $btn.prop('disabled', true);
             const originalHtml = $btn.html();
-            $btn.html('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg> Saving...');
+            $btn.html('<span class="dashicons dashicons-update mds-spin"></span> Saving...');
 
             $.ajax({
                 url: mediaToolkit.ajaxUrl,
@@ -354,8 +354,8 @@
 
             $btn.prop('disabled', true);
             const originalHtml = $btn.html();
-            $btn.html('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg> Testing...');
-            $results.html('<div class="s3-loading">Running connection tests...</div>');
+            $btn.html('<span class="dashicons dashicons-update mds-spin"></span> Testing...');
+            $results.html('<div class="mds-loading">Running connection tests...</div>');
             $modal.show();
 
             $.ajax({
@@ -444,7 +444,7 @@
             }
 
             $btn.prop('disabled', true).text('Testing...');
-            $results.html('<div class="s3-loading">Running connection tests...</div>');
+            $results.html('<div class="mds-loading">Running connection tests...</div>');
             $modal.show();
 
             $.ajax({
@@ -465,7 +465,7 @@
 
         // Sync S3 statistics
         syncS3Stats: function () {
-            const $btn = $('#btn-sync-s3-stats');
+            const $btn = $('#btn-sync-stats');
             const $status = $('#sync-status');
 
             $btn.prop('disabled', true);
@@ -678,18 +678,18 @@
             const timestamp = new Date().toLocaleTimeString();
 
             // Remove placeholder if exists
-            $log.find('.s3-terminal-muted').first().remove();
+            $log.find('.mds-terminal-muted').first().remove();
 
             const typeClass = {
                 'info': '',
-                'success': 's3-terminal-success',
-                'warning': 's3-terminal-warning',
-                'error': 's3-terminal-error'
+                'success': 'mds-terminal-success',
+                'warning': 'mds-terminal-warning',
+                'error': 'mds-terminal-error'
             }[type] || '';
 
             $log.append(`
-                <div class="s3-terminal-line ${typeClass}">
-                    <span class="s3-terminal-timestamp">[${timestamp}]</span>
+                <div class="mds-terminal-line ${typeClass}">
+                    <span class="mds-terminal-timestamp">[${timestamp}]</span>
                     <span>${message}</span>
                 </div>
             `);
@@ -734,11 +734,23 @@
                 let index = 0;
 
                 for (const [key, result] of Object.entries(results)) {
-                    const isSuccess = result.success;
                     const icon = icons[key] || 'yes-alt';
-                    const statusIcon = isSuccess ? 'yes-alt' : 'warning';
-                    const statusClass = isSuccess ? 'success' : 'error';
                     const title = key.charAt(0).toUpperCase() + key.slice(1);
+
+                    // Determine status: success, error, or info (not configured)
+                    const isNotConfigured = result.message && result.message.toLowerCase().includes('not configured');
+                    let statusClass, statusIcon;
+
+                    if (!result.success) {
+                        statusClass = 'error';
+                        statusIcon = 'warning';
+                    } else if (isNotConfigured) {
+                        statusClass = 'info';
+                        statusIcon = 'info-outline';
+                    } else {
+                        statusClass = 'success';
+                        statusIcon = 'yes-alt';
+                    }
 
                     html += `
                         <div class="mds-test-card mds-test-card-${statusClass}" style="animation-delay: ${index * 0.1}s">
@@ -746,9 +758,11 @@
                                 <div class="mds-test-card-icon mds-test-card-icon-${statusClass}">
                                     <span class="dashicons dashicons-${icon}"></span>
                                 </div>
+                                ${statusClass !== 'info' ? `
                                 <span class="mds-test-card-status mds-test-card-status-${statusClass}">
                                     <span class="dashicons dashicons-${statusIcon}"></span>
                                 </span>
+                                ` : ''}
                             </div>
                             <div class="mds-test-card-body">
                                 <h4 class="mds-test-card-title">${title}</h4>
@@ -760,7 +774,6 @@
                 }
 
                 html += '</div>';
-                html += '<style>' + MediaToolkit.getTestResultsStyles() + '</style>';
 
                 $results.html(html);
             } else {
@@ -773,134 +786,13 @@
             }
         },
 
-        // Get CSS styles for test results
-        getTestResultsStyles: function () {
-            return `
-                .mds-test-results-grid {
-                    display: grid;
-                    grid-template-columns: repeat(2, 1fr);
-                    gap: 16px;
-                    padding: 8px 0;
-                }
-                .mds-test-card {
-                    background: #fff;
-                    border-radius: 12px;
-                    padding: 20px;
-                    border: 1px solid #e2e4e9;
-                    animation: mdsTestFadeIn 0.4s ease forwards;
-                    opacity: 0;
-                    transform: translateY(10px);
-                }
-                @keyframes mdsTestFadeIn {
-                    to {
-                        opacity: 1;
-                        transform: translateY(0);
-                    }
-                }
-                .mds-test-card-success {
-                    border-color: #c6e1c6;
-                    background: linear-gradient(135deg, #f8fcf8 0%, #fff 100%);
-                }
-                .mds-test-card-error {
-                    border-color: #f5c6c6;
-                    background: linear-gradient(135deg, #fef8f8 0%, #fff 100%);
-                }
-                .mds-test-card-header {
-                    display: flex;
-                    align-items: flex-start;
-                    justify-content: space-between;
-                    margin-bottom: 12px;
-                }
-                .mds-test-card-icon {
-                    width: 44px;
-                    height: 44px;
-                    border-radius: 10px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                }
-                .mds-test-card-icon .dashicons {
-                    font-size: 22px;
-                    width: 22px;
-                    height: 22px;
-                }
-                .mds-test-card-icon-success {
-                    background: #e7f5e7;
-                    color: #1e7e1e;
-                }
-                .mds-test-card-icon-error {
-                    background: #fce8e8;
-                    color: #c92c2c;
-                }
-                .mds-test-card-status {
-                    width: 24px;
-                    height: 24px;
-                    border-radius: 50%;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                }
-                .mds-test-card-status .dashicons {
-                    font-size: 16px;
-                    width: 16px;
-                    height: 16px;
-                }
-                .mds-test-card-status-success {
-                    background: #00a32a;
-                    color: #fff;
-                }
-                .mds-test-card-status-error {
-                    background: #d63638;
-                    color: #fff;
-                }
-                .mds-test-card-body {
-                    
-                }
-                .mds-test-card-title {
-                    margin: 0 0 6px;
-                    font-size: 15px;
-                    font-weight: 600;
-                    color: #1d2327;
-                }
-                .mds-test-card-message {
-                    margin: 0;
-                    font-size: 13px;
-                    color: #646970;
-                    line-height: 1.5;
-                }
-                .mds-test-error {
-                    display: flex;
-                    align-items: center;
-                    gap: 12px;
-                    padding: 16px;
-                    background: #fce8e8;
-                    border-radius: 8px;
-                    color: #8b1a1a;
-                }
-                .mds-test-error .dashicons {
-                    font-size: 24px;
-                    width: 24px;
-                    height: 24px;
-                    color: #d63638;
-                }
-                .mds-test-error p {
-                    margin: 0;
-                }
-                @media (max-width: 480px) {
-                    .mds-test-results-grid {
-                        grid-template-columns: 1fr;
-                    }
-                }
-            `;
-        },
-
         // Load Logs
         loadLogs: function () {
             const $tbody = $('#logs-tbody');
             const level = $('#filter-log-level').val();
             const operation = $('#filter-log-operation').val();
 
-            $tbody.html('<tr><td colspan="5" class="s3-loading">Loading logs...</td></tr>');
+            $tbody.html('<tr><td colspan="5" class="mds-loading">Loading logs...</td></tr>');
 
             $.ajax({
                 url: mediaToolkit.ajaxUrl,
@@ -929,11 +821,8 @@
 
                         if (logs.length === 0) {
                             $tbody.html(`<tr><td colspan="5">
-                                <div class="s3-empty-state">
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                                        <polyline points="14 2 14 8 20 8"></polyline>
-                                    </svg>
+                                <div class="mds-empty-state">
+                                    <span class="dashicons dashicons-media-text"></span>
                                     <p>No logs found</p>
                                     <span>Activity will appear here as operations occur</span>
                                 </div>
@@ -951,12 +840,12 @@
                             html += `
                                 <tr>
                                     <td>
-                                        <span class="s3-timestamp">${dateStr}</span>
-                                        <span class="s3-timestamp-time">${timeStr}</span>
+                                        <span class="mds-timestamp">${dateStr}</span>
+                                        <span class="mds-timestamp-time">${timeStr}</span>
                                     </td>
-                                    <td><span class="s3-badge s3-badge-${levelClass}">${log.level}</span></td>
-                                    <td><span class="s3-badge s3-badge-default">${MediaToolkit.escapeHtml(log.operation)}</span></td>
-                                    <td><span class="s3-file-path" title="${MediaToolkit.escapeHtml(log.file_name || '-')}">${MediaToolkit.escapeHtml(log.file_name || '-')}</span></td>
+                                    <td><span class="mds-badge mds-badge-${levelClass}">${log.level}</span></td>
+                                    <td><span class="mds-badge mds-badge-default">${MediaToolkit.escapeHtml(log.operation)}</span></td>
+                                    <td><span class="mds-file-path" title="${MediaToolkit.escapeHtml(log.file_name || '-')}">${MediaToolkit.escapeHtml(log.file_name || '-')}</span></td>
                                     <td>${MediaToolkit.escapeHtml(log.message)}</td>
                                 </tr>
                             `;
@@ -1001,7 +890,7 @@
             const dateFrom = $('#filter-date-from').val();
             const dateTo = $('#filter-date-to').val();
 
-            $tbody.html('<tr><td colspan="5" class="s3-loading">Loading history...</td></tr>');
+            $tbody.html('<tr><td colspan="5" class="mds-loading">Loading history...</td></tr>');
 
             $.ajax({
                 url: mediaToolkit.ajaxUrl,
@@ -1028,11 +917,8 @@
 
                         if (history.length === 0) {
                             $tbody.html(`<tr><td colspan="5">
-                                <div class="s3-empty-state">
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                                        <circle cx="12" cy="12" r="10"></circle>
-                                        <polyline points="12 6 12 12 16 14"></polyline>
-                                    </svg>
+                                <div class="mds-empty-state">
+                                    <span class="dashicons dashicons-clock"></span>
                                     <p>No history found</p>
                                     <span>Operations will be recorded here</span>
                                 </div>
@@ -1052,16 +938,16 @@
                             html += `
                                 <tr>
                                     <td>
-                                        <span class="s3-timestamp">${dateStr}</span>
-                                        <span class="s3-timestamp-time">${timeStr}</span>
+                                        <span class="mds-timestamp">${dateStr}</span>
+                                        <span class="mds-timestamp-time">${timeStr}</span>
                                     </td>
-                                    <td><span class="s3-badge s3-badge-${actionClass}">${item.action}</span></td>
-                                    <td><span class="s3-file-path" title="${MediaToolkit.escapeHtml(item.file_path || item.s3_key || '-')}">${MediaToolkit.escapeHtml(item.file_path || item.s3_key || '-')}</span></td>
+                                    <td><span class="mds-badge mds-badge-${actionClass}">${item.action}</span></td>
+                                    <td><span class="mds-file-path" title="${MediaToolkit.escapeHtml(item.file_path || item.s3_key || '-')}">${MediaToolkit.escapeHtml(item.file_path || item.s3_key || '-')}</span></td>
                                     <td>${item.file_size ? MediaToolkit.formatBytes(item.file_size) : '-'}</td>
                                     <td>
-                                        <div class="s3-user-info">
-                                            <span class="s3-user-avatar">${userInitial}</span>
-                                            <span class="s3-user-name">${MediaToolkit.escapeHtml(userName)}</span>
+                                        <div class="mds-user-info">
+                                            <span class="mds-user-avatar">${userInitial}</span>
+                                            <span class="mds-user-name">${MediaToolkit.escapeHtml(userName)}</span>
                                         </div>
                                     </td>
                                 </tr>
@@ -1312,7 +1198,7 @@
 
             $btn.prop('disabled', true);
             const originalHtml = $btn.html();
-            $btn.html('<span class="dashicons dashicons-update spin"></span> Saving...');
+            $btn.html('<span class="dashicons dashicons-update mds-spin"></span> Saving...');
 
             $.ajax({
                 url: mediaToolkit.ajaxUrl,
@@ -1348,7 +1234,7 @@
 
             $btn.prop('disabled', true);
             const originalHtml = $btn.html();
-            $btn.html('<span class="dashicons dashicons-update spin"></span> Removing...');
+            $btn.html('<span class="dashicons dashicons-update mds-spin"></span> Removing...');
 
             $.ajax({
                 url: mediaToolkit.ajaxUrl,
@@ -1383,7 +1269,7 @@
 
             $btn.prop('disabled', true);
             const originalHtml = $btn.html();
-            $btn.html('<span class="dashicons dashicons-update spin"></span> Checking...');
+            $btn.html('<span class="dashicons dashicons-update mds-spin"></span> Checking...');
             $result.hide();
 
             $.ajax({
@@ -1449,13 +1335,13 @@
 
         // Close modal
         closeModal: function () {
-            $('.s3-modal, .mds-modal-overlay').hide();
+            $('.mds-modal, .mds-modal-overlay').hide();
         },
 
         // Show notification
         showNotice: function (message, type) {
             const $notice = $(`<div class="notice notice-${type} is-dismissible"><p>${message}</p></div>`);
-            $('.s3-offload-wrap h1').after($notice);
+            $('.mds-wrap h1').after($notice);
 
             setTimeout(function () {
                 $notice.fadeOut(function () {
