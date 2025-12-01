@@ -353,7 +353,7 @@ final class Stats
     }
 
     /**
-     * Get sparkline data for uploads
+     * Get sparkline data for uploads with labels
      */
     public function get_sparkline_data(int $days = 7): array
     {
@@ -361,9 +361,12 @@ final class Stats
         
         // Create array with all days (including zeros)
         $data = [];
+        $labels = [];
         for ($i = $days - 1; $i >= 0; $i--) {
             $date = date('Y-m-d', strtotime("-{$i} days"));
             $data[$date] = 0;
+            // Short day name (Mon, Tue, etc.)
+            $labels[$date] = date_i18n('D', strtotime("-{$i} days"));
         }
         
         // Fill in actual values
@@ -373,7 +376,10 @@ final class Stats
             }
         }
         
-        return array_values($data);
+        return [
+            'labels' => array_values($labels),
+            'values' => array_values($data),
+        ];
     }
 
     /**

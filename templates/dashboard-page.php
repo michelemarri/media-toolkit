@@ -73,9 +73,9 @@ $hasBanner = file_exists($bannerPath);
         <?php endif; ?>
 
         <!-- Main Stats Cards -->
-        <div class="mds-stats-grid mds-stats-grid-3">
+        <div class="mds-stats-grid">
             <div class="mds-stat-card mds-stat-card-lg">
-                <div class="mds-stat-icon mds-stat-icon-primary">
+                <div class="mds-stat-icon mds-stat-icon-default">
                     <span class="dashicons dashicons-format-gallery"></span>
                 </div>
                 <div class="mds-stat-content">
@@ -85,20 +85,27 @@ $hasBanner = file_exists($bannerPath);
             </div>
             
             <div class="mds-stat-card mds-stat-card-lg mds-stat-card-highlight">
-                <div class="mds-stat-icon mds-stat-icon-success">
+                <div class="mds-stat-icon mds-stat-icon-default">
                     <span class="dashicons dashicons-cloud-upload"></span>
                 </div>
                 <div class="mds-stat-content">
                     <span class="mds-stat-value"><?php echo number_format($dashboard_stats['migrated_attachments'] ?? 0); ?></span>
-                    <span class="mds-stat-label"><?php esc_html_e('Files on S3', 'media-toolkit'); ?></span>
-                    <span class="mds-stat-badge mds-stat-badge-<?php echo ($dashboard_stats['sync_percentage'] ?? 0) >= 100 ? 'success' : 'info'; ?>">
-                        <?php echo esc_html($dashboard_stats['sync_percentage'] ?? 0); ?>% <?php esc_html_e('synced', 'media-toolkit'); ?>
-                    </span>
+                    <span class="mds-stat-label"><?php esc_html_e('Files on Storage', 'media-toolkit'); ?></span>
                 </div>
             </div>
             
             <div class="mds-stat-card mds-stat-card-lg">
-                <div class="mds-stat-icon mds-stat-icon-info">
+                <div class="mds-stat-icon mds-stat-icon-<?php echo ($dashboard_stats['sync_percentage'] ?? 0) >= 100 ? 'success' : (($dashboard_stats['sync_percentage'] ?? 0) > 0 ? 'warning' : 'error'); ?>">
+                    <span class="dashicons dashicons-update"></span>
+                </div>
+                <div class="mds-stat-content">
+                    <span class="mds-stat-value"><?php echo esc_html($dashboard_stats['sync_percentage'] ?? 0); ?>%</span>
+                    <span class="mds-stat-label"><?php esc_html_e('Synced', 'media-toolkit'); ?></span>
+                </div>
+            </div>
+            
+            <div class="mds-stat-card mds-stat-card-lg">
+                <div class="mds-stat-icon mds-stat-icon-default">
                     <span class="dashicons dashicons-database"></span>
                 </div>
                 <div class="mds-stat-content">
@@ -111,7 +118,7 @@ $hasBanner = file_exists($bannerPath);
         <!-- Secondary Stats Cards -->
         <div class="mds-stats-grid">
             <div class="mds-stat-card">
-                <div class="mds-stat-icon mds-stat-icon-purple">
+                <div class="mds-stat-icon mds-stat-icon-default">
                     <span class="dashicons dashicons-media-default"></span>
                 </div>
                 <div class="mds-stat-content">
@@ -121,7 +128,7 @@ $hasBanner = file_exists($bannerPath);
             </div>
             
             <div class="mds-stat-card">
-                <div class="mds-stat-icon mds-stat-icon-warning">
+                <div class="mds-stat-icon mds-stat-icon-default">
                     <span class="dashicons dashicons-chart-line"></span>
                 </div>
                 <div class="mds-stat-content">
@@ -131,7 +138,7 @@ $hasBanner = file_exists($bannerPath);
             </div>
             
             <div class="mds-stat-card">
-                <div class="mds-stat-icon mds-stat-icon-error">
+                <div class="mds-stat-icon mds-stat-icon-default">
                     <span class="dashicons dashicons-warning"></span>
                 </div>
                 <div class="mds-stat-content">
@@ -141,12 +148,12 @@ $hasBanner = file_exists($bannerPath);
             </div>
             
             <div class="mds-stat-card">
-                <div class="mds-stat-icon mds-stat-icon-cyan">
+                <div class="mds-stat-icon mds-stat-icon-default">
                     <span class="dashicons dashicons-update"></span>
                 </div>
                 <div class="mds-stat-content">
                     <span class="mds-stat-value mds-stat-value-sm"><?php echo esc_html($dashboard_stats['s3_synced_at_formatted'] ?? 'Never'); ?></span>
-                    <span class="mds-stat-label"><?php esc_html_e('Last S3 Sync', 'media-toolkit'); ?></span>
+                    <span class="mds-stat-label"><?php esc_html_e('Last Storage Sync', 'media-toolkit'); ?></span>
                 </div>
             </div>
         </div>
@@ -161,7 +168,7 @@ $hasBanner = file_exists($bannerPath);
             </div>
             <div class="mds-card-body">
                 <div id="sparkline-container">
-                    <canvas id="sparkline-chart" height="80"></canvas>
+                    <canvas id="sparkline-chart" height="120"></canvas>
                 </div>
             </div>
         </div>

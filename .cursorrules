@@ -1,0 +1,46 @@
+# Media Toolkit - Project Rules
+
+## Versioning
+
+When making changes, update the version in these files (must be aligned):
+1. `media-toolkit.php` - Header "Version:" (line 9) and constant `MEDIA_TOOLKIT_VERSION` (line 31)
+2. `package.json` - "version" field (line 3)
+
+Use semantic versioning (MAJOR.MINOR.PATCH):
+- PATCH: bug fixes, minor corrections
+- MINOR: new backwards-compatible features
+- MAJOR: breaking changes
+
+## Documentation
+
+When modifying code, also update:
+1. `README.md` - Changelog and features
+2. `docs/DOCUMENTATION.md` - Detailed documentation
+3. `docs/HOOKS.md` - If adding/modifying hooks and filters
+4. `docs/EXTENDING.md` - If adding new extension possibilities
+
+## Build Assets
+
+After changes to CSS/JS in `assets/src/`, run:
+```bash
+npm run build
+```
+
+## Code Structure
+
+- PHP 8.2+ with strict types
+- Namespace: `Metodo\MediaToolkit`
+- PSR-4 autoloading
+- WordPress coding standards
+
+## Module Structure
+
+The plugin is organized into modules:
+- `src/Admin/` - Admin pages and settings
+- `src/S3/` - Amazon S3 offloading
+- `src/CDN/` - CDN integration (CloudFront, Cloudflare)
+- `src/Media/` - Image optimization and processing
+- `src/Migration/` - Media migration tools
+- `src/Stats/` - Statistics and reporting
+- `src/History/` - Action history logging
+

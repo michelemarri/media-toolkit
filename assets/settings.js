@@ -2,81 +2,81 @@
  * Media Toolkit - Settings JavaScript
  */
 
-(function($) {
+(function ($) {
     'use strict';
 
     const MediaToolkit = {
         autoRefreshInterval: null,
 
-        init: function() {
+        init: function () {
             this.bindEvents();
             this.loadInitialData();
         },
 
-        bindEvents: function() {
+        bindEvents: function () {
             // Tab-based save buttons
             $('#btn-save-environment').on('click', this.saveEnvironment.bind(this));
             $('#btn-save-credentials').on('click', this.saveCredentials.bind(this));
             $('#btn-save-cdn').on('click', this.saveCDNSettings.bind(this));
             $('#btn-save-file-options').on('click', this.saveFileOptions.bind(this));
             $('#btn-save-general').on('click', this.saveGeneralOptions.bind(this));
-            
+
             // Legacy save buttons (for backwards compatibility)
             $('#btn-save-active-env').on('click', this.saveEnvironment.bind(this));
             $('#btn-save-settings').on('click', this.saveSettings.bind(this));
-            
+
             // Test connection from credentials tab
             $('#btn-test-credentials').on('click', this.testCredentials.bind(this));
             $('#btn-test-settings').on('click', this.testSettings.bind(this));
-            
+
             // Enable/disable test button based on form fields
             this.setupTestButtonValidation();
-            
+
             // Update environment preview
-            $('#active-environment').on('change', function() {
+            $('#active-environment').on('change', function () {
                 $('#env-preview').text($(this).val());
             });
-            
+
             // CDN provider toggle
             $('#cdn_provider').on('change', this.toggleCDNSettings.bind(this));
             this.toggleCDNSettings();
-            
+
             // Sync S3 stats (Tools page)
             $('#btn-sync-s3-stats').on('click', this.syncS3Stats.bind(this));
-            
+
             // Cache sync (Tools page)
             $('#btn-start-cache-sync').on('click', this.startCacheSync.bind(this));
             $('#btn-cancel-cache-sync').on('click', this.cancelCacheSync.bind(this));
-            
+
             // Sync interval change (Tools page)
             $('#s3_sync_interval').on('change', this.saveSyncInterval.bind(this));
-            
+
             // Activity tab
             $('#btn-refresh-logs').on('click', this.loadLogs.bind(this));
             $('#btn-clear-logs').on('click', this.clearLogs.bind(this));
             $('#btn-filter-history').on('click', this.loadHistory.bind(this));
             $('#btn-export-history').on('click', this.exportHistory.bind(this));
             $('#btn-clear-history').on('click', this.clearHistory.bind(this));
-            
+
             // Auto-refresh toggle
             $('#auto-refresh-logs').on('change', this.toggleAutoRefresh.bind(this));
-            
+
             // Pagination
             $('#btn-prev-page').on('click', () => this.changePage(-1));
             $('#btn-next-page').on('click', () => this.changePage(1));
-            
+
             // Filters
             $('#filter-log-level, #filter-log-operation').on('change', this.loadLogs.bind(this));
-            
+
             // Modal close
             $('.s3-modal-close').on('click', this.closeModal);
             $('.mds-modal-close').on('click', this.closeModal);
-            $(document).on('click', '.s3-modal, .mds-modal-overlay', function(e) {
+            $(document).on('click', '.s3-modal, .mds-modal-overlay', function (e) {
                 if ($(e.target).hasClass('s3-modal') || $(e.target).hasClass('mds-modal-overlay')) {
                     MediaToolkit.closeModal();
                 }
             });
-            
+
             // Update tab handlers
             $('#btn-toggle-password').on('click', this.togglePasswordVisibility.bind(this));
             $('#btn-save-update-settings').on('click', this.saveUpdateSettings.bind(this));
@@ -84,25 +84,25 @@
             $('#btn-check-updates').on('click', this.checkForUpdates.bind(this));
         },
 
-        loadInitialData: function() {
+        loadInitialData: function () {
             // Check if on logs page
             if ($('#logs-table').length && !$('#history-table').length) {
                 this.loadLogs();
                 this.toggleAutoRefresh();
             }
-            
+
             // Check if on history page
             if ($('#history-table').length && !$('#logs-table').length) {
                 this.loadHistory();
             }
-            
+
             // Check if on activity tab (both tables present)
             if ($('#logs-table').length && $('#history-table').length) {
                 this.loadLogs();
                 this.loadHistory();
                 this.toggleAutoRefresh();
             }
-            
+
             // Check if on dashboard tab
             if ($('#sparkline-chart').length) {
                 this.loadDashboardStats();
@@ -110,32 +110,32 @@
         },
 
         // Setup validation for test button
-        setupTestButtonValidation: function() {
-            const checkFields = function() {
+        setupTestButtonValidation: function () {
+            const checkFields = function () {
                 const accessKey = $('#access_key').val();
                 const secretKey = $('#secret_key').val();
                 const region = $('#region').val();
                 const bucket = $('#bucket').val();
-                
+
                 const isValid = accessKey && secretKey && region && bucket;
                 $('#btn-test-credentials').prop('disabled', !isValid);
                 $('#btn-test-settings').prop('disabled', !isValid);
             };
-            
+
             // Check on load
             checkFields();
-            
+
             // Check on input change
             $('#s3-credentials-panel input, #s3-credentials-panel select').on('input change', checkFields);
         },
 
         // Toggle CDN-specific settings based on provider
-        toggleCDNSettings: function() {
+        toggleCDNSettings: function () {
             const provider = $('#cdn_provider').val();
-            
+
             $('#cloudflare-settings').hide();
             $('#cloudfront-settings').hide();
-            
+
             if (provider === 'cloudflare') {
                 $('#cloudflare-settings').show();
             } else if (provider === 'cloudfront') {
@@ -144,125 +144,125 @@
         },
 
         // Save Environment (Tab 1)
-        saveEnvironment: function() {
+        saveEnvironment: function () {
             const $btn = $('#btn-save-environment, #btn-save-active-env');
             const activeEnv = $('#active-environment').val();
-            
+
             $btn.prop('disabled', true);
-            $btn.find('svg').parent().contents().filter(function() { return this.nodeType === 3; }).first().replaceWith(' Saving...');
-            
+            $btn.find('svg').parent().contents().filter(function () { return this.nodeType === 3; }).first().replaceWith(' Saving...');
+
             $.ajax({
-                url: mediaMediaToolkit.ajaxUrl,
+                url: mediaToolkit.ajaxUrl,
                 method: 'POST',
                 data: {
                     action: 'media_toolkit_save_active_env',
-                    nonce: mediaMediaToolkit.nonce,
+                    nonce: mediaToolkit.nonce,
                     active_environment: activeEnv
                 },
-                success: function(response) {
+                success: function (response) {
                     if (response.success) {
                         MediaToolkit.showNotice('Environment saved! Page will reload...', 'success');
-                        setTimeout(function() {
+                        setTimeout(function () {
                             location.reload();
                         }, 1000);
                     } else {
                         MediaToolkit.showNotice(response.data.message || 'Failed to save', 'error');
                     }
                 },
-                error: function() {
+                error: function () {
                     MediaToolkit.showNotice('An error occurred. Please try again.', 'error');
                 },
-                complete: function() {
+                complete: function () {
                     $btn.prop('disabled', false);
                 }
             });
         },
 
         // Save Credentials (Tab 2)
-        saveCredentials: function() {
+        saveCredentials: function () {
             const $btn = $('#btn-save-credentials');
-            
+
             const data = {
                 action: 'media_toolkit_save_credentials',
-                nonce: mediaMediaToolkit.nonce,
+                nonce: mediaToolkit.nonce,
                 access_key: $('#access_key').val(),
                 secret_key: $('#secret_key').val(),
                 region: $('#region').val(),
                 bucket: $('#bucket').val()
             };
-            
+
             $btn.prop('disabled', true);
             const originalHtml = $btn.html();
             $btn.html('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg> Saving...');
-            
+
             $.ajax({
-                url: mediaMediaToolkit.ajaxUrl,
+                url: mediaToolkit.ajaxUrl,
                 method: 'POST',
                 data: data,
-                success: function(response) {
+                success: function (response) {
                     if (response.success) {
                         MediaToolkit.showNotice('Credentials saved successfully!', 'success');
-                        setTimeout(function() {
+                        setTimeout(function () {
                             location.reload();
                         }, 1000);
                     } else {
                         MediaToolkit.showNotice(response.data.message || 'Failed to save credentials', 'error');
                     }
                 },
-                error: function() {
+                error: function () {
                     MediaToolkit.showNotice('An error occurred. Please try again.', 'error');
                 },
-                complete: function() {
+                complete: function () {
                     $btn.prop('disabled', false).html(originalHtml);
                 }
             });
         },
 
         // Save CDN Settings (Tab 3)
-        saveCDNSettings: function() {
+        saveCDNSettings: function () {
             const $btn = $('#btn-save-cdn');
-            
+
             const data = {
                 action: 'media_toolkit_save_cdn',
-                nonce: mediaMediaToolkit.nonce,
+                nonce: mediaToolkit.nonce,
                 cdn_url: $('#cdn_url').val(),
                 cdn_provider: $('#cdn_provider').val(),
                 cloudflare_zone_id: $('#cloudflare_zone_id').val(),
                 cloudflare_api_token: $('#cloudflare_api_token').val(),
                 cloudfront_distribution_id: $('#cloudfront_distribution_id').val()
             };
-            
+
             $btn.prop('disabled', true);
             const originalHtml = $btn.html();
             $btn.html('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg> Saving...');
-            
+
             $.ajax({
-                url: mediaMediaToolkit.ajaxUrl,
+                url: mediaToolkit.ajaxUrl,
                 method: 'POST',
                 data: data,
-                success: function(response) {
+                success: function (response) {
                     if (response.success) {
                         MediaToolkit.showNotice('CDN settings saved successfully!', 'success');
                     } else {
                         MediaToolkit.showNotice(response.data.message || 'Failed to save CDN settings', 'error');
                     }
                 },
-                error: function() {
+                error: function () {
                     MediaToolkit.showNotice('An error occurred. Please try again.', 'error');
                 },
-                complete: function() {
+                complete: function () {
                     $btn.prop('disabled', false).html(originalHtml);
                 }
             });
         },
 
         // Save File Options (Tab 4)
-        saveFileOptions: function() {
+        saveFileOptions: function () {
             const $btn = $('#btn-save-file-options');
-            
+
             const data = {
                 action: 'media_toolkit_save_file_options',
-                nonce: mediaMediaToolkit.nonce,
+                nonce: mediaToolkit.nonce,
                 cache_control: $('#cache_control').val(),
                 // Content-Disposition settings by file type
                 content_disposition_image: $('#content_disposition_image').val(),
@@ -270,117 +270,117 @@
                 content_disposition_video: $('#content_disposition_video').val(),
                 content_disposition_archive: $('#content_disposition_archive').val()
             };
-            
+
             $btn.prop('disabled', true);
             const originalHtml = $btn.html();
             $btn.html('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg> Saving...');
-            
+
             $.ajax({
-                url: mediaMediaToolkit.ajaxUrl,
+                url: mediaToolkit.ajaxUrl,
                 method: 'POST',
                 data: data,
-                success: function(response) {
+                success: function (response) {
                     if (response.success) {
                         MediaToolkit.showNotice('File options saved successfully!', 'success');
                     } else {
                         MediaToolkit.showNotice(response.data.message || 'Failed to save file options', 'error');
                     }
                 },
-                error: function() {
+                error: function () {
                     MediaToolkit.showNotice('An error occurred. Please try again.', 'error');
                 },
-                complete: function() {
+                complete: function () {
                     $btn.prop('disabled', false).html(originalHtml);
                 }
             });
         },
 
         // Save General Options (Tab 5)
-        saveGeneralOptions: function() {
+        saveGeneralOptions: function () {
             const $btn = $('#btn-save-general');
-            
+
             const data = {
                 action: 'media_toolkit_save_general',
-                nonce: mediaMediaToolkit.nonce,
+                nonce: mediaToolkit.nonce,
                 remove_local: $('#remove_local').is(':checked') ? 'true' : 'false',
                 remove_on_uninstall: $('#remove_on_uninstall').is(':checked') ? 'true' : 'false'
             };
-            
+
             $btn.prop('disabled', true);
             const originalHtml = $btn.html();
             $btn.html('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg> Saving...');
-            
+
             $.ajax({
-                url: mediaMediaToolkit.ajaxUrl,
+                url: mediaToolkit.ajaxUrl,
                 method: 'POST',
                 data: data,
-                success: function(response) {
+                success: function (response) {
                     if (response.success) {
                         MediaToolkit.showNotice('Options saved successfully!', 'success');
                     } else {
                         MediaToolkit.showNotice(response.data.message || 'Failed to save options', 'error');
                     }
                 },
-                error: function() {
+                error: function () {
                     MediaToolkit.showNotice('An error occurred. Please try again.', 'error');
                 },
-                complete: function() {
+                complete: function () {
                     $btn.prop('disabled', false).html(originalHtml);
                 }
             });
         },
 
         // Test Credentials (from Credentials tab)
-        testCredentials: function() {
+        testCredentials: function () {
             const $btn = $('#btn-test-credentials');
             const $modal = $('#test-connection-modal');
             const $results = $('#test-results');
-            
+
             const data = {
                 action: 'media_toolkit_test_env_connection',
-                nonce: mediaMediaToolkit.nonce,
+                nonce: mediaToolkit.nonce,
                 access_key: $('#access_key').val(),
                 secret_key: $('#secret_key').val(),
                 region: $('#region').val(),
                 bucket: $('#bucket').val(),
                 cdn_url: ''
             };
-            
+
             // Validate required fields
             if (!data.access_key || !data.secret_key || !data.region || !data.bucket) {
                 MediaToolkit.showNotice('Please fill in Access Key, Secret Key, Region and Bucket', 'error');
                 return;
             }
-            
+
             $btn.prop('disabled', true);
             const originalHtml = $btn.html();
             $btn.html('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg> Testing...');
             $results.html('<div class="s3-loading">Running connection tests...</div>');
             $modal.show();
-            
+
             $.ajax({
-                url: mediaMediaToolkit.ajaxUrl,
+                url: mediaToolkit.ajaxUrl,
                 method: 'POST',
                 data: data,
-                success: function(response) {
+                success: function (response) {
                     MediaToolkit.showTestResults($results, response);
                 },
-                error: function() {
+                error: function () {
                     $results.html('<div class="test-result error">Connection test failed. Please try again.</div>');
                 },
-                complete: function() {
+                complete: function () {
                     $btn.prop('disabled', false).html(originalHtml);
                 }
             });
         },
 
         // Save Settings
-        saveSettings: function() {
+        saveSettings: function () {
             const $btn = $('#btn-save-settings');
-            
+
             const data = {
                 action: 'media_toolkit_save_settings',
-                nonce: mediaMediaToolkit.nonce,
+                nonce: mediaToolkit.nonce,
                 access_key: $('#access_key').val(),
                 secret_key: $('#secret_key').val(),
                 region: $('#region').val(),
@@ -395,106 +395,106 @@
                 remove_local: $('#remove_local').is(':checked') ? 'true' : 'false',
                 remove_on_uninstall: $('#remove_on_uninstall').is(':checked') ? 'true' : 'false'
             };
-            
+
             $btn.prop('disabled', true).text('Saving...');
-            
+
             $.ajax({
-                url: mediaMediaToolkit.ajaxUrl,
+                url: mediaToolkit.ajaxUrl,
                 method: 'POST',
                 data: data,
-                success: function(response) {
+                success: function (response) {
                     if (response.success) {
                         MediaToolkit.showNotice('Settings saved successfully!', 'success');
-                        setTimeout(function() {
+                        setTimeout(function () {
                             location.reload();
                         }, 1000);
                     } else {
                         MediaToolkit.showNotice(response.data.message || 'Failed to save settings', 'error');
                     }
                 },
-                error: function() {
+                error: function () {
                     MediaToolkit.showNotice('An error occurred. Please try again.', 'error');
                 },
-                complete: function() {
+                complete: function () {
                     $btn.prop('disabled', false).text('Save Settings');
                 }
             });
         },
 
         // Test connection from settings (uses form values)
-        testSettings: function() {
+        testSettings: function () {
             const $btn = $('#btn-test-settings');
             const $modal = $('#test-connection-modal');
             const $results = $('#test-results');
-            
+
             const data = {
                 action: 'media_toolkit_test_env_connection',
-                nonce: mediaMediaToolkit.nonce,
+                nonce: mediaToolkit.nonce,
                 access_key: $('#access_key').val(),
                 secret_key: $('#secret_key').val(),
                 region: $('#region').val(),
                 bucket: $('#bucket').val(),
                 cdn_url: $('#cdn_url').val()
             };
-            
+
             // Validate required fields
             if (!data.access_key || !data.secret_key || !data.region || !data.bucket) {
                 MediaToolkit.showNotice('Please fill in Access Key, Secret Key, Region and Bucket', 'error');
                 return;
             }
-            
+
             $btn.prop('disabled', true).text('Testing...');
             $results.html('<div class="s3-loading">Running connection tests...</div>');
             $modal.show();
-            
+
             $.ajax({
-                url: mediaMediaToolkit.ajaxUrl,
+                url: mediaToolkit.ajaxUrl,
                 method: 'POST',
                 data: data,
-                success: function(response) {
+                success: function (response) {
                     MediaToolkit.showTestResults($results, response);
                 },
-                error: function() {
+                error: function () {
                     $results.html('<div class="test-result error">Connection test failed. Please try again.</div>');
                 },
-                complete: function() {
+                complete: function () {
                     $btn.prop('disabled', false).text('Test Connection');
                 }
             });
         },
 
         // Sync S3 statistics
-        syncS3Stats: function() {
+        syncS3Stats: function () {
             const $btn = $('#btn-sync-s3-stats');
             const $status = $('#sync-status');
-            
+
             $btn.prop('disabled', true);
             $status.text('Syncing...').css('color', '#666');
-            
+
             $.ajax({
-                url: mediaMediaToolkit.ajaxUrl,
+                url: mediaToolkit.ajaxUrl,
                 method: 'POST',
                 data: {
                     action: 'media_toolkit_sync_s3_stats',
-                    nonce: mediaMediaToolkit.nonce
+                    nonce: mediaToolkit.nonce
                 },
-                success: function(response) {
+                success: function (response) {
                     if (response.success) {
                         const stats = response.data.stats_formatted;
                         $status.html(`✓ Synced: ${stats.original_files} files (${stats.files} total with thumbnails), ${stats.size}`).css('color', '#00a32a');
-                        
+
                         // Reload page after 2 seconds to refresh all stats
-                        setTimeout(function() {
+                        setTimeout(function () {
                             location.reload();
                         }, 2000);
                     } else {
                         $status.text('✗ ' + (response.data?.message || 'Sync failed')).css('color', '#d63638');
                     }
                 },
-                error: function() {
+                error: function () {
                     $status.text('✗ Connection error').css('color', '#d63638');
                 },
-                complete: function() {
+                complete: function () {
                     $btn.prop('disabled', false);
                 }
             });
@@ -512,13 +512,13 @@
         },
 
         // Start cache sync - first count total files
-        startCacheSync: function() {
+        startCacheSync: function () {
             const self = this;
-            
+
             if (!confirm('This will update Cache-Control headers on ALL files in S3 for the current environment. This operation may take a while. Continue?')) {
                 return;
             }
-            
+
             // Reset state
             this.cacheSyncState = {
                 isRunning: true,
@@ -529,7 +529,7 @@
                 totalFailed: 0,
                 continuationToken: null
             };
-            
+
             // Update UI - show counting phase
             $('#btn-start-cache-sync').prop('disabled', true).hide();
             $('#btn-cancel-cache-sync').show();
@@ -538,39 +538,39 @@
             $('#cache-progress-bar').css('width', '0%');
             $('#cache-progress-percentage').text('0%');
             this.addCacheSyncLog('Starting cache headers update...', 'info');
-            
+
             // First, count total files
             $.ajax({
-                url: mediaMediaToolkit.ajaxUrl,
+                url: mediaToolkit.ajaxUrl,
                 method: 'POST',
                 data: {
                     action: 'media_toolkit_count_s3_files',
-                    nonce: mediaMediaToolkit.nonce
+                    nonce: mediaToolkit.nonce
                 },
-                success: function(response) {
+                success: function (response) {
                     if (response.success) {
                         self.cacheSyncState.totalFiles = response.data.total_files;
                         $('#cache-total-files').text(response.data.total_files.toLocaleString());
                         $('#cache-total-count').text(response.data.total_files.toLocaleString());
                         self.addCacheSyncLog(`Found ${response.data.total_files.toLocaleString()} files to process`, 'success');
-                        
+
                         // Start processing
                         self.processCacheSyncBatch();
                     } else {
                         self.failCacheSync(response.data?.message || 'Failed to count files');
                     }
                 },
-                error: function() {
+                error: function () {
                     self.failCacheSync('Connection error while counting files');
                 }
             });
         },
 
         // Cancel cache sync
-        cancelCacheSync: function() {
+        cancelCacheSync: function () {
             this.cacheSyncState.isCancelled = true;
             this.cacheSyncState.isRunning = false;
-            
+
             $('#btn-cancel-cache-sync').hide();
             $('#btn-start-cache-sync').prop('disabled', false).show();
             $('#cache-status-text').text('Cancelled');
@@ -578,52 +578,52 @@
         },
 
         // Process batch of files for cache sync
-        processCacheSyncBatch: function() {
+        processCacheSyncBatch: function () {
             const self = this;
             const state = this.cacheSyncState;
-            
+
             if (state.isCancelled) {
                 return;
             }
-            
+
             const cacheMaxAge = $('#cache_control_value').val();
-            
+
             $('#cache-status-text').text('Processing...');
-            
+
             $.ajax({
-                url: mediaMediaToolkit.ajaxUrl,
+                url: mediaToolkit.ajaxUrl,
                 method: 'POST',
                 data: {
                     action: 'media_toolkit_apply_cache_headers',
-                    nonce: mediaMediaToolkit.nonce,
+                    nonce: mediaToolkit.nonce,
                     cache_max_age: cacheMaxAge,
                     continuation_token: state.continuationToken || ''
                 },
-                success: function(response) {
+                success: function (response) {
                     if (response.success) {
                         const data = response.data;
-                        
+
                         // Update state
                         state.totalProcessed += data.processed;
                         state.totalSuccess += data.success;
                         state.totalFailed += data.failed;
                         state.continuationToken = data.continuation_token;
-                        
+
                         // Calculate progress percentage
-                        const percentage = state.totalFiles > 0 
-                            ? Math.round((state.totalProcessed / state.totalFiles) * 100) 
+                        const percentage = state.totalFiles > 0
+                            ? Math.round((state.totalProcessed / state.totalFiles) * 100)
                             : 0;
-                        
+
                         // Update UI
                         $('#cache-processed-files').text(state.totalSuccess.toLocaleString());
                         $('#cache-failed-files').text(state.totalFailed.toLocaleString());
                         $('#cache-current-count').text(state.totalProcessed.toLocaleString());
                         $('#cache-progress-bar').css('width', percentage + '%');
                         $('#cache-progress-percentage').text(percentage + '%');
-                        
+
                         if (data.has_more) {
                             // Continue with next batch
-                            setTimeout(function() {
+                            setTimeout(function () {
                                 self.processCacheSyncBatch();
                             }, 100);
                         } else {
@@ -634,150 +634,299 @@
                         self.failCacheSync(response.data?.message || 'Unknown error');
                     }
                 },
-                error: function(xhr, status, error) {
+                error: function (xhr, status, error) {
                     self.failCacheSync('Connection error: ' + error);
                 }
             });
         },
 
         // Complete cache sync
-        completeCacheSync: function() {
+        completeCacheSync: function () {
             const state = this.cacheSyncState;
             state.isRunning = false;
-            
+
             $('#cache-progress-bar').css('width', '100%');
             $('#cache-progress-percentage').text('100%');
             $('#cache-status-text').html('<span style="color: #00a32a;">Complete!</span>');
-            
-            this.addCacheSyncLog(`✓ Complete! Updated ${state.totalSuccess.toLocaleString()} files` + 
+
+            this.addCacheSyncLog(`✓ Complete! Updated ${state.totalSuccess.toLocaleString()} files` +
                 (state.totalFailed > 0 ? ` (${state.totalFailed} failed)` : ''), 'success');
-            
+
             $('#btn-cancel-cache-sync').hide();
             $('#btn-start-cache-sync').prop('disabled', false).show();
         },
 
         // Fail cache sync
-        failCacheSync: function(message) {
+        failCacheSync: function (message) {
             const state = this.cacheSyncState;
             state.isRunning = false;
-            
+
             $('#cache-status-text').html('<span style="color: #d63638;">Error</span>');
             this.addCacheSyncLog(`✗ Error: ${message}`, 'error');
-            
+
             if (state.totalProcessed > 0) {
                 this.addCacheSyncLog(`Processed ${state.totalProcessed} files before error.`, 'warning');
             }
-            
+
             $('#btn-cancel-cache-sync').hide();
             $('#btn-start-cache-sync').prop('disabled', false).show();
         },
 
         // Add log entry to cache sync log
-        addCacheSyncLog: function(message, type = 'info') {
+        addCacheSyncLog: function (message, type = 'info') {
             const $log = $('#cache-sync-log');
             const timestamp = new Date().toLocaleTimeString();
-            
+
             // Remove placeholder if exists
             $log.find('.s3-terminal-muted').first().remove();
-            
+
             const typeClass = {
                 'info': '',
                 'success': 's3-terminal-success',
                 'warning': 's3-terminal-warning',
                 'error': 's3-terminal-error'
             }[type] || '';
-            
+
             $log.append(`
                 <div class="s3-terminal-line ${typeClass}">
                     <span class="s3-terminal-timestamp">[${timestamp}]</span>
                     <span>${message}</span>
                 </div>
             `);
-            
+
             // Scroll to bottom
             $log.scrollTop($log[0].scrollHeight);
         },
 
         // Save sync interval from Tools page
-        saveSyncInterval: function() {
+        saveSyncInterval: function () {
             const interval = $('#s3_sync_interval').val();
-            
+
             $.ajax({
-                url: mediaMediaToolkit.ajaxUrl,
+                url: mediaToolkit.ajaxUrl,
                 method: 'POST',
                 data: {
                     action: 'media_toolkit_save_settings',
-                    nonce: mediaMediaToolkit.nonce,
+                    nonce: mediaToolkit.nonce,
                     s3_sync_interval: interval
                 },
-                success: function(response) {
+                success: function (response) {
                     // Silently save
                 },
-                error: function() {
+                error: function () {
                     alert('Failed to save sync interval');
                 }
             });
         },
 
         // Show test results in modal
-        showTestResults: function($results, response) {
+        showTestResults: function ($results, response) {
             if (response.success) {
-                let html = '';
                 const results = response.data.results;
-                
+                const icons = {
+                    credentials: 'admin-network',
+                    bucket: 'database',
+                    permissions: 'lock',
+                    cdn: 'networking'
+                };
+
+                let html = '<div class="mds-test-results-grid">';
+                let index = 0;
+
                 for (const [key, result] of Object.entries(results)) {
-                    const icon = result.success ? 'yes-alt' : 'warning';
-                    const cls = result.success ? 'success' : 'error';
+                    const isSuccess = result.success;
+                    const icon = icons[key] || 'yes-alt';
+                    const statusIcon = isSuccess ? 'yes-alt' : 'warning';
+                    const statusClass = isSuccess ? 'success' : 'error';
+                    const title = key.charAt(0).toUpperCase() + key.slice(1);
+
                     html += `
-                        <div class="test-result ${cls}">
-                            <span class="dashicons dashicons-${icon}"></span>
-                            <div>
-                                <strong>${key.charAt(0).toUpperCase() + key.slice(1)}</strong>
-                                <p>${result.message}</p>
+                        <div class="mds-test-card mds-test-card-${statusClass}" style="animation-delay: ${index * 0.1}s">
+                            <div class="mds-test-card-header">
+                                <div class="mds-test-card-icon mds-test-card-icon-${statusClass}">
+                                    <span class="dashicons dashicons-${icon}"></span>
+                                </div>
+                                <span class="mds-test-card-status mds-test-card-status-${statusClass}">
+                                    <span class="dashicons dashicons-${statusIcon}"></span>
+                                </span>
+                            </div>
+                            <div class="mds-test-card-body">
+                                <h4 class="mds-test-card-title">${title}</h4>
+                                <p class="mds-test-card-message">${result.message}</p>
                             </div>
                         </div>
                     `;
+                    index++;
                 }
-                
+
+                html += '</div>';
+                html += '<style>' + MediaToolkit.getTestResultsStyles() + '</style>';
+
                 $results.html(html);
             } else {
-                $results.html('<div class="test-result error">' + (response.data?.message || 'Test failed') + '</div>');
+                $results.html(`
+                    <div class="mds-test-error">
+                        <span class="dashicons dashicons-warning"></span>
+                        <p>${response.data?.message || 'Test failed'}</p>
+                    </div>
+                `);
             }
         },
 
+        // Get CSS styles for test results
+        getTestResultsStyles: function () {
+            return `
+                .mds-test-results-grid {
+                    display: grid;
+                    grid-template-columns: repeat(2, 1fr);
+                    gap: 16px;
+                    padding: 8px 0;
+                }
+                .mds-test-card {
+                    background: #fff;
+                    border-radius: 12px;
+                    padding: 20px;
+                    border: 1px solid #e2e4e9;
+                    animation: mdsTestFadeIn 0.4s ease forwards;
+                    opacity: 0;
+                    transform: translateY(10px);
+                }
+                @keyframes mdsTestFadeIn {
+                    to {
+                        opacity: 1;
+                        transform: translateY(0);
+                    }
+                }
+                .mds-test-card-success {
+                    border-color: #c6e1c6;
+                    background: linear-gradient(135deg, #f8fcf8 0%, #fff 100%);
+                }
+                .mds-test-card-error {
+                    border-color: #f5c6c6;
+                    background: linear-gradient(135deg, #fef8f8 0%, #fff 100%);
+                }
+                .mds-test-card-header {
+                    display: flex;
+                    align-items: flex-start;
+                    justify-content: space-between;
+                    margin-bottom: 12px;
+                }
+                .mds-test-card-icon {
+                    width: 44px;
+                    height: 44px;
+                    border-radius: 10px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+                .mds-test-card-icon .dashicons {
+                    font-size: 22px;
+                    width: 22px;
+                    height: 22px;
+                }
+                .mds-test-card-icon-success {
+                    background: #e7f5e7;
+                    color: #1e7e1e;
+                }
+                .mds-test-card-icon-error {
+                    background: #fce8e8;
+                    color: #c92c2c;
+                }
+                .mds-test-card-status {
+                    width: 24px;
+                    height: 24px;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+                .mds-test-card-status .dashicons {
+                    font-size: 16px;
+                    width: 16px;
+                    height: 16px;
+                }
+                .mds-test-card-status-success {
+                    background: #00a32a;
+                    color: #fff;
+                }
+                .mds-test-card-status-error {
+                    background: #d63638;
+                    color: #fff;
+                }
+                .mds-test-card-body {
+                    
+                }
+                .mds-test-card-title {
+                    margin: 0 0 6px;
+                    font-size: 15px;
+                    font-weight: 600;
+                    color: #1d2327;
+                }
+                .mds-test-card-message {
+                    margin: 0;
+                    font-size: 13px;
+                    color: #646970;
+                    line-height: 1.5;
+                }
+                .mds-test-error {
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    padding: 16px;
+                    background: #fce8e8;
+                    border-radius: 8px;
+                    color: #8b1a1a;
+                }
+                .mds-test-error .dashicons {
+                    font-size: 24px;
+                    width: 24px;
+                    height: 24px;
+                    color: #d63638;
+                }
+                .mds-test-error p {
+                    margin: 0;
+                }
+                @media (max-width: 480px) {
+                    .mds-test-results-grid {
+                        grid-template-columns: 1fr;
+                    }
+                }
+            `;
+        },
+
         // Load Logs
-        loadLogs: function() {
+        loadLogs: function () {
             const $tbody = $('#logs-tbody');
             const level = $('#filter-log-level').val();
             const operation = $('#filter-log-operation').val();
-            
+
             $tbody.html('<tr><td colspan="5" class="s3-loading">Loading logs...</td></tr>');
-            
+
             $.ajax({
-                url: mediaMediaToolkit.ajaxUrl,
+                url: mediaToolkit.ajaxUrl,
                 method: 'POST',
                 data: {
                     action: 'media_toolkit_get_logs',
-                    nonce: mediaMediaToolkit.nonce,
+                    nonce: mediaToolkit.nonce,
                     page: 1,
                     per_page: 100,
                     level: level,
                     operation: operation
                 },
-                success: function(response) {
+                success: function (response) {
                     if (response.success) {
                         const logs = response.data.logs;
                         $('#logs-count').text(response.data.total);
-                        
+
                         // Update operations filter
                         const $opFilter = $('#filter-log-operation');
                         const currentOp = $opFilter.val();
                         $opFilter.find('option:not(:first)').remove();
-                        response.data.operations.forEach(function(op) {
+                        response.data.operations.forEach(function (op) {
                             $opFilter.append(`<option value="${op}">${op}</option>`);
                         });
                         $opFilter.val(currentOp);
-                        
+
                         if (logs.length === 0) {
                             $tbody.html(`<tr><td colspan="5">
                                 <div class="s3-empty-state">
@@ -791,14 +940,14 @@
                             </td></tr>`);
                             return;
                         }
-                        
+
                         let html = '';
-                        logs.forEach(function(log) {
+                        logs.forEach(function (log) {
                             const levelClass = log.level === 'error' ? 'error' : log.level === 'warning' ? 'warning' : log.level === 'success' ? 'success' : 'info';
                             const dateObj = new Date(log.timestamp);
                             const dateStr = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
                             const timeStr = dateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-                            
+
                             html += `
                                 <tr>
                                     <td>
@@ -812,7 +961,7 @@
                                 </tr>
                             `;
                         });
-                        
+
                         $tbody.html(html);
                     }
                 }
@@ -820,19 +969,19 @@
         },
 
         // Clear Logs
-        clearLogs: function() {
+        clearLogs: function () {
             if (!confirm('Are you sure you want to clear all logs?')) {
                 return;
             }
-            
+
             $.ajax({
-                url: mediaMediaToolkit.ajaxUrl,
+                url: mediaToolkit.ajaxUrl,
                 method: 'POST',
                 data: {
                     action: 'media_toolkit_clear_logs',
-                    nonce: mediaMediaToolkit.nonce
+                    nonce: mediaToolkit.nonce
                 },
-                success: function(response) {
+                success: function (response) {
                     if (response.success) {
                         MediaToolkit.loadLogs();
                         MediaToolkit.showNotice('Logs cleared', 'success');
@@ -846,37 +995,37 @@
         historyTotalPages: 1,
 
         // Load History
-        loadHistory: function() {
+        loadHistory: function () {
             const $tbody = $('#history-tbody');
             const action = $('#filter-history-action').val();
             const dateFrom = $('#filter-date-from').val();
             const dateTo = $('#filter-date-to').val();
-            
+
             $tbody.html('<tr><td colspan="5" class="s3-loading">Loading history...</td></tr>');
-            
+
             $.ajax({
-                url: mediaMediaToolkit.ajaxUrl,
+                url: mediaToolkit.ajaxUrl,
                 method: 'POST',
                 data: {
                     action: 'media_toolkit_get_history',
-                    nonce: mediaMediaToolkit.nonce,
+                    nonce: mediaToolkit.nonce,
                     page: this.historyPage,
                     per_page: 50,
                     action_filter: action,
                     date_from: dateFrom,
                     date_to: dateTo
                 },
-                success: function(response) {
+                success: function (response) {
                     if (response.success) {
                         const history = response.data.history;
                         MediaToolkit.historyTotalPages = response.data.total_pages;
-                        
+
                         $('#history-count').text(response.data.total);
                         $('#page-info').text(`Page ${response.data.page} of ${response.data.total_pages}`);
-                        
+
                         $('#btn-prev-page').prop('disabled', response.data.page <= 1);
                         $('#btn-next-page').prop('disabled', response.data.page >= response.data.total_pages);
-                        
+
                         if (history.length === 0) {
                             $tbody.html(`<tr><td colspan="5">
                                 <div class="s3-empty-state">
@@ -890,16 +1039,16 @@
                             </td></tr>`);
                             return;
                         }
-                        
+
                         let html = '';
-                        history.forEach(function(item) {
+                        history.forEach(function (item) {
                             const dateObj = new Date(item.timestamp);
                             const dateStr = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
                             const timeStr = dateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
                             const actionClass = item.action || 'default';
                             const userName = item.user_name || 'System';
                             const userInitial = userName.charAt(0).toUpperCase();
-                            
+
                             html += `
                                 <tr>
                                     <td>
@@ -918,7 +1067,7 @@
                                 </tr>
                             `;
                         });
-                        
+
                         $tbody.html(html);
                     }
                 }
@@ -926,23 +1075,23 @@
         },
 
         // Change history page
-        changePage: function(delta) {
+        changePage: function (delta) {
             this.historyPage = Math.max(1, Math.min(this.historyPage + delta, this.historyTotalPages));
             this.loadHistory();
         },
 
         // Clear History
-        clearHistory: function() {
+        clearHistory: function () {
             if (!confirm('Are you sure you want to clear all history? This action cannot be undone.')) {
                 return;
             }
-            
+
             $.ajax({
-                url: mediaMediaToolkit.ajaxUrl,
+                url: mediaToolkit.ajaxUrl,
                 method: 'POST',
                 data: {
                     action: 'media_toolkit_clear_history',
-                    nonce: mediaMediaToolkit.nonce
+                    nonce: mediaToolkit.nonce
                 },
                 success: (response) => {
                     if (response.success) {
@@ -961,22 +1110,22 @@
         },
 
         // Export History
-        exportHistory: function() {
+        exportHistory: function () {
             const action = $('#filter-history-action').val();
             const dateFrom = $('#filter-date-from').val();
             const dateTo = $('#filter-date-to').val();
-            
+
             $.ajax({
-                url: mediaMediaToolkit.ajaxUrl,
+                url: mediaToolkit.ajaxUrl,
                 method: 'POST',
                 data: {
                     action: 'media_toolkit_export_history',
-                    nonce: mediaMediaToolkit.nonce,
+                    nonce: mediaToolkit.nonce,
                     action_filter: action,
                     date_from: dateFrom,
                     date_to: dateTo
                 },
-                success: function(response) {
+                success: function (response) {
                     if (response.success) {
                         const blob = new Blob([response.data.csv], { type: 'text/csv' });
                         const url = window.URL.createObjectURL(blob);
@@ -993,12 +1142,12 @@
         },
 
         // Toggle auto-refresh
-        toggleAutoRefresh: function() {
+        toggleAutoRefresh: function () {
             if (this.autoRefreshInterval) {
                 clearInterval(this.autoRefreshInterval);
                 this.autoRefreshInterval = null;
             }
-            
+
             if ($('#auto-refresh-logs').is(':checked')) {
                 this.autoRefreshInterval = setInterval(() => {
                     this.loadLogs();
@@ -1007,22 +1156,22 @@
         },
 
         // Load Dashboard Stats
-        loadDashboardStats: function() {
+        loadDashboardStats: function () {
             $.ajax({
-                url: mediaMediaToolkit.ajaxUrl,
+                url: mediaToolkit.ajaxUrl,
                 method: 'POST',
                 data: {
                     action: 'media_toolkit_get_dashboard_stats',
-                    nonce: mediaMediaToolkit.nonce
+                    nonce: mediaToolkit.nonce
                 },
-                success: function(response) {
+                success: function (response) {
                     if (response.success) {
                         // Update stats
                         $('#stat-total-files').text(response.data.stats.total_files);
                         $('#stat-storage').text(response.data.stats.total_storage_formatted);
                         $('#stat-today').text(response.data.stats.files_today);
                         $('#stat-errors').text(response.data.stats.errors_last_7_days);
-                        
+
                         // Draw sparkline
                         MediaToolkit.drawSparkline(response.data.sparkline);
                     }
@@ -1031,50 +1180,72 @@
         },
 
         // Draw sparkline chart
-        drawSparkline: function(data) {
+        drawSparkline: function (sparklineData) {
             const canvas = document.getElementById('sparkline-chart');
             if (!canvas) return;
-            
+
+            // Support both old format (array) and new format (object with labels/values)
+            const data = sparklineData.values || sparklineData;
+            const labels = sparklineData.labels || [];
+
             const ctx = canvas.getContext('2d');
+            const dpr = window.devicePixelRatio || 1;
             const width = canvas.parentElement.offsetWidth;
-            const height = 80;
-            
-            canvas.width = width;
-            canvas.height = height;
-            
+            const height = 120; // Increased height to accommodate labels
+
+            // Scale canvas for high-DPI displays
+            canvas.width = width * dpr;
+            canvas.height = height * dpr;
+            canvas.style.width = width + 'px';
+            canvas.style.height = height + 'px';
+            ctx.scale(dpr, dpr);
+
             const max = Math.max(...data, 1);
-            const padding = 10;
-            const chartWidth = width - (padding * 2);
-            const chartHeight = height - (padding * 2);
-            const stepX = chartWidth / (data.length - 1);
-            
-            // Clear
+            const paddingTop = 25; // Space for values
+            const paddingBottom = 25; // Space for day labels
+            const paddingX = 30;
+            const chartWidth = width - (paddingX * 2);
+            const chartHeight = height - paddingTop - paddingBottom;
+            const stepX = data.length > 1 ? chartWidth / (data.length - 1) : chartWidth;
+
+            // Clear (use logical dimensions, not canvas dimensions)
             ctx.clearRect(0, 0, width, height);
-            
+
+            // Draw horizontal grid lines
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.06)';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= 3; i++) {
+                const y = paddingTop + (chartHeight / 3) * i;
+                ctx.beginPath();
+                ctx.moveTo(paddingX, y);
+                ctx.lineTo(width - paddingX, y);
+                ctx.stroke();
+            }
+
             // Draw gradient fill
             ctx.beginPath();
-            ctx.moveTo(padding, height - padding);
-            
+            ctx.moveTo(paddingX, height - paddingBottom);
+
             data.forEach((value, i) => {
-                const x = padding + (i * stepX);
-                const y = height - padding - ((value / max) * chartHeight);
+                const x = paddingX + (i * stepX);
+                const y = height - paddingBottom - ((value / max) * chartHeight);
                 ctx.lineTo(x, y);
             });
-            
-            ctx.lineTo(width - padding, height - padding);
+
+            ctx.lineTo(width - paddingX, height - paddingBottom);
             ctx.closePath();
-            
+
             const gradient = ctx.createLinearGradient(0, 0, 0, height);
-            gradient.addColorStop(0, 'rgba(34, 113, 177, 0.3)');
+            gradient.addColorStop(0, 'rgba(34, 113, 177, 0.2)');
             gradient.addColorStop(1, 'rgba(34, 113, 177, 0)');
             ctx.fillStyle = gradient;
             ctx.fill();
-            
+
             // Draw line
             ctx.beginPath();
             data.forEach((value, i) => {
-                const x = padding + (i * stepX);
-                const y = height - padding - ((value / max) * chartHeight);
+                const x = paddingX + (i * stepX);
+                const y = height - paddingBottom - ((value / max) * chartHeight);
                 if (i === 0) {
                     ctx.moveTo(x, y);
                 } else {
@@ -1084,23 +1255,41 @@
             ctx.strokeStyle = '#2271b1';
             ctx.lineWidth = 2;
             ctx.stroke();
-            
-            // Draw dots
+
+            // Draw dots and values
+            ctx.font = '11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+            ctx.textAlign = 'center';
+
             data.forEach((value, i) => {
-                const x = padding + (i * stepX);
-                const y = height - padding - ((value / max) * chartHeight);
+                const x = paddingX + (i * stepX);
+                const y = height - paddingBottom - ((value / max) * chartHeight);
+
+                // Draw dot
                 ctx.beginPath();
-                ctx.arc(x, y, 3, 0, Math.PI * 2);
-                ctx.fillStyle = '#2271b1';
+                ctx.arc(x, y, 4, 0, Math.PI * 2);
+                ctx.fillStyle = '#fff';
                 ctx.fill();
+                ctx.strokeStyle = '#2271b1';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Draw value above the dot
+                ctx.fillStyle = '#1d2327';
+                ctx.fillText(value.toString(), x, y - 10);
+
+                // Draw day label below the chart
+                if (labels[i]) {
+                    ctx.fillStyle = '#646970';
+                    ctx.fillText(labels[i], x, height - 6);
+                }
             });
         },
 
         // Toggle password visibility
-        togglePasswordVisibility: function() {
+        togglePasswordVisibility: function () {
             const $input = $('#github_token');
             const $btn = $('#btn-toggle-password');
-            
+
             if ($input.attr('type') === 'password') {
                 $input.attr('type', 'text');
                 $btn.find('.dashicons').removeClass('dashicons-visibility').addClass('dashicons-hidden');
@@ -1111,56 +1300,56 @@
         },
 
         // Save Update Settings
-        saveUpdateSettings: function() {
+        saveUpdateSettings: function () {
             const $btn = $('#btn-save-update-settings');
-            
+
             const data = {
                 action: 'media_toolkit_save_update_settings',
                 nonce: mediaToolkit.nonce,
                 github_token: $('#github_token').val(),
                 auto_update: $('#auto_update').is(':checked') ? '1' : ''
             };
-            
+
             $btn.prop('disabled', true);
             const originalHtml = $btn.html();
             $btn.html('<span class="dashicons dashicons-update spin"></span> Saving...');
-            
+
             $.ajax({
                 url: mediaToolkit.ajaxUrl,
                 method: 'POST',
                 data: data,
-                success: function(response) {
+                success: function (response) {
                     if (response.success) {
                         MediaToolkit.showNotice(response.data.message, 'success');
                         // Reload to reflect token status
-                        setTimeout(function() {
+                        setTimeout(function () {
                             location.reload();
                         }, 1000);
                     } else {
                         MediaToolkit.showNotice(response.data.message || 'Failed to save settings', 'error');
                     }
                 },
-                error: function() {
+                error: function () {
                     MediaToolkit.showNotice('An error occurred. Please try again.', 'error');
                 },
-                complete: function() {
+                complete: function () {
                     $btn.prop('disabled', false).html(originalHtml);
                 }
             });
         },
 
         // Remove GitHub Token
-        removeGitHubToken: function() {
+        removeGitHubToken: function () {
             if (!confirm('Are you sure you want to remove the GitHub token? This will disable automatic updates from private repositories.')) {
                 return;
             }
-            
+
             const $btn = $('#btn-remove-token');
-            
+
             $btn.prop('disabled', true);
             const originalHtml = $btn.html();
             $btn.html('<span class="dashicons dashicons-update spin"></span> Removing...');
-            
+
             $.ajax({
                 url: mediaToolkit.ajaxUrl,
                 method: 'POST',
@@ -1168,35 +1357,35 @@
                     action: 'media_toolkit_remove_github_token',
                     nonce: mediaToolkit.nonce
                 },
-                success: function(response) {
+                success: function (response) {
                     if (response.success) {
                         MediaToolkit.showNotice(response.data.message, 'success');
-                        setTimeout(function() {
+                        setTimeout(function () {
                             location.reload();
                         }, 1000);
                     } else {
                         MediaToolkit.showNotice(response.data.message || 'Failed to remove token', 'error');
                     }
                 },
-                error: function() {
+                error: function () {
                     MediaToolkit.showNotice('An error occurred. Please try again.', 'error');
                 },
-                complete: function() {
+                complete: function () {
                     $btn.prop('disabled', false).html(originalHtml);
                 }
             });
         },
 
         // Check for Updates
-        checkForUpdates: function() {
+        checkForUpdates: function () {
             const $btn = $('#btn-check-updates');
             const $result = $('#update-check-result');
-            
+
             $btn.prop('disabled', true);
             const originalHtml = $btn.html();
             $btn.html('<span class="dashicons dashicons-update spin"></span> Checking...');
             $result.hide();
-            
+
             $.ajax({
                 url: mediaToolkit.ajaxUrl,
                 method: 'POST',
@@ -1204,11 +1393,11 @@
                     action: 'media_toolkit_check_updates',
                     nonce: mediaToolkit.nonce
                 },
-                success: function(response) {
+                success: function (response) {
                     if (response.success) {
                         const data = response.data;
                         let html = '';
-                        
+
                         if (data.update_available) {
                             html = `
                                 <div style="padding: 16px; background: var(--mds-success-bg, #e7f7e7); border-radius: 8px; display: flex; align-items: center; gap: 12px;">
@@ -1230,7 +1419,7 @@
                                 </div>
                             `;
                         }
-                        
+
                         $result.html(html).show();
                     } else {
                         $result.html(`
@@ -1244,7 +1433,7 @@
                         `).show();
                     }
                 },
-                error: function() {
+                error: function () {
                     $result.html(`
                         <div style="padding: 16px; background: var(--mds-error-bg, #fce8e8); border-radius: 8px;">
                             <strong>Connection error</strong>
@@ -1252,37 +1441,37 @@
                         </div>
                     `).show();
                 },
-                complete: function() {
+                complete: function () {
                     $btn.prop('disabled', false).html(originalHtml);
                 }
             });
         },
 
         // Close modal
-        closeModal: function() {
+        closeModal: function () {
             $('.s3-modal, .mds-modal-overlay').hide();
         },
 
         // Show notification
-        showNotice: function(message, type) {
+        showNotice: function (message, type) {
             const $notice = $(`<div class="notice notice-${type} is-dismissible"><p>${message}</p></div>`);
             $('.s3-offload-wrap h1').after($notice);
-            
-            setTimeout(function() {
-                $notice.fadeOut(function() {
+
+            setTimeout(function () {
+                $notice.fadeOut(function () {
                     $(this).remove();
                 });
             }, 5000);
         },
 
         // Utility: Format date
-        formatDate: function(dateStr) {
+        formatDate: function (dateStr) {
             const date = new Date(dateStr);
             return date.toLocaleString();
         },
 
         // Utility: Format bytes
-        formatBytes: function(bytes) {
+        formatBytes: function (bytes) {
             if (bytes === 0) return '0 B';
             const k = 1024;
             const sizes = ['B', 'KB', 'MB', 'GB'];
@@ -1291,7 +1480,7 @@
         },
 
         // Utility: Escape HTML
-        escapeHtml: function(str) {
+        escapeHtml: function (str) {
             if (!str) return '';
             return str
                 .replace(/&/g, '&amp;')
@@ -1303,7 +1492,7 @@
     };
 
     // Initialize on document ready
-    $(document).ready(function() {
+    $(document).ready(function () {
         MediaToolkit.init();
     });
 

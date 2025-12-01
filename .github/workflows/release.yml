@@ -1,0 +1,131 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+      - '*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Create Release with Plugin ZIP
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: composer:v2
+
+      - name: Get version from tag
+        id: get_version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          VERSION=${VERSION#v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Build assets
+        run: npm run build
+
+      - name: Install Composer dependencies (no dev)
+        run: composer install --no-dev --optimize-autoloader
+
+      - name: Create plugin directory structure
+        run: |
+          mkdir -p build/media-toolkit
+          
+          # Copy plugin files
+          cp -r assets build/media-toolkit/
+          cp -r docs build/media-toolkit/
+          cp -r src build/media-toolkit/
+          cp -r templates build/media-toolkit/
+          cp -r vendor build/media-toolkit/
+          cp media-toolkit.php build/media-toolkit/
+          cp uninstall.php build/media-toolkit/
+          cp README.md build/media-toolkit/
+          cp LICENSE build/media-toolkit/
+
+      - name: Remove development files from build
+        run: |
+          # Remove source CSS/JS (keep only built assets)
+          rm -rf build/media-toolkit/assets/src
+          
+          # Remove PSD source files
+          rm -rf build/media-toolkit/assets/images/src
+          
+          # Remove any remaining dev files
+          find build/media-toolkit -name "*.map" -delete
+          find build/media-toolkit -name ".DS_Store" -delete
+          find build/media-toolkit -name ".gitkeep" -delete
+
+      - name: Create ZIP file
+        run: |
+          cd build
+          zip -r ../media-toolkit-${{ steps.get_version.outputs.version }}.zip media-toolkit
+          cd ..
+          
+          # Also create a generic named zip for easier download
+          cp media-toolkit-${{ steps.get_version.outputs.version }}.zip media-toolkit.zip
+
+      - name: Generate changelog from commits
+        id: changelog
+        run: |
+          # Get commits since last tag
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          
+          if [ -n "$PREVIOUS_TAG" ]; then
+            CHANGELOG=$(git log --pretty=format:"- %s" $PREVIOUS_TAG..HEAD --no-merges)
+          else
+            CHANGELOG=$(git log --pretty=format:"- %s" --no-merges -20)
+          fi
+          
+          # Escape for GitHub Actions
+          CHANGELOG="${CHANGELOG//'%'/'%25'}"
+          CHANGELOG="${CHANGELOG//$'\n'/'%0A'}"
+          CHANGELOG="${CHANGELOG//$'\r'/'%0D'}"
+          
+          echo "changelog=$CHANGELOG" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "Media Toolkit v${{ steps.get_version.outputs.version }}"
+          body: |
+            ## Media Toolkit v${{ steps.get_version.outputs.version }}
+            
+            ### Changes
+            ${{ steps.changelog.outputs.changelog }}
+            
+            ### Installation
+            1. Download `media-toolkit.zip`
+            2. Go to WordPress Admin → Plugins → Add New → Upload Plugin
+            3. Upload the ZIP file and activate
+            
+            ### Requirements
+            - WordPress 6.0+
+            - PHP 8.2+
+          files: |
+            media-toolkit-${{ steps.get_version.outputs.version }}.zip
+            media-toolkit.zip
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
