@@ -373,7 +373,8 @@
                 this.showConfirmModal(
                     'Stop Process?',
                     this.config.confirmStopMessage,
-                    () => this.doStop()
+                    () => this.doStop(),
+                    'Yes, Stop'
                 );
             } else {
                 this.doStop();
@@ -523,10 +524,13 @@
         /**
          * Show confirmation modal
          */
-        showConfirmModal(title, message, callback) {
+        showConfirmModal(title, message, callback, confirmLabel = null) {
             this.pendingCallback = callback;
             $('#confirm-title').text(title);
             $('#confirm-message').text(message);
+            if (confirmLabel) {
+                $('#btn-confirm-yes').text(confirmLabel);
+            }
             this.$modal.show();
         }
 
@@ -552,15 +556,37 @@
          * AJAX helper
          */
         ajax(action, data, success, error) {
+            const self = this;
             $.ajax({
-                url: mediaMediaToolkit.ajaxUrl,
+                url: mediaToolkit.ajaxUrl,
                 method: 'POST',
                 data: Object.assign({
                     action: action,
-                    nonce: mediaMediaToolkit.nonce
+                    nonce: mediaToolkit.nonce
                 }, data),
                 success: success,
-                error: error || function () { }
+                error: function(xhr, status, errorThrown) {
+                    // Log detailed error info
+                    self.log(`HTTP Error: ${xhr.status} ${errorThrown}`, 'error');
+                    if (xhr.responseText) {
+                        // Try to parse JSON error response
+                        try {
+                            const jsonResponse = JSON.parse(xhr.responseText);
+                            if (jsonResponse.data?.message) {
+                                self.log(`Server message: ${jsonResponse.data.message}`, 'error');
+                            }
+                            if (jsonResponse.data?.trace) {
+                                console.error('Stack trace:', jsonResponse.data.trace);
+                            }
+                        } catch(e) {
+                            // Not JSON, log raw response (first 500 chars)
+                            const snippet = xhr.responseText.substring(0, 500);
+                            console.error('Server response:', snippet);
+                            self.log(`Server response: ${snippet.substring(0, 100)}...`, 'error');
+                        }
+                    }
+                    if (error) error(xhr, status, errorThrown);
+                }
             });
         }
 

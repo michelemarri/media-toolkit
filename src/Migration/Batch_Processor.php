@@ -330,10 +330,19 @@ abstract class Batch_Processor
             wp_send_json_error(['message' => 'Permission denied']);
         }
 
-        $options = $this->get_start_options_from_request();
-        $state = $this->start($options);
+        try {
+            $options = $this->get_start_options_from_request();
+            $state = $this->start($options);
 
-        wp_send_json_success(['state' => $state]);
+            wp_send_json_success(['state' => $state]);
+        } catch (\Throwable $e) {
+            $this->logger->error($this->processor_id, 'Exception in ajax_start(): ' . $e->getMessage());
+            $this->logger->error($this->processor_id, 'Stack trace: ' . $e->getTraceAsString());
+            wp_send_json_error([
+                'message' => 'Error starting: ' . $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+        }
     }
 
     public function ajax_process_batch(): void
@@ -344,10 +353,19 @@ abstract class Batch_Processor
             wp_send_json_error(['message' => 'Permission denied']);
         }
 
-        $result = $this->process_batch();
-        $result['stats'] = $this->get_stats();
-        
-        wp_send_json_success($result);
+        try {
+            $result = $this->process_batch();
+            $result['stats'] = $this->get_stats();
+            
+            wp_send_json_success($result);
+        } catch (\Throwable $e) {
+            $this->logger->error($this->processor_id, 'Exception in ajax_process_batch(): ' . $e->getMessage());
+            $this->logger->error($this->processor_id, 'Stack trace: ' . $e->getTraceAsString());
+            wp_send_json_error([
+                'message' => 'Error processing batch: ' . $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+        }
     }
 
     public function ajax_pause(): void

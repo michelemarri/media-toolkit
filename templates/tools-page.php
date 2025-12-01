@@ -525,12 +525,15 @@ $cache_control = $settings ? $settings->get_cache_control_max_age() : 31536000;
                         <span class="block text-2xl font-bold text-gray-900" id="recon-s3-files"><?php echo number_format($reconciliation_stats['s3_original_files'] ?? 0); ?></span>
                     </div>
                     
-                    <div class="p-5 <?php echo ($reconciliation_stats['has_discrepancy'] ?? false) ? 'bg-amber-50 border-amber-200' : 'bg-gray-50 border-gray-200'; ?> border rounded-2xl">
+                    <div class="p-5 <?php echo ($reconciliation_stats['has_discrepancy'] ?? false) ? 'bg-amber-50 border-amber-200 cursor-pointer hover:bg-amber-100 transition-colors' : 'bg-gray-50 border-gray-200'; ?> border rounded-2xl <?php echo ($reconciliation_stats['has_discrepancy'] ?? false) ? 'group' : ''; ?>" <?php echo ($reconciliation_stats['has_discrepancy'] ?? false) ? 'id="btn-view-discrepancies" role="button" tabindex="0"' : ''; ?>>
                         <div class="flex items-center gap-3 mb-3">
                             <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-gray-200 text-gray-600">
                                 <span class="dashicons dashicons-warning"></span>
                             </div>
                             <span class="text-sm text-gray-500"><?php esc_html_e('Discrepancy', 'media-toolkit'); ?></span>
+                            <?php if ($reconciliation_stats['has_discrepancy'] ?? false): ?>
+                            <span class="dashicons dashicons-external text-gray-400 group-hover:text-amber-600 transition-colors ml-auto"></span>
+                            <?php endif; ?>
                         </div>
                         <span class="block text-2xl font-bold text-gray-900" id="recon-discrepancy"><?php echo number_format($reconciliation_stats['discrepancy'] ?? 0); ?></span>
                     </div>
@@ -708,7 +711,7 @@ $cache_control = $settings ? $settings->get_cache_control_max_age() : 31536000;
     <div class="mt-modal">
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
             <h3 class="text-lg font-semibold text-gray-900" id="confirm-title"><?php esc_html_e('Confirm Action', 'media-toolkit'); ?></h3>
-            <button type="button" class="flex items-center justify-center w-8 h-8 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all modal-close">
+            <button type="button" class="flex items-center justify-center w-8 h-8 border-0 bg-transparent text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all cursor-pointer modal-close">
                 <span class="dashicons dashicons-no-alt"></span>
             </button>
         </div>
@@ -716,8 +719,105 @@ $cache_control = $settings ? $settings->get_cache_control_max_age() : 31536000;
             <p id="confirm-message" class="text-sm text-gray-600"></p>
         </div>
         <div class="flex items-center justify-end gap-3 px-6 py-4 bg-gray-50 border-t border-gray-200">
-            <button type="button" class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-all" id="btn-confirm-no"><?php esc_html_e('Cancel', 'media-toolkit'); ?></button>
-            <button type="button" class="inline-flex items-center px-5 py-2 text-sm font-medium text-white bg-gray-800 hover:bg-gray-900 rounded-lg shadow-sm transition-all" id="btn-confirm-yes"><?php esc_html_e('Yes, Continue', 'media-toolkit'); ?></button>
+            <button type="button" class="inline-flex items-center px-4 py-2 border-0 text-sm font-medium text-gray-600 bg-transparent hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-all cursor-pointer" id="btn-confirm-no"><?php esc_html_e('Cancel', 'media-toolkit'); ?></button>
+            <button type="button" class="inline-flex items-center px-5 py-2 border-0 text-sm font-medium text-white bg-gray-800 hover:bg-gray-900 rounded-lg shadow-sm transition-all cursor-pointer" id="btn-confirm-yes"><?php esc_html_e('Yes, Continue', 'media-toolkit'); ?></button>
+        </div>
+    </div>
+</div>
+
+<!-- Discrepancies Modal -->
+<div id="discrepancies-modal" class="mt-modal-overlay" style="display:none;">
+    <div class="mt-modal max-w-3xl">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+            <h3 class="text-lg font-semibold text-gray-900">
+                <span class="dashicons dashicons-warning text-amber-500 mr-2"></span>
+                <?php esc_html_e('Discrepancies Details', 'media-toolkit'); ?>
+            </h3>
+            <button type="button" class="flex items-center justify-center w-8 h-8 border-0 bg-transparent text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all cursor-pointer modal-close">
+                <span class="dashicons dashicons-no-alt"></span>
+            </button>
+        </div>
+        <div class="p-6 max-h-[60vh] overflow-y-auto">
+            <div id="discrepancies-loading" class="flex items-center justify-center py-8">
+                <span class="dashicons dashicons-update animate-spin text-gray-400 text-2xl"></span>
+                <span class="ml-3 text-gray-500"><?php esc_html_e('Loading discrepancies...', 'media-toolkit'); ?></span>
+            </div>
+            <div id="discrepancies-content" class="hidden space-y-6">
+                <!-- Summary -->
+                <div id="discrepancies-summary" class="p-4 bg-gray-100 rounded-lg space-y-3">
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div class="text-center p-3 bg-white rounded-lg">
+                            <div class="text-xl font-bold text-gray-900" id="summary-s3-scanned">-</div>
+                            <div class="text-xs text-gray-500"><?php esc_html_e('S3 Files (scan)', 'media-toolkit'); ?></div>
+                        </div>
+                        <div class="text-center p-3 bg-white rounded-lg">
+                            <div class="text-xl font-bold text-gray-400" id="summary-s3-cached">-</div>
+                            <div class="text-xs text-gray-500"><?php esc_html_e('S3 Files (cached)', 'media-toolkit'); ?></div>
+                        </div>
+                        <div class="text-center p-3 bg-white rounded-lg">
+                            <div class="text-xl font-bold text-gray-900" id="summary-wp-attachments">-</div>
+                            <div class="text-xs text-gray-500"><?php esc_html_e('WP Attachments', 'media-toolkit'); ?></div>
+                        </div>
+                        <div class="text-center p-3 bg-white rounded-lg">
+                            <div class="text-xl font-bold text-blue-600" id="summary-wp-marked">-</div>
+                            <div class="text-xs text-gray-500"><?php esc_html_e('Marked Migrated', 'media-toolkit'); ?></div>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-center gap-2 text-sm">
+                        <span class="dashicons dashicons-yes-alt text-green-500"></span>
+                        <span class="text-gray-600"><?php esc_html_e('Matched:', 'media-toolkit'); ?></span>
+                        <span class="font-bold text-green-600" id="summary-matched">-</span>
+                    </div>
+                    <div id="cache-mismatch-warning" class="hidden flex items-center gap-2 p-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700">
+                        <span class="dashicons dashicons-warning"></span>
+                        <?php esc_html_e('Cached S3 count differs from live scan. Run "Sync Now" in Stats Sync tab to update.', 'media-toolkit'); ?>
+                    </div>
+                </div>
+                
+                <!-- Marked but not on S3 -->
+                <div id="discrepancies-not-on-s3" class="hidden">
+                    <h4 class="flex items-center gap-2 text-sm font-semibold text-gray-900 mb-3">
+                        <span class="dashicons dashicons-cloud-saved text-red-500"></span>
+                        <?php esc_html_e('Marked as migrated but NOT found on S3', 'media-toolkit'); ?>
+                        <span class="px-2 py-0.5 text-xs font-medium rounded bg-red-100 text-red-700" id="count-not-on-s3">0</span>
+                    </h4>
+                    <p class="text-xs text-gray-500 mb-2"><?php esc_html_e('These files have metadata saying they are on S3, but the actual file was not found.', 'media-toolkit'); ?></p>
+                    <div class="bg-gray-50 rounded-lg border border-gray-200 divide-y divide-gray-200 max-h-48 overflow-y-auto" id="list-not-on-s3"></div>
+                </div>
+                
+                <!-- On S3 but not marked -->
+                <div id="discrepancies-not-marked" class="hidden">
+                    <h4 class="flex items-center gap-2 text-sm font-semibold text-gray-900 mb-3">
+                        <span class="dashicons dashicons-database text-amber-500"></span>
+                        <?php esc_html_e('On S3 but NOT marked as migrated', 'media-toolkit'); ?>
+                        <span class="px-2 py-0.5 text-xs font-medium rounded bg-amber-100 text-amber-700" id="count-not-marked">0</span>
+                    </h4>
+                    <p class="text-xs text-gray-500 mb-2"><?php esc_html_e('These files exist on S3 and match a WP attachment, but are not marked as migrated. Run reconciliation to fix.', 'media-toolkit'); ?></p>
+                    <div class="bg-gray-50 rounded-lg border border-gray-200 divide-y divide-gray-200 max-h-48 overflow-y-auto" id="list-not-marked"></div>
+                </div>
+                
+                <!-- Orphan files on S3 -->
+                <div id="discrepancies-orphans" class="hidden">
+                    <h4 class="flex items-center gap-2 text-sm font-semibold text-gray-900 mb-3">
+                        <span class="dashicons dashicons-media-default text-purple-500"></span>
+                        <?php esc_html_e('Orphan files on S3 (no WP attachment)', 'media-toolkit'); ?>
+                        <span class="px-2 py-0.5 text-xs font-medium rounded bg-purple-100 text-purple-700" id="count-orphans">0</span>
+                    </h4>
+                    <p class="text-xs text-gray-500 mb-2"><?php esc_html_e('These files exist on S3 but have no corresponding attachment in WordPress. They may be leftover from deleted media.', 'media-toolkit'); ?></p>
+                    <div class="bg-gray-50 rounded-lg border border-gray-200 divide-y divide-gray-200 max-h-48 overflow-y-auto" id="list-orphans"></div>
+                </div>
+                
+                <!-- No discrepancies -->
+                <div id="discrepancies-none" class="hidden text-center py-8">
+                    <span class="dashicons dashicons-yes-alt text-green-500 text-4xl mb-3"></span>
+                    <p class="text-gray-600"><?php esc_html_e('No discrepancies found. Everything is in sync!', 'media-toolkit'); ?></p>
+                </div>
+            </div>
+        </div>
+        <div class="flex items-center justify-end gap-3 px-6 py-4 bg-gray-50 border-t border-gray-200">
+            <button type="button" class="inline-flex items-center px-5 py-2 border-0 text-sm font-medium text-gray-600 bg-white hover:bg-gray-100 border border-gray-300 rounded-lg transition-all cursor-pointer modal-close">
+                <?php esc_html_e('Close', 'media-toolkit'); ?>
+            </button>
         </div>
     </div>
 </div>

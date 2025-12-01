@@ -456,11 +456,20 @@ final class Plugin
         
         wp_localize_script('media-toolkit-settings', 'mediaToolkit', $localize_data);
         
-        if (str_contains($hook, 'migration')) {
+        // Load migration and reconciliation scripts on tools page
+        if (str_contains($hook, 'tools')) {
             wp_enqueue_script(
                 'media-toolkit-migration',
                 MEDIA_TOOLKIT_URL . 'assets/migration.js',
-                ['jquery', 'media-toolkit-settings'],
+                ['jquery', 'media-toolkit-batch-processor', 'media-toolkit-settings'],
+                MEDIA_TOOLKIT_VERSION,
+                true
+            );
+            
+            wp_enqueue_script(
+                'media-toolkit-reconciliation',
+                MEDIA_TOOLKIT_URL . 'assets/reconciliation.js',
+                ['jquery', 'media-toolkit-batch-processor', 'media-toolkit-settings'],
                 MEDIA_TOOLKIT_VERSION,
                 true
             );

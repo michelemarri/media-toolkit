@@ -413,6 +413,10 @@ $settings = apply_filters('media_toolkit_optimize_settings', $settings, $attachm
 
 ## Changelog
 
+### 1.0.1
+- Fixed: Migration tab scripts not loading after moving to Tools page
+- Changed: Migration page merged into Tools page as tab
+
 ### 1.0.0
 - Initial release as Media Toolkit (rebranded from Media S3 Offload)
 - S3 upload and deletion
