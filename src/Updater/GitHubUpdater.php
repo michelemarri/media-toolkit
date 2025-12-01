@@ -33,8 +33,10 @@ class GitHubUpdater
 
     /**
      * Whether the repository requires authentication
+     * Set to false for public repositories (updates work without token)
+     * Token is still useful to avoid GitHub API rate limits
      */
-    private bool $isPrivateRepo = true;
+    private bool $isPrivateRepo = false;
 
     /**
      * Whether a valid token is configured

@@ -17,70 +17,70 @@ class ComposerStaticInitcd6aaab1d0f2d1781b9ef67d1da8c0ad
     );
 
     public static $prefixLengthsPsr4 = array (
-        'S' =>
+        'S' => 
         array (
             'Symfony\\Polyfill\\Mbstring\\' => 26,
         ),
-        'P' =>
+        'P' => 
         array (
             'Psr\\Http\\Message\\' => 17,
             'Psr\\Http\\Client\\' => 16,
         ),
-        'M' =>
+        'M' => 
         array (
             'Metodo\\MediaToolkit\\' => 20,
         ),
-        'J' =>
+        'J' => 
         array (
             'JmesPath\\' => 9,
         ),
-        'G' =>
+        'G' => 
         array (
             'GuzzleHttp\\Psr7\\' => 16,
             'GuzzleHttp\\Promise\\' => 19,
             'GuzzleHttp\\' => 11,
         ),
-        'A' =>
+        'A' => 
         array (
             'Aws\\' => 4,
         ),
     );
 
     public static $prefixDirsPsr4 = array (
-        'Symfony\\Polyfill\\Mbstring\\' =>
+        'Symfony\\Polyfill\\Mbstring\\' => 
         array (
             0 => __DIR__ . '/..' . '/symfony/polyfill-mbstring',
         ),
-        'Psr\\Http\\Message\\' =>
+        'Psr\\Http\\Message\\' => 
         array (
             0 => __DIR__ . '/..' . '/psr/http-factory/src',
             1 => __DIR__ . '/..' . '/psr/http-message/src',
         ),
-        'Psr\\Http\\Client\\' =>
+        'Psr\\Http\\Client\\' => 
         array (
             0 => __DIR__ . '/..' . '/psr/http-client/src',
         ),
-        'Metodo\\MediaToolkit\\' =>
+        'Metodo\\MediaToolkit\\' => 
         array (
             0 => __DIR__ . '/../..' . '/src',
         ),
-        'JmesPath\\' =>
+        'JmesPath\\' => 
         array (
             0 => __DIR__ . '/..' . '/mtdowling/jmespath.php/src',
         ),
-        'GuzzleHttp\\Psr7\\' =>
+        'GuzzleHttp\\Psr7\\' => 
         array (
             0 => __DIR__ . '/..' . '/guzzlehttp/psr7/src',
         ),
-        'GuzzleHttp\\Promise\\' =>
+        'GuzzleHttp\\Promise\\' => 
         array (
             0 => __DIR__ . '/..' . '/guzzlehttp/promises/src',
         ),
-        'GuzzleHttp\\' =>
+        'GuzzleHttp\\' => 
         array (
             0 => __DIR__ . '/..' . '/guzzlehttp/guzzle/src',
         ),
-        'Aws\\' =>
+        'Aws\\' => 
         array (
             0 => __DIR__ . '/..' . '/aws/aws-sdk-php/src',
         ),
@@ -891,6 +891,10 @@ class ComposerStaticInitcd6aaab1d0f2d1781b9ef67d1da8c0ad
         'Aws\\PI\\PIClient' => __DIR__ . '/..' . '/aws/aws-sdk-php/src/PI/PIClient.php',
         'Aws\\Panorama\\Exception\\PanoramaException' => __DIR__ . '/..' . '/aws/aws-sdk-php/src/Panorama/Exception/PanoramaException.php',
         'Aws\\Panorama\\PanoramaClient' => __DIR__ . '/..' . '/aws/aws-sdk-php/src/Panorama/PanoramaClient.php',
+        'Aws\\PartnerCentralAccount\\Exception\\PartnerCentralAccountException' => __DIR__ . '/..' . '/aws/aws-sdk-php/src/PartnerCentralAccount/Exception/PartnerCentralAccountException.php',
+        'Aws\\PartnerCentralAccount\\PartnerCentralAccountClient' => __DIR__ . '/..' . '/aws/aws-sdk-php/src/PartnerCentralAccount/PartnerCentralAccountClient.php',
+        'Aws\\PartnerCentralBenefits\\Exception\\PartnerCentralBenefitsException' => __DIR__ . '/..' . '/aws/aws-sdk-php/src/PartnerCentralBenefits/Exception/PartnerCentralBenefitsException.php',
+        'Aws\\PartnerCentralBenefits\\PartnerCentralBenefitsClient' => __DIR__ . '/..' . '/aws/aws-sdk-php/src/PartnerCentralBenefits/PartnerCentralBenefitsClient.php',
         'Aws\\PartnerCentralChannel\\Exception\\PartnerCentralChannelException' => __DIR__ . '/..' . '/aws/aws-sdk-php/src/PartnerCentralChannel/Exception/PartnerCentralChannelException.php',
         'Aws\\PartnerCentralChannel\\PartnerCentralChannelClient' => __DIR__ . '/..' . '/aws/aws-sdk-php/src/PartnerCentralChannel/PartnerCentralChannelClient.php',
         'Aws\\PartnerCentralSelling\\Exception\\PartnerCentralSellingException' => __DIR__ . '/..' . '/aws/aws-sdk-php/src/PartnerCentralSelling/Exception/PartnerCentralSellingException.php',
@@ -987,6 +991,8 @@ class ComposerStaticInitcd6aaab1d0f2d1781b9ef67d1da8c0ad
         'Aws\\RolesAnywhere\\RolesAnywhereClient' => __DIR__ . '/..' . '/aws/aws-sdk-php/src/RolesAnywhere/RolesAnywhereClient.php',
         'Aws\\Route53Domains\\Exception\\Route53DomainsException' => __DIR__ . '/..' . '/aws/aws-sdk-php/src/Route53Domains/Exception/Route53DomainsException.php',
         'Aws\\Route53Domains\\Route53DomainsClient' => __DIR__ . '/..' . '/aws/aws-sdk-php/src/Route53Domains/Route53DomainsClient.php',
+        'Aws\\Route53GlobalResolver\\Exception\\Route53GlobalResolverException' => __DIR__ . '/..' . '/aws/aws-sdk-php/src/Route53GlobalResolver/Exception/Route53GlobalResolverException.php',
+        'Aws\\Route53GlobalResolver\\Route53GlobalResolverClient' => __DIR__ . '/..' . '/aws/aws-sdk-php/src/Route53GlobalResolver/Route53GlobalResolverClient.php',
         'Aws\\Route53Profiles\\Exception\\Route53ProfilesException' => __DIR__ . '/..' . '/aws/aws-sdk-php/src/Route53Profiles/Exception/Route53ProfilesException.php',
         'Aws\\Route53Profiles\\Route53ProfilesClient' => __DIR__ . '/..' . '/aws/aws-sdk-php/src/Route53Profiles/Route53ProfilesClient.php',
         'Aws\\Route53RecoveryCluster\\Exception\\Route53RecoveryClusterException' => __DIR__ . '/..' . '/aws/aws-sdk-php/src/Route53RecoveryCluster/Exception/Route53RecoveryClusterException.php',
