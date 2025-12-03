@@ -457,6 +457,10 @@ $skip = apply_filters('media_toolkit_skip_resize', false, $file_path, $mime_type
 
 ## Changelog
 
+### 1.2.2
+- **Compatibility**: Tested with WordPress 6.9
+- **Compatibility**: Verified PHP 8.4 support
+
 ### 1.2.0
 - **New**: Automatic image resizing on upload
 - **New**: Max width/height settings to limit uploaded image dimensions
