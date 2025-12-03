@@ -21,9 +21,8 @@
             $('#btn-save-file-options').on('click', this.saveFileOptions.bind(this));
             $('#btn-save-general').on('click', this.saveGeneralOptions.bind(this));
 
-            // Legacy save buttons (for backwards compatibility)
+            // Legacy save button (for backwards compatibility with environment)
             $('#btn-save-active-env').on('click', this.saveEnvironment.bind(this));
-            $('#btn-save-settings').on('click', this.saveSettings.bind(this));
 
             // Test connection from credentials tab
             $('#btn-test-credentials').on('click', this.testCredentials.bind(this));
@@ -124,7 +123,7 @@
             });
 
             // Save optimization settings (Optimize page)
-            $('#btn-save-settings').on('click', this.saveOptimizationSettings.bind(this));
+            $('#btn-save-optimize-settings').on('click', this.saveOptimizationSettings.bind(this));
         },
 
         loadInitialData: function () {
@@ -165,10 +164,10 @@
                 const accessKey = $('#access_key').val();
                 const secretKey = $('#secret_key').val();
                 const bucket = $('#bucket').val();
-                
+
                 // R2 requires account_id instead of region
                 let isValid = accessKey && secretKey && bucket;
-                
+
                 if (provider === 'cloudflare_r2') {
                     const accountId = $('#account_id').val();
                     isValid = isValid && accountId;
@@ -491,53 +490,6 @@
             });
         },
 
-        // Save Settings
-        saveSettings: function () {
-            const $btn = $('#btn-save-settings');
-
-            const data = {
-                action: 'media_toolkit_save_settings',
-                nonce: mediaToolkit.nonce,
-                access_key: $('#access_key').val(),
-                secret_key: $('#secret_key').val(),
-                region: $('#region').val(),
-                bucket: $('#bucket').val(),
-                cdn_url: $('#cdn_url').val(),
-                cdn_provider: $('#cdn_provider').val(),
-                cloudflare_zone_id: $('#cloudflare_zone_id').val(),
-                cloudflare_api_token: $('#cloudflare_api_token').val(),
-                cloudfront_distribution_id: $('#cloudfront_distribution_id').val(),
-                cache_control: $('#cache_control').val(),
-                s3_sync_interval: $('#s3_sync_interval').val(),
-                remove_local: $('#remove_local').is(':checked') ? 'true' : 'false',
-                remove_on_uninstall: $('#remove_on_uninstall').is(':checked') ? 'true' : 'false'
-            };
-
-            $btn.prop('disabled', true).text('Saving...');
-
-            $.ajax({
-                url: mediaToolkit.ajaxUrl,
-                method: 'POST',
-                data: data,
-                success: function (response) {
-                    if (response.success) {
-                        MediaToolkit.showNotice('Settings saved successfully!', 'success');
-                        setTimeout(function () {
-                            location.reload();
-                        }, 1000);
-                    } else {
-                        MediaToolkit.showNotice(response.data.message || 'Failed to save settings', 'error');
-                    }
-                },
-                error: function () {
-                    MediaToolkit.showNotice('An error occurred. Please try again.', 'error');
-                },
-                complete: function () {
-                    $btn.prop('disabled', false).text('Save Settings');
-                }
-            });
-        },
-
         // Test connection from settings (uses form values)
         testSettings: function () {
             const $btn = $('#btn-test-settings');
@@ -823,15 +775,17 @@
                 url: mediaToolkit.ajaxUrl,
                 method: 'POST',
                 data: {
-                    action: 'media_toolkit_save_settings',
+                    action: 'media_toolkit_save_sync_interval',
                     nonce: mediaToolkit.nonce,
                     s3_sync_interval: interval
                 },
                 success: function (response) {
-                    // Silently save
+                    if (response.success) {
+                        MediaToolkit.showNotice('Sync interval saved', 'success');
+                    }
                 },
                 error: function () {
-                    alert('Failed to save sync interval');
+                    MediaToolkit.showNotice('Failed to save sync interval', 'error');
                 }
             });
         },

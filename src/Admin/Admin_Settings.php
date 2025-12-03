@@ -64,9 +64,9 @@ final class Admin_Settings
         add_action('wp_ajax_media_toolkit_save_cdn', [$this, 'ajax_save_cdn']);
         add_action('wp_ajax_media_toolkit_save_file_options', [$this, 'ajax_save_file_options']);
         add_action('wp_ajax_media_toolkit_save_general', [$this, 'ajax_save_general']);
+        add_action('wp_ajax_media_toolkit_save_sync_interval', [$this, 'ajax_save_sync_interval']);
         
-        // Legacy/existing handlers
-        add_action('wp_ajax_media_toolkit_save_settings', [$this, 'ajax_save_settings']);
+        // Environment and connection handlers
         add_action('wp_ajax_media_toolkit_save_active_env', [$this, 'ajax_save_active_env']);
         add_action('wp_ajax_media_toolkit_test_connection', [$this, 'ajax_test_connection']);
         add_action('wp_ajax_media_toolkit_test_env_connection', [$this, 'ajax_test_env_connection']);
@@ -243,7 +243,7 @@ final class Admin_Settings
         $current = $this->settings->get_storage_config();
         
         if ($current === null) {
-            wp_send_json_error(['message' => 'Please configure AWS credentials first']);
+            wp_send_json_error(['message' => 'Please configure storage credentials first']);
         }
 
         // If API token is masked (unchanged), get current value
@@ -251,11 +251,13 @@ final class Admin_Settings
             $cloudflare_api_token = $current->cloudflareApiToken;
         }
 
-        $saved = $this->settings->save_config(
+        $saved = $this->settings->save_storage_config(
+            $current->provider,
             $current->accessKey,
             $current->secretKey,
-            $current->region,
             $current->bucket,
+            $current->region,
+            $current->accountId,
             $cdn_url,
             $cdn_provider,
             $cloudflare_zone_id,
@@ -342,9 +344,9 @@ final class Admin_Settings
     }
 
     /**
-     * AJAX: Save settings (legacy - saves all at once)
+     * AJAX: Save sync interval (Tools page)
      */
-    public function ajax_save_settings(): void
+    public function ajax_save_sync_interval(): void
     {
         check_ajax_referer('media_toolkit_nonce', 'nonce');
         
@@ -352,79 +354,21 @@ final class Admin_Settings
             wp_send_json_error(['message' => 'Permission denied']);
         }
 
-        $access_key = sanitize_text_field($_POST['access_key'] ?? '');
-        $secret_key = sanitize_text_field($_POST['secret_key'] ?? '');
-        $region = sanitize_text_field($_POST['region'] ?? '');
-        $bucket = sanitize_text_field($_POST['bucket'] ?? '');
-        $cdn_url = esc_url_raw($_POST['cdn_url'] ?? '');
-        $cdn_provider = sanitize_text_field($_POST['cdn_provider'] ?? 'none');
-        $cloudflare_zone_id = sanitize_text_field($_POST['cloudflare_zone_id'] ?? '');
-        $cloudflare_api_token = sanitize_text_field($_POST['cloudflare_api_token'] ?? '');
-        $cloudfront_dist_id = sanitize_text_field($_POST['cloudfront_distribution_id'] ?? '');
+        if (!isset($_POST['s3_sync_interval'])) {
+            wp_send_json_error(['message' => 'Missing sync interval']);
+        }
 
-        // If keys are masked (unchanged), get current values
-        $current = $this->settings->get_storage_config();
+        $interval = (int) $_POST['s3_sync_interval'];
+        $this->settings->set_s3_sync_interval($interval);
         
-        if (str_contains($access_key, '•') && $current !== null) {
-            $access_key = $current->accessKey;
-        }
-        
-        if (str_contains($secret_key, '•') && $current !== null) {
-            $secret_key = $current->secretKey;
-        }
-        
-        if (str_contains($cloudflare_api_token, '•') && $current !== null) {
-            $cloudflare_api_token = $current->cloudflareApiToken;
-        }
+        // Reschedule cron job with new interval
+        media_toolkit()->schedule_s3_sync();
 
-        $saved = $this->settings->save_config(
-            $access_key,
-            $secret_key,
-            $region,
-            $bucket,
-            $cdn_url,
-            $cdn_provider,
-            $cloudflare_zone_id,
-            $cloudflare_api_token,
-            $cloudfront_dist_id
-        );
-
-        if (!$saved) {
-            wp_send_json_error(['message' => 'Failed to save settings']);
-        }
-
-        // Update other options
-        if (isset($_POST['remove_local'])) {
-            $this->settings->set_remove_local_files($_POST['remove_local'] === 'true');
-        }
-
-        if (isset($_POST['remove_on_uninstall'])) {
-            $this->settings->set_remove_on_uninstall($_POST['remove_on_uninstall'] === 'true');
-        }
-
-        if (isset($_POST['cache_control'])) {
-            $this->settings->set_cache_control_max_age((int) $_POST['cache_control']);
-        }
-
-        if (isset($_POST['s3_sync_interval'])) {
-            $this->settings->set_s3_sync_interval((int) $_POST['s3_sync_interval']);
-            // Reschedule cron job with new interval
-            media_toolkit()->schedule_s3_sync();
-        }
-
-        // Reset S3 client to use new settings
-        $this->storage?->reset_client();
-
-        // Record in history
-        $this->history->record(
-            HistoryAction::SETTINGS_CHANGED
-        );
-
-        $this->logger->info('settings', 'Settings updated');
+        $this->logger->info('settings', "Sync interval updated to {$interval} hours");
 
         wp_send_json_success([
-            'message' => 'Settings saved successfully',
-            'data' => $this->get_settings_data(),
+            'message' => 'Sync interval saved successfully',
+            'interval' => $interval,
         ]);
     }
 

@@ -32,6 +32,19 @@ if ($settings) {
 $bannerPath = MEDIA_TOOLKIT_PATH . 'assets/images/banner-1544x500.png';
 $bannerUrl = MEDIA_TOOLKIT_URL . 'assets/images/banner-1544x500.png';
 $hasBanner = file_exists($bannerPath);
+
+// Environment and provider info
+$active_environment = $settings ? $settings->get_active_environment() : \Metodo\MediaToolkit\Core\Environment::PRODUCTION;
+$storage_provider = $settings ? $settings->get_storage_provider() : null;
+$storage_config = $settings ? $settings->get_storage_config() : null;
+
+// Environment colors
+$env_colors = [
+    'develop' => ['bg' => 'bg-blue-100', 'text' => 'text-blue-800', 'border' => 'border-blue-300', 'icon' => 'text-blue-600'],
+    'staging' => ['bg' => 'bg-amber-100', 'text' => 'text-amber-800', 'border' => 'border-amber-300', 'icon' => 'text-amber-600'],
+    'production' => ['bg' => 'bg-green-100', 'text' => 'text-green-800', 'border' => 'border-green-300', 'icon' => 'text-green-600'],
+];
+$env_color = $env_colors[$active_environment->value] ?? $env_colors['production'];
 ?>
 
 <div class="wrap mt-wrap">
@@ -59,6 +72,79 @@ $hasBanner = file_exists($bannerPath);
             <p class="text-lg text-gray-500 max-w-xl"><?php esc_html_e('Complete media management toolkit for WordPress. Cloud storage offloading, CDN integration, and image optimization.', 'media-toolkit'); ?></p>
         </header>
         <?php endif; ?>
+
+        <!-- Environment & Provider Info -->
+        <div class="flex flex-wrap gap-4">
+            <!-- Active Environment -->
+            <div class="flex items-center gap-3 px-4 py-3 rounded-lg border <?php echo esc_attr($env_color['bg'] . ' ' . $env_color['border']); ?>">
+                <span class="dashicons dashicons-admin-site-alt3 <?php echo esc_attr($env_color['icon']); ?>"></span>
+                <div>
+                    <span class="block text-xs font-medium text-gray-500 uppercase tracking-wider"><?php esc_html_e('Environment', 'media-toolkit'); ?></span>
+                    <span class="block text-sm font-bold <?php echo esc_attr($env_color['text']); ?>"><?php echo esc_html(ucfirst($active_environment->value)); ?></span>
+                </div>
+            </div>
+            
+            <!-- Storage Provider -->
+            <?php if ($is_configured && $storage_provider): ?>
+            <div class="flex items-center gap-3 px-4 py-3 rounded-lg border bg-gray-50 border-gray-200">
+                <span class="dashicons dashicons-cloud text-gray-600"></span>
+                <div>
+                    <span class="block text-xs font-medium text-gray-500 uppercase tracking-wider"><?php esc_html_e('Storage Provider', 'media-toolkit'); ?></span>
+                    <span class="block text-sm font-bold text-gray-800"><?php echo esc_html($storage_provider->label()); ?></span>
+                </div>
+            </div>
+            
+            <!-- Bucket -->
+            <?php if ($storage_config && $storage_config->bucket): ?>
+            <div class="flex items-center gap-3 px-4 py-3 rounded-lg border bg-gray-50 border-gray-200">
+                <span class="dashicons dashicons-portfolio text-gray-600"></span>
+                <div>
+                    <span class="block text-xs font-medium text-gray-500 uppercase tracking-wider"><?php esc_html_e('Bucket', 'media-toolkit'); ?></span>
+                    <span class="block text-sm font-bold text-gray-800"><?php echo esc_html($storage_config->bucket); ?></span>
+                </div>
+            </div>
+            <?php endif; ?>
+            
+            <!-- Region (if applicable) -->
+            <?php if ($storage_config && $storage_config->region && $storage_config->region !== 'auto'): ?>
+            <div class="flex items-center gap-3 px-4 py-3 rounded-lg border bg-gray-50 border-gray-200">
+                <span class="dashicons dashicons-location text-gray-600"></span>
+                <div>
+                    <span class="block text-xs font-medium text-gray-500 uppercase tracking-wider"><?php esc_html_e('Region', 'media-toolkit'); ?></span>
+                    <span class="block text-sm font-bold text-gray-800"><?php echo esc_html($storage_config->region); ?></span>
+                </div>
+            </div>
+            <?php endif; ?>
+            
+            <!-- CDN (if configured) -->
+            <?php if ($storage_config && $storage_config->cdnProvider !== \Metodo\MediaToolkit\CDN\CDNProvider::NONE && $storage_config->cdnUrl): ?>
+            <div class="flex items-center gap-3 px-4 py-3 rounded-lg border bg-purple-50 border-purple-200">
+                <span class="dashicons dashicons-performance text-purple-600"></span>
+                <div>
+                    <span class="block text-xs font-medium text-gray-500 uppercase tracking-wider"><?php esc_html_e('CDN', 'media-toolkit'); ?></span>
+                    <span class="block text-sm font-bold text-purple-800">
+                        <?php 
+                        $cdn_labels = [
+                            'cloudfront' => 'CloudFront',
+                            'cloudflare' => 'Cloudflare',
+                            'other' => __('Custom CDN', 'media-toolkit'),
+                        ];
+                        echo esc_html($cdn_labels[$storage_config->cdnProvider->value] ?? $storage_config->cdnProvider->value);
+                        ?>
+                    </span>
+                </div>
+            </div>
+            <?php endif; ?>
+            <?php else: ?>
+            <div class="flex items-center gap-3 px-4 py-3 rounded-lg border bg-gray-100 border-gray-300">
+                <span class="dashicons dashicons-warning text-gray-500"></span>
+                <div>
+                    <span class="block text-xs font-medium text-gray-500 uppercase tracking-wider"><?php esc_html_e('Storage Provider', 'media-toolkit'); ?></span>
+                    <span class="block text-sm font-medium text-gray-500"><?php esc_html_e('Not configured', 'media-toolkit'); ?></span>
+                </div>
+            </div>
+            <?php endif; ?>
+        </div>
 
         <?php if (!$is_configured): ?>
         <!-- Setup Alert -->
