@@ -27,10 +27,25 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'migrati
 $s3_stats = $settings ? $settings->get_cached_s3_stats() : null;
 $sync_interval = $settings ? $settings->get_s3_sync_interval() : 24;
 $cache_control = $settings ? $settings->get_cache_control_max_age() : 31536000;
+
+$bannerPath = MEDIA_TOOLKIT_PATH . 'assets/images/banner-1544x500.png';
+$bannerUrl = MEDIA_TOOLKIT_URL . 'assets/images/banner-1544x500.png';
+$hasBanner = file_exists($bannerPath);
 ?>
 
 <div class="wrap mt-wrap">
     <div class="flex flex-col gap-6 max-w-7xl mx-auto py-5 px-6">
+        <?php if ($hasBanner): ?>
+        <!-- Hero Banner -->
+        <div class="mt-hero">
+            <img src="<?php echo esc_url($bannerUrl); ?>" alt="Media Toolkit" class="mt-hero-banner">
+            <div class="mt-hero-overlay">
+                <h1 class="mt-hero-title"><?php esc_html_e('Tools', 'media-toolkit'); ?></h1>
+                <p class="mt-hero-description"><?php esc_html_e('Migration and maintenance tools for your media files.', 'media-toolkit'); ?></p>
+                <span class="mt-hero-version">v<?php echo esc_html(MEDIA_TOOLKIT_VERSION); ?></span>
+            </div>
+        </div>
+        <?php else: ?>
         <!-- Header -->
         <header>
             <h1 class="flex items-center gap-4 text-3xl font-bold text-gray-900 tracking-tight mb-2">
@@ -41,6 +56,7 @@ $cache_control = $settings ? $settings->get_cache_control_max_age() : 31536000;
             </h1>
             <p class="text-lg text-gray-500 max-w-xl"><?php esc_html_e('Migration and maintenance tools for your media files.', 'media-toolkit'); ?></p>
         </header>
+        <?php endif; ?>
 
         <!-- Tab Navigation -->
         <nav class="flex flex-wrap gap-1 p-1 bg-gray-100 rounded-xl">
@@ -149,7 +165,7 @@ $cache_control = $settings ? $settings->get_cache_control_max_age() : 31536000;
                         <div class="space-y-4">
                             <div>
                                 <label for="batch-size" class="block text-sm font-medium text-gray-700 mb-2"><?php esc_html_e('Batch Size', 'media-toolkit'); ?></label>
-                                <select id="batch-size" class="w-full px-4 py-2.5 text-sm bg-white border border-gray-300 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all">
+                                <select id="batch-size" class="mt-select w-full px-4 py-2.5 text-sm bg-white border border-gray-300 rounded-lg outline-none transition-all">
                                     <option value="10"><?php esc_html_e('10 files per batch', 'media-toolkit'); ?></option>
                                     <option value="25" selected><?php esc_html_e('25 files per batch', 'media-toolkit'); ?></option>
                                     <option value="50"><?php esc_html_e('50 files per batch', 'media-toolkit'); ?></option>
@@ -320,7 +336,7 @@ $cache_control = $settings ? $settings->get_cache_control_max_age() : 31536000;
                     
                     <div class="mb-5 max-w-xs">
                         <label for="s3_sync_interval" class="block text-sm font-medium text-gray-700 mb-2"><?php esc_html_e('Auto Sync Interval', 'media-toolkit'); ?></label>
-                        <select name="s3_sync_interval" id="s3_sync_interval" class="w-full px-4 py-2.5 text-sm bg-white border border-gray-300 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all">
+                        <select name="s3_sync_interval" id="s3_sync_interval" class="mt-select w-full px-4 py-2.5 text-sm bg-white border border-gray-300 rounded-lg outline-none transition-all">
                             <option value="0" <?php selected($sync_interval, 0); ?>><?php esc_html_e('Disabled', 'media-toolkit'); ?></option>
                             <option value="1" <?php selected($sync_interval, 1); ?>><?php esc_html_e('Every hour', 'media-toolkit'); ?></option>
                             <option value="6" <?php selected($sync_interval, 6); ?>><?php esc_html_e('Every 6 hours', 'media-toolkit'); ?></option>
@@ -406,7 +422,7 @@ $cache_control = $settings ? $settings->get_cache_control_max_age() : 31536000;
                         
                         <div>
                             <label for="cache_control_value" class="block text-sm font-medium text-gray-700 mb-2"><?php esc_html_e('Cache-Control Value', 'media-toolkit'); ?></label>
-                            <select id="cache_control_value" class="w-full px-4 py-2.5 text-sm bg-white border border-gray-300 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all">
+                            <select id="cache_control_value" class="mt-select w-full px-4 py-2.5 text-sm bg-white border border-gray-300 rounded-lg outline-none transition-all">
                                 <option value="0" <?php selected($cache_control, 0); ?>><?php esc_html_e('No cache (no-cache, no-store)', 'media-toolkit'); ?></option>
                                 <option value="86400" <?php selected($cache_control, 86400); ?>><?php esc_html_e('1 day', 'media-toolkit'); ?></option>
                                 <option value="604800" <?php selected($cache_control, 604800); ?>><?php esc_html_e('1 week', 'media-toolkit'); ?></option>
@@ -603,7 +619,7 @@ $cache_control = $settings ? $settings->get_cache_control_max_age() : 31536000;
                         </h4>
                         <div class="mb-4">
                             <label for="recon-batch-size" class="block text-sm font-medium text-gray-700 mb-2"><?php esc_html_e('Batch Size', 'media-toolkit'); ?></label>
-                            <select id="recon-batch-size" class="w-full px-4 py-2.5 text-sm bg-white border border-gray-300 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all">
+                            <select id="recon-batch-size" class="mt-select w-full px-4 py-2.5 text-sm bg-white border border-gray-300 rounded-lg outline-none transition-all">
                                 <option value="25"><?php esc_html_e('25 files per batch', 'media-toolkit'); ?></option>
                                 <option value="50" selected><?php esc_html_e('50 files per batch', 'media-toolkit'); ?></option>
                                 <option value="100"><?php esc_html_e('100 files per batch', 'media-toolkit'); ?></option>

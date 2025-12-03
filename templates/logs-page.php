@@ -15,10 +15,25 @@ use Metodo\MediaToolkit\Database\OptimizationTable;
 
 // Get optimization stats for the tab badge
 $opt_stats = OptimizationTable::table_exists() ? OptimizationTable::get_aggregate_stats() : null;
+
+$bannerPath = MEDIA_TOOLKIT_PATH . 'assets/images/banner-1544x500.png';
+$bannerUrl = MEDIA_TOOLKIT_URL . 'assets/images/banner-1544x500.png';
+$hasBanner = file_exists($bannerPath);
 ?>
 
 <div class="wrap mt-wrap">
     <div class="flex flex-col gap-6 max-w-7xl mx-auto py-5 px-6">
+        <?php if ($hasBanner): ?>
+        <!-- Hero Banner -->
+        <div class="mt-hero">
+            <img src="<?php echo esc_url($bannerUrl); ?>" alt="Media Toolkit" class="mt-hero-banner">
+            <div class="mt-hero-overlay">
+                <h1 class="mt-hero-title"><?php esc_html_e('Logs & Status', 'media-toolkit'); ?></h1>
+                <p class="mt-hero-description"><?php esc_html_e('Monitor activity logs and optimization status', 'media-toolkit'); ?></p>
+                <span class="mt-hero-version">v<?php echo esc_html(MEDIA_TOOLKIT_VERSION); ?></span>
+            </div>
+        </div>
+        <?php else: ?>
         <!-- Header -->
         <header>
             <h1 class="flex items-center gap-4 text-3xl font-bold text-gray-900 tracking-tight mb-2">
@@ -29,6 +44,7 @@ $opt_stats = OptimizationTable::table_exists() ? OptimizationTable::get_aggregat
             </h1>
             <p class="text-lg text-gray-500 max-w-xl"><?php esc_html_e('Monitor activity logs and optimization status', 'media-toolkit'); ?></p>
         </header>
+        <?php endif; ?>
 
         <!-- Tabs Navigation -->
         <nav class="flex flex-wrap gap-1 p-1 bg-gray-100 rounded-xl">
@@ -54,7 +70,7 @@ $opt_stats = OptimizationTable::table_exists() ? OptimizationTable::get_aggregat
                 <!-- Filters Header -->
                 <div class="flex flex-wrap items-center justify-between gap-4 px-6 py-4 bg-gradient-to-b from-gray-50 to-gray-100 border-b border-gray-200">
                     <div class="flex flex-wrap items-center gap-3">
-                        <select id="filter-log-level" class="px-4 py-2 text-sm bg-white border border-gray-300 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all">
+                        <select id="filter-log-level" class="mt-select px-4 py-2 text-sm bg-white border border-gray-300 rounded-lg outline-none transition-all">
                             <option value=""><?php esc_html_e('All Levels', 'media-toolkit'); ?></option>
                             <option value="info"><?php esc_html_e('Info', 'media-toolkit'); ?></option>
                             <option value="warning"><?php esc_html_e('Warning', 'media-toolkit'); ?></option>
@@ -62,7 +78,7 @@ $opt_stats = OptimizationTable::table_exists() ? OptimizationTable::get_aggregat
                             <option value="success"><?php esc_html_e('Success', 'media-toolkit'); ?></option>
                         </select>
                         
-                        <select id="filter-log-operation" class="px-4 py-2 text-sm bg-white border border-gray-300 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all">
+                        <select id="filter-log-operation" class="mt-select px-4 py-2 text-sm bg-white border border-gray-300 rounded-lg outline-none transition-all">
                             <option value=""><?php esc_html_e('All Operations', 'media-toolkit'); ?></option>
                         </select>
                         
@@ -176,7 +192,7 @@ $opt_stats = OptimizationTable::table_exists() ? OptimizationTable::get_aggregat
                 <!-- Filters Header -->
                 <div class="flex flex-wrap items-center justify-between gap-4 px-6 py-4 bg-gradient-to-b from-gray-50 to-gray-100 border-b border-gray-200">
                     <div class="flex flex-wrap items-center gap-3">
-                        <select id="filter-opt-status" class="px-4 py-2 text-sm bg-white border border-gray-300 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all">
+                        <select id="filter-opt-status" class="mt-select px-4 py-2 text-sm bg-white border border-gray-300 rounded-lg outline-none transition-all">
                             <option value=""><?php esc_html_e('All Status', 'media-toolkit'); ?></option>
                             <option value="optimized"><?php esc_html_e('Optimized', 'media-toolkit'); ?></option>
                             <option value="pending"><?php esc_html_e('Pending', 'media-toolkit'); ?></option>

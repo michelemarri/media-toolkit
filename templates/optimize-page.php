@@ -287,7 +287,7 @@ $hasBanner = file_exists($bannerPath);
 
                         <div>
                             <label for="max-file-size" class="block text-sm font-semibold text-gray-900 mb-2"><?php esc_html_e('Max File Size (MB)', 'media-toolkit'); ?></label>
-                            <select id="max-file-size" class="w-full max-w-xs px-4 py-2.5 text-sm bg-white border border-gray-300 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all">
+                            <select id="max-file-size" class="mt-select w-full max-w-xs px-4 py-2.5 text-sm bg-white border border-gray-300 rounded-lg outline-none transition-all">
                                 <option value="5" <?php selected($opt_settings['max_file_size_mb'], 5); ?>>5 MB</option>
                                 <option value="10" <?php selected($opt_settings['max_file_size_mb'], 10); ?>>10 MB</option>
                                 <option value="20" <?php selected($opt_settings['max_file_size_mb'], 20); ?>>20 MB</option>
@@ -324,7 +324,7 @@ $hasBanner = file_exists($bannerPath);
                     <div class="p-6">
                         <div class="mb-5">
                             <label for="batch-size" class="block text-sm font-semibold text-gray-900 mb-2"><?php esc_html_e('Batch Size', 'media-toolkit'); ?></label>
-                            <select id="batch-size" class="w-full max-w-xs px-4 py-2.5 text-sm bg-white border border-gray-300 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all">
+                            <select id="batch-size" class="mt-select w-full max-w-xs px-4 py-2.5 text-sm bg-white border border-gray-300 rounded-lg outline-none transition-all">
                                 <option value="10"><?php esc_html_e('10 images per batch', 'media-toolkit'); ?></option>
                                 <option value="25" selected><?php esc_html_e('25 images per batch', 'media-toolkit'); ?></option>
                                 <option value="50"><?php esc_html_e('50 images per batch', 'media-toolkit'); ?></option>
@@ -464,7 +464,7 @@ $hasBanner = file_exists($bannerPath);
                         <div>
                             <label for="resize-max-width" class="block text-sm font-semibold text-gray-900 mb-2"><?php esc_html_e('Max Width (pixels)', 'media-toolkit'); ?></label>
                             <input type="number" id="resize-max-width" min="0" max="10000" step="1" value="<?php echo esc_attr($resize_settings['max_width']); ?>" 
-                                   class="w-full max-w-xs px-4 py-2.5 text-sm bg-white border border-gray-300 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all">
+                                   class="mt-select w-full max-w-xs px-4 py-2.5 text-sm bg-white border border-gray-300 rounded-lg outline-none transition-all">
                             <p class="mt-2 text-sm text-gray-500"><?php esc_html_e('Set to 0 for no width limit. Recommended: 2560 for retina displays', 'media-toolkit'); ?></p>
                         </div>
 
@@ -472,7 +472,7 @@ $hasBanner = file_exists($bannerPath);
                         <div>
                             <label for="resize-max-height" class="block text-sm font-semibold text-gray-900 mb-2"><?php esc_html_e('Max Height (pixels)', 'media-toolkit'); ?></label>
                             <input type="number" id="resize-max-height" min="0" max="10000" step="1" value="<?php echo esc_attr($resize_settings['max_height']); ?>" 
-                                   class="w-full max-w-xs px-4 py-2.5 text-sm bg-white border border-gray-300 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all">
+                                   class="mt-select w-full max-w-xs px-4 py-2.5 text-sm bg-white border border-gray-300 rounded-lg outline-none transition-all">
                             <p class="mt-2 text-sm text-gray-500"><?php esc_html_e('Set to 0 for no height limit. Recommended: 2560 for retina displays', 'media-toolkit'); ?></p>
                         </div>
 

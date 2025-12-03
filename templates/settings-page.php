@@ -29,10 +29,25 @@ if ($settings) {
 }
 
 $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'environment';
+
+$bannerPath = MEDIA_TOOLKIT_PATH . 'assets/images/banner-1544x500.png';
+$bannerUrl = MEDIA_TOOLKIT_URL . 'assets/images/banner-1544x500.png';
+$hasBanner = file_exists($bannerPath);
 ?>
 
 <div class="wrap mt-wrap">
     <div class="flex flex-col gap-6 max-w-7xl mx-auto py-5 px-6">
+        <?php if ($hasBanner): ?>
+        <!-- Hero Banner -->
+        <div class="mt-hero">
+            <img src="<?php echo esc_url($bannerUrl); ?>" alt="Media Toolkit" class="mt-hero-banner">
+            <div class="mt-hero-overlay">
+                <h1 class="mt-hero-title"><?php esc_html_e('Settings', 'media-toolkit'); ?></h1>
+                <p class="mt-hero-description"><?php esc_html_e('Configure AWS S3 and CDN settings for your media files.', 'media-toolkit'); ?></p>
+                <span class="mt-hero-version">v<?php echo esc_html(MEDIA_TOOLKIT_VERSION); ?></span>
+            </div>
+        </div>
+        <?php else: ?>
         <!-- Header -->
         <header>
             <h1 class="flex items-center gap-4 text-3xl font-bold text-gray-900 tracking-tight mb-2">
@@ -45,6 +60,7 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'environ
                 <?php esc_html_e('Configure AWS S3 and CDN settings for your media files.', 'media-toolkit'); ?>
             </p>
         </header>
+        <?php endif; ?>
 
         <!-- Tab Navigation -->
         <nav class="flex flex-wrap gap-1 p-1 bg-gray-100 rounded-xl">
@@ -103,7 +119,7 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'environ
                     <form id="s3-environment-form">
                         <div class="max-w-xs mb-6">
                             <label for="active-environment" class="block text-sm font-semibold text-gray-900 mb-2"><?php esc_html_e('Environment', 'media-toolkit'); ?></label>
-                            <select name="active_environment" id="active-environment" class="w-full px-4 py-2.5 text-sm bg-white border border-gray-300 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all">
+                            <select name="active_environment" id="active-environment" class="mt-select w-full px-4 py-2.5 text-sm bg-white border border-gray-300 rounded-lg outline-none transition-all">
                                 <?php foreach (Environment::cases() as $env): ?>
                                     <option value="<?php echo esc_attr($env->value); ?>" <?php selected($active_environment, $env->value); ?>>
                                         <?php echo esc_html(ucfirst($env->value)); ?>
@@ -148,7 +164,7 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'environ
                             <label for="access_key" class="block text-sm font-semibold text-gray-900 mb-2"><?php esc_html_e('AWS Access Key', 'media-toolkit'); ?></label>
                             <input type="text" name="access_key" id="access_key" 
                                    value="<?php echo esc_attr($credentials['access_key'] ?? ''); ?>"
-                                   class="w-full px-4 py-2.5 text-sm bg-white border border-gray-300 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all" autocomplete="off"
+                                   class="w-full px-4 py-2.5 mt-input text-sm bg-white border border-gray-300 rounded-lg outline-none transition-all" autocomplete="off"
                                    placeholder="AKIAIOSFODNN7EXAMPLE">
                         </div>
                         
@@ -156,13 +172,13 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'environ
                             <label for="secret_key" class="block text-sm font-semibold text-gray-900 mb-2"><?php esc_html_e('AWS Secret Key', 'media-toolkit'); ?></label>
                             <input type="password" name="secret_key" id="secret_key" 
                                    value="<?php echo esc_attr($credentials['secret_key'] ?? ''); ?>"
-                                   class="w-full px-4 py-2.5 text-sm bg-white border border-gray-300 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all" autocomplete="off"
+                                   class="w-full px-4 py-2.5 mt-input text-sm bg-white border border-gray-300 rounded-lg outline-none transition-all" autocomplete="off"
                                    placeholder="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY">
                         </div>
                         
                         <div>
                             <label for="region" class="block text-sm font-semibold text-gray-900 mb-2"><?php esc_html_e('AWS Region', 'media-toolkit'); ?></label>
-                            <select name="region" id="region" class="w-full px-4 py-2.5 text-sm bg-white border border-gray-300 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all">
+                            <select name="region" id="region" class="mt-select w-full px-4 py-2.5 text-sm bg-white border border-gray-300 rounded-lg outline-none transition-all">
                                 <option value=""><?php esc_html_e('Select Region', 'media-toolkit'); ?></option>
                                 <option value="us-east-1" <?php selected($credentials['region'] ?? '', 'us-east-1'); ?>>US East (N. Virginia)</option>
                                 <option value="us-east-2" <?php selected($credentials['region'] ?? '', 'us-east-2'); ?>>US East (Ohio)</option>
@@ -183,7 +199,7 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'environ
                             <label for="bucket" class="block text-sm font-semibold text-gray-900 mb-2"><?php esc_html_e('S3 Bucket Name', 'media-toolkit'); ?></label>
                             <input type="text" name="bucket" id="bucket" 
                                    value="<?php echo esc_attr($credentials['bucket'] ?? ''); ?>"
-                                   class="w-full px-4 py-2.5 text-sm bg-white border border-gray-300 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all"
+                                   class="mt-input w-full px-4 py-2.5 text-sm bg-white border border-gray-300 rounded-lg outline-none transition-all"
                                    placeholder="my-bucket-name">
                         </div>
                     </div>
@@ -224,7 +240,7 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'environ
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                         <div>
                             <label for="cdn_provider" class="block text-sm font-semibold text-gray-900 mb-2"><?php esc_html_e('CDN Provider', 'media-toolkit'); ?></label>
-                            <select name="cdn_provider" id="cdn_provider" class="w-full px-4 py-2.5 text-sm bg-white border border-gray-300 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all">
+                            <select name="cdn_provider" id="cdn_provider" class="mt-select w-full px-4 py-2.5 text-sm bg-white border border-gray-300 rounded-lg outline-none transition-all">
                                 <option value="none" <?php selected($credentials['cdn_provider'] ?? 'none', 'none'); ?>><?php esc_html_e('None (direct S3 URLs)', 'media-toolkit'); ?></option>
                                 <option value="cloudflare" <?php selected($credentials['cdn_provider'] ?? '', 'cloudflare'); ?>>Cloudflare</option>
                                 <option value="cloudfront" <?php selected($credentials['cdn_provider'] ?? '', 'cloudfront'); ?>>CloudFront</option>
@@ -236,7 +252,7 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'environ
                             <label for="cdn_url" class="block text-sm font-semibold text-gray-900 mb-2"><?php esc_html_e('CDN URL', 'media-toolkit'); ?></label>
                             <input type="url" name="cdn_url" id="cdn_url" 
                                    value="<?php echo esc_attr($credentials['cdn_url'] ?? ''); ?>"
-                                   class="w-full px-4 py-2.5 text-sm bg-white border border-gray-300 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all"
+                                   class="mt-input w-full px-4 py-2.5 text-sm bg-white border border-gray-300 rounded-lg outline-none transition-all"
                                    placeholder="https://media.example.com">
                             <p class="mt-2 text-sm text-gray-500"><?php esc_html_e('The public URL to access your files through the CDN', 'media-toolkit'); ?></p>
                         </div>
@@ -254,7 +270,7 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'environ
                                 <label for="cloudflare_zone_id" class="block text-sm font-medium text-gray-700 mb-2"><?php esc_html_e('Zone ID', 'media-toolkit'); ?></label>
                                 <input type="text" name="cloudflare_zone_id" id="cloudflare_zone_id" 
                                        value="<?php echo esc_attr($credentials['cloudflare_zone_id'] ?? ''); ?>"
-                                       class="w-full px-4 py-2.5 text-sm bg-white border border-gray-300 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all"
+                                       class="mt-select w-full px-4 py-2.5 text-sm bg-white border border-gray-300 rounded-lg outline-none transition-all"
                                        placeholder="abc123def456...">
                                 <p class="mt-1 text-sm text-gray-500"><?php esc_html_e('Found in Cloudflare Dashboard → Your site → Overview', 'media-toolkit'); ?></p>
                             </div>
@@ -263,7 +279,7 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'environ
                                 <label for="cloudflare_api_token" class="block text-sm font-medium text-gray-700 mb-2"><?php esc_html_e('API Token', 'media-toolkit'); ?></label>
                                 <input type="password" name="cloudflare_api_token" id="cloudflare_api_token" 
                                        value="<?php echo esc_attr($credentials['cloudflare_api_token'] ?? ''); ?>"
-                                       class="w-full px-4 py-2.5 text-sm bg-white border border-gray-300 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all" autocomplete="off">
+                                       class="mt-input w-full outline-none transition-all" autocomplete="off">
                                 <p class="mt-1 text-sm text-gray-500"><?php esc_html_e('Create a token with "Zone.Cache Purge" permission', 'media-toolkit'); ?></p>
                             </div>
                         </div>
@@ -279,7 +295,7 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'environ
                             <label for="cloudfront_distribution_id" class="block text-sm font-medium text-gray-700 mb-2"><?php esc_html_e('Distribution ID', 'media-toolkit'); ?></label>
                             <input type="text" name="cloudfront_distribution_id" id="cloudfront_distribution_id" 
                                    value="<?php echo esc_attr($credentials['cloudfront_distribution_id'] ?? ''); ?>"
-                                   class="w-full px-4 py-2.5 text-sm bg-white border border-gray-300 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all"
+                                   class="mt-select w-full px-4 py-2.5 text-sm bg-white border border-gray-300 rounded-lg outline-none transition-all"
                                    placeholder="E1A2B3C4D5F6G7">
                             <p class="mt-1 text-sm text-gray-500"><?php esc_html_e('Required for cache invalidation', 'media-toolkit'); ?></p>
                         </div>
@@ -318,7 +334,7 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'environ
                         
                         <div class="max-w-lg">
                             <label for="cache_control" class="block text-sm font-semibold text-gray-900 mb-2"><?php esc_html_e('Cache-Control for New Uploads', 'media-toolkit'); ?></label>
-                            <select name="cache_control" id="cache_control" class="w-full px-4 py-2.5 text-sm bg-white border border-gray-300 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all">
+                            <select name="cache_control" id="cache_control" class="mt-select w-full px-4 py-2.5 text-sm bg-white border border-gray-300 rounded-lg outline-none transition-all">
                                 <option value="0" <?php selected($cache_control, 0); ?>><?php esc_html_e('No cache (no-cache, no-store)', 'media-toolkit'); ?></option>
                                 <option value="86400" <?php selected($cache_control, 86400); ?>><?php esc_html_e('1 day (86,400 seconds)', 'media-toolkit'); ?></option>
                                 <option value="604800" <?php selected($cache_control, 604800); ?>><?php esc_html_e('1 week (604,800 seconds)', 'media-toolkit'); ?></option>
@@ -399,7 +415,7 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'environ
                                     <td class="px-4 py-3">
                                         <select name="content_disposition_<?php echo esc_attr($type); ?>" 
                                                 id="content_disposition_<?php echo esc_attr($type); ?>" 
-                                                class="px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all">
+                                                class="mt-select px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg outline-none transition-all">
                                             <option value="inline" <?php selected($content_disposition[$type] ?? $config['default'], 'inline'); ?>>
                                                 <?php esc_html_e('Inline', 'media-toolkit'); ?>
                                             </option>
@@ -565,7 +581,7 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'environ
                                                    id="github_token"
                                                    value="<?php echo $has_token ? '••••••••••••••••' : ''; ?>"
                                                    placeholder="<?php esc_attr_e('ghp_xxxxxxxxxxxxxxxxxxxx', 'media-toolkit'); ?>"
-                                                   class="flex-1 px-4 py-2.5 text-sm font-mono bg-white border border-gray-300 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all"
+                                                   class="mt-input flex-1"
                                                    autocomplete="off">
                                             <button type="button" class="inline-flex items-center justify-center w-10 h-10 text-gray-500 bg-white hover:bg-gray-50 rounded-lg transition-all" id="btn-toggle-password">
                                                 <span class="dashicons dashicons-visibility"></span>

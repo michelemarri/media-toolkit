@@ -129,11 +129,11 @@
   @apply absolute left-1 top-1 h-5 w-5 rounded-full bg-white shadow transition-transform duration-200;
 }
 
-.mt-toggle input:checked + .mt-toggle-slider {
+.mt-toggle input:checked+.mt-toggle-slider {
   @apply bg-gray-800;
 }
 
-.mt-toggle input:checked + .mt-toggle-slider::before {
+.mt-toggle input:checked+.mt-toggle-slider::before {
   transform: translateX(20px);
 }
 
@@ -141,7 +141,7 @@
   @apply bg-gray-400;
 }
 
-.mt-toggle input:checked + .mt-toggle-slider:hover {
+.mt-toggle input:checked+.mt-toggle-slider:hover {
   @apply bg-gray-700;
 }
 
@@ -366,6 +366,45 @@
 .mt-wrap [type="submit"],
 .mt-wrap [type="reset"] {
   cursor: pointer;
+}
+
+/* Custom Select - Override WP admin styles */
+.mt-wrap select.mt-select,
+.mt-wrap .mt-select {
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+  @apply cursor-pointer pr-10 bg-no-repeat;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E") !important;
+  background-position: right 0.5rem center !important;
+  background-size: 1.5em 1.5em !important;
+  border: 1px solid rgb(209 213 219/var(--tw-border-opacity, 1));
+  border-radius: 0.5rem !important;
+  padding: 0.2rem 2.5rem 0.2rem 1rem !important;
+  min-height: 38px !important;
+}
+
+.mt-wrap select.mt-input,
+.mt-wrap .mt-input {
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+  border: 1px solid rgb(209 213 219/var(--tw-border-opacity, 1));
+  border-radius: 0.5rem !important;
+  padding: 0.2rem 1rem 0.2rem 1rem !important;
+  min-height: 38px !important;
+}
+
+.mt-wrap select.mt-select:hover,
+.mt-wrap .mt-select:hover {
+  @apply border-gray-400;
+}
+
+.mt-wrap select.mt-select:focus,
+.mt-wrap .mt-select:focus {
+  @apply border-gray-500 ring-2 ring-gray-200;
+  box-shadow: 0 0 0 2px rgb(229 231 235) !important;
+  outline: none !important;
 }
 
 /* Range input styling */

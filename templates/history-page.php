@@ -17,10 +17,25 @@ $stats = new \Metodo\MediaToolkit\Stats\Stats(
     $plugin->get_history()
 );
 $history_stats = $stats->get_history_stats();
+
+$bannerPath = MEDIA_TOOLKIT_PATH . 'assets/images/banner-1544x500.png';
+$bannerUrl = MEDIA_TOOLKIT_URL . 'assets/images/banner-1544x500.png';
+$hasBanner = file_exists($bannerPath);
 ?>
 
 <div class="wrap mt-wrap">
     <div class="flex flex-col gap-6 max-w-7xl mx-auto py-5 px-6">
+        <?php if ($hasBanner): ?>
+        <!-- Hero Banner -->
+        <div class="mt-hero">
+            <img src="<?php echo esc_url($bannerUrl); ?>" alt="Media Toolkit" class="mt-hero-banner">
+            <div class="mt-hero-overlay">
+                <h1 class="mt-hero-title"><?php esc_html_e('Operation History', 'media-toolkit'); ?></h1>
+                <p class="mt-hero-description"><?php esc_html_e('Permanent record of all S3 operations', 'media-toolkit'); ?></p>
+                <span class="mt-hero-version">v<?php echo esc_html(MEDIA_TOOLKIT_VERSION); ?></span>
+            </div>
+        </div>
+        <?php else: ?>
         <!-- Header -->
         <header>
             <h1 class="flex items-center gap-4 text-3xl font-bold text-gray-900 tracking-tight mb-2">
@@ -31,6 +46,7 @@ $history_stats = $stats->get_history_stats();
             </h1>
             <p class="text-lg text-gray-500 max-w-xl"><?php esc_html_e('Permanent record of all S3 operations', 'media-toolkit'); ?></p>
         </header>
+        <?php endif; ?>
 
         <!-- Stats Grid -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
@@ -80,7 +96,7 @@ $history_stats = $stats->get_history_stats();
             <!-- Filters Header -->
             <div class="flex flex-wrap items-center justify-between gap-4 px-6 py-4 bg-gradient-to-b from-gray-50 to-gray-100 border-b border-gray-200">
                 <div class="flex flex-wrap items-center gap-3">
-                    <select id="filter-history-action" class="px-4 py-2 text-sm bg-white border border-gray-300 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all">
+                    <select id="filter-history-action" class="mt-select px-4 py-2 text-sm bg-white border border-gray-300 rounded-lg outline-none transition-all">
                         <option value=""><?php esc_html_e('All Actions', 'media-toolkit'); ?></option>
                         <option value="uploaded"><?php esc_html_e('Uploaded', 'media-toolkit'); ?></option>
                         <option value="migrated"><?php esc_html_e('Migrated', 'media-toolkit'); ?></option>
@@ -89,9 +105,9 @@ $history_stats = $stats->get_history_stats();
                         <option value="invalidation"><?php esc_html_e('Invalidation', 'media-toolkit'); ?></option>
                     </select>
                     
-                    <input type="date" id="filter-date-from" class="px-4 py-2 text-sm bg-white border border-gray-300 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all" placeholder="<?php esc_attr_e('From', 'media-toolkit'); ?>">
+                    <input type="date" id="filter-date-from" class="mt-select px-4 py-2 text-sm bg-white border border-gray-300 rounded-lg outline-none transition-all" placeholder="<?php esc_attr_e('From', 'media-toolkit'); ?>">
                     <span class="text-sm text-gray-500"><?php esc_html_e('to', 'media-toolkit'); ?></span>
-                    <input type="date" id="filter-date-to" class="px-4 py-2 text-sm bg-white border border-gray-300 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all" placeholder="<?php esc_attr_e('To', 'media-toolkit'); ?>">
+                    <input type="date" id="filter-date-to" class="mt-select px-4 py-2 text-sm bg-white border border-gray-300 rounded-lg outline-none transition-all" placeholder="<?php esc_attr_e('To', 'media-toolkit'); ?>">
                     
                     <button type="button" class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 shadow-xs transition-all" id="btn-filter-history">
                         <span class="dashicons dashicons-filter"></span>

@@ -135,7 +135,7 @@ $hasBanner = file_exists($bannerPath);
             <div class="p-6 space-y-5">
                 <div>
                     <label for="batch-size" class="block text-sm font-semibold text-gray-900 mb-2"><?php esc_html_e('Batch Size', 'media-toolkit'); ?></label>
-                    <select id="batch-size" class="w-full max-w-md px-4 py-2.5 text-sm bg-white border border-gray-300 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all">
+                    <select id="batch-size" class="mt-select w-full max-w-md px-4 py-2.5 text-sm bg-white border border-gray-300 rounded-lg outline-none transition-all">
                         <option value="10"><?php esc_html_e('10 files per batch', 'media-toolkit'); ?></option>
                         <option value="25" selected><?php esc_html_e('25 files per batch', 'media-toolkit'); ?></option>
                         <option value="50"><?php esc_html_e('50 files per batch', 'media-toolkit'); ?></option>
@@ -146,7 +146,7 @@ $hasBanner = file_exists($bannerPath);
                 
                 <div>
                     <label for="migration-mode" class="block text-sm font-semibold text-gray-900 mb-2"><?php esc_html_e('Mode', 'media-toolkit'); ?></label>
-                    <select id="migration-mode" class="w-full max-w-md px-4 py-2.5 text-sm bg-white border border-gray-300 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all">
+                    <select id="migration-mode" class="mt-select w-full max-w-md px-4 py-2.5 text-sm bg-white border border-gray-300 rounded-lg outline-none transition-all">
                         <option value="sync"><?php esc_html_e('Synchronous (browser must stay open)', 'media-toolkit'); ?></option>
                         <option value="async"><?php esc_html_e('Asynchronous (runs in background)', 'media-toolkit'); ?></option>
                     </select>
