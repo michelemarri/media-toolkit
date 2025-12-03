@@ -163,6 +163,7 @@
                 const bucket = $('#bucket').val();
 
                 const isValid = accessKey && secretKey && region && bucket;
+                $('#btn-save-credentials').prop('disabled', !isValid);
                 $('#btn-test-credentials').prop('disabled', !isValid);
                 $('#btn-test-settings').prop('disabled', !isValid);
             };

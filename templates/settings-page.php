@@ -205,7 +205,7 @@ $hasBanner = file_exists($bannerPath);
                     </div>
                     
                     <div class="flex items-center gap-3">
-                        <button type="button" class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-gray-800 hover:bg-gray-900 rounded-lg transition-all" id="btn-save-credentials">
+                        <button type="button" class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-gray-800 hover:bg-gray-900 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed" id="btn-save-credentials" disabled>
                             <span class="dashicons dashicons-saved"></span>
                             <?php esc_html_e('Save Credentials', 'media-toolkit'); ?>
                         </button>
