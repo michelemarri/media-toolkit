@@ -45,8 +45,8 @@
             $('#storage_provider').on('change', this.toggleStorageProvider.bind(this));
             this.toggleStorageProvider();
 
-            // Sync S3 stats (Tools page)
-            $('#btn-sync-stats').on('click', this.syncS3Stats.bind(this));
+            // Sync storage stats (Tools page)
+            $('#btn-sync-stats').on('click', this.syncStorageStats.bind(this));
 
             // Cache sync (Tools page)
             $('#btn-start-cache-sync').on('click', this.startCacheSync.bind(this));
@@ -580,8 +580,8 @@
             });
         },
 
-        // Sync S3 statistics
-        syncS3Stats: function () {
+        // Sync storage statistics
+        syncStorageStats: function () {
             const $btn = $('#btn-sync-stats');
             const $status = $('#sync-status');
 
@@ -632,7 +632,7 @@
         startCacheSync: function () {
             const self = this;
 
-            if (!confirm('This will update Cache-Control headers on ALL files in S3 for the current environment. This operation may take a while. Continue?')) {
+            if (!confirm('This will update Cache-Control headers on ALL files in cloud storage for the current environment. This operation may take a while. Continue?')) {
                 return;
             }
 

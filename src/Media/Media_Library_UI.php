@@ -92,7 +92,7 @@ final class Media_Library_UI
             
             // Insert after title
             if ($key === 'title') {
-                $new_columns['s3_status'] = '<span class="dashicons dashicons-cloud" title="S3 Status"></span>';
+                $new_columns['s3_status'] = '<span class="dashicons dashicons-cloud" title="Cloud Status"></span>';
             }
         }
         
@@ -115,7 +115,7 @@ final class Media_Library_UI
 
         if ($is_migrated) {
             // Green checkmark for synced
-            echo '<span class="dashicons dashicons-yes-alt" style="color: #16a34a;" title="' . esc_attr__('On S3', 'media-toolkit') . '"></span>';
+            echo '<span class="dashicons dashicons-yes-alt" style="color: #16a34a;" title="' . esc_attr__('On Cloud', 'media-toolkit') . '"></span>';
             
             // Show savings if optimized
             if ($is_optimized && $bytes_saved > 0) {
@@ -168,9 +168,9 @@ final class Media_Library_UI
     public function add_bulk_actions(array $actions): array
     {
         if ($this->storage !== null) {
-            $actions['media_toolkit_upload'] = __('Upload to S3', 'media-toolkit');
-            $actions['media_toolkit_reupload'] = __('Re-upload to S3', 'media-toolkit');
-            $actions['media_toolkit_download'] = __('Download from S3', 'media-toolkit');
+            $actions['media_toolkit_upload'] = __('Upload to Cloud', 'media-toolkit');
+            $actions['media_toolkit_reupload'] = __('Re-upload to Cloud', 'media-toolkit');
+            $actions['media_toolkit_download'] = __('Download from Cloud', 'media-toolkit');
         }
         
         return $actions;
@@ -227,9 +227,9 @@ final class Media_Library_UI
         $failed = (int) ($_GET['s3_bulk_failed'] ?? 0);
 
         $action_label = match ($action) {
-            'media_toolkit_upload' => 'uploaded to S3',
-            'media_toolkit_reupload' => 're-uploaded to S3',
-            'media_toolkit_download' => 'downloaded from S3',
+            'media_toolkit_upload' => 'uploaded to cloud',
+            'media_toolkit_reupload' => 're-uploaded to cloud',
+            'media_toolkit_download' => 'downloaded from cloud',
             default => 'processed',
         };
 
@@ -250,7 +250,7 @@ final class Media_Library_UI
         }
 
         if (isset($_GET['s3_bulk_error']) && $_GET['s3_bulk_error'] === 'not_configured') {
-            echo '<div class="notice notice-error is-dismissible"><p>S3 Offload is not configured. Please configure your S3 settings first.</p></div>';
+            echo '<div class="notice notice-error is-dismissible"><p>Storage is not configured. Please configure your storage provider first.</p></div>';
         }
     }
 
@@ -271,7 +271,7 @@ final class Media_Library_UI
                     '<a href="#" class="mt-action-reupload" data-id="%d" data-nonce="%s">%s</a>',
                     $post->ID,
                     wp_create_nonce('media_toolkit_action_' . $post->ID),
-                    __('Re-upload to S3', 'media-toolkit')
+                    __('Re-upload to Cloud', 'media-toolkit')
                 );
                 
                 // Check if local file is missing
@@ -281,7 +281,7 @@ final class Media_Library_UI
                         '<a href="#" class="mt-action-download" data-id="%d" data-nonce="%s">%s</a>',
                         $post->ID,
                         wp_create_nonce('media_toolkit_action_' . $post->ID),
-                        __('Download from S3', 'media-toolkit')
+                        __('Download from Cloud', 'media-toolkit')
                     );
                 }
             } else {
@@ -289,7 +289,7 @@ final class Media_Library_UI
                     '<a href="#" class="mt-action-upload" data-id="%d" data-nonce="%s">%s</a>',
                     $post->ID,
                     wp_create_nonce('media_toolkit_action_' . $post->ID),
-                    __('Upload to S3', 'media-toolkit')
+                    __('Upload to Cloud', 'media-toolkit')
                 );
             }
         }
@@ -339,7 +339,7 @@ final class Media_Library_UI
         $result = $this->storage->download_file($s3_key, $file, $attachment_id);
         
         if ($result) {
-            $this->logger?->info('media_library', 'File downloaded from S3 via Media Library', $attachment_id, basename($file));
+            $this->logger?->info('media_library', 'File downloaded from storage via Media Library', $attachment_id, basename($file));
         }
 
         return $result;
@@ -375,8 +375,8 @@ final class Media_Library_UI
                 'downloading' => __('Downloading...', 'media-toolkit'),
                 'success' => __('Success!', 'media-toolkit'),
                 'error' => __('Error', 'media-toolkit'),
-                'confirmReupload' => __('Re-upload this file to S3?', 'media-toolkit'),
-                'confirmDownload' => __('Download this file from S3 to local server?', 'media-toolkit'),
+                'confirmReupload' => __('Re-upload this file to cloud storage?', 'media-toolkit'),
+                'confirmDownload' => __('Download this file from cloud storage to local server?', 'media-toolkit'),
             ],
         ]);
     }
@@ -424,12 +424,12 @@ final class Media_Library_UI
         <script type="text/html" id="tmpl-mt-offload-details">
             <# if (data.s3Offload) { #>
             <div class="settings mt-offload-section">
-                <h4><span class="dashicons dashicons-cloud"></span> <?php _e('S3 Offload', 'media-toolkit'); ?></h4>
+                <h4><span class="dashicons dashicons-cloud"></span> <?php _e('Cloud Storage', 'media-toolkit'); ?></h4>
                 
                 <# if (data.s3Offload.migrated) { #>
                     <label class="setting">
                         <span class="name"><?php _e('Status', 'media-toolkit'); ?></span>
-                        <input type="text" value="✓ <?php _e('On S3', 'media-toolkit'); ?><# if (data.s3Offload.optimized) { #> · <?php _e('Optimized', 'media-toolkit'); ?><# } #>" readonly style="color: #16a34a;">
+                        <input type="text" value="✓ <?php _e('On Cloud', 'media-toolkit'); ?><# if (data.s3Offload.optimized) { #> · <?php _e('Optimized', 'media-toolkit'); ?><# } #>" readonly style="color: #16a34a;">
                     </label>
                     
                     <# if (data.s3Offload.bytesSaved > 0) { #>
@@ -468,7 +468,7 @@ final class Media_Library_UI
                     
                     <label class="setting">
                         <span class="name">&nbsp;</span>
-                        <button type="button" class="button button-primary mt-btn-upload" data-id="{{ data.id }}"><?php _e('Upload to S3', 'media-toolkit'); ?></button>
+                        <button type="button" class="button button-primary mt-btn-upload" data-id="{{ data.id }}"><?php _e('Upload to Cloud', 'media-toolkit'); ?></button>
                     </label>
                 <# } #>
             </div>
@@ -507,7 +507,7 @@ final class Media_Library_UI
         $upload_handler = $this->get_upload_handler();
         
         if ($upload_handler === null) {
-            wp_send_json_error(['message' => 'S3 is not configured']);
+            wp_send_json_error(['message' => 'Storage is not configured']);
             return;
         }
 
@@ -547,7 +547,7 @@ final class Media_Library_UI
         $upload_handler = $this->get_upload_handler();
         
         if ($upload_handler === null) {
-            wp_send_json_error(['message' => 'S3 is not configured']);
+            wp_send_json_error(['message' => 'Storage is not configured']);
             return;
         }
 
@@ -584,9 +584,9 @@ final class Media_Library_UI
         $result = $this->download_attachment($attachment_id);
         
         if ($result) {
-            wp_send_json_success(['message' => 'File downloaded from S3']);
+            wp_send_json_success(['message' => 'File downloaded from cloud']);
         } else {
-            wp_send_json_error(['message' => 'Failed to download file from S3']);
+            wp_send_json_error(['message' => 'Failed to download file from cloud']);
         }
     }
 

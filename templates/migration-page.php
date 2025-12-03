@@ -34,7 +34,7 @@ $hasBanner = file_exists($bannerPath);
         <img src="<?php echo esc_url($bannerUrl); ?>" alt="Media Toolkit" class="mt-hero-banner">
         <div class="mt-hero-overlay">
             <h1 class="mt-hero-title"><?php esc_html_e('Media Migration', 'media-toolkit'); ?></h1>
-            <p class="mt-hero-description"><?php esc_html_e('Migrate existing media files to Amazon S3', 'media-toolkit'); ?></p>
+            <p class="mt-hero-description"><?php esc_html_e('Migrate existing media files to cloud storage', 'media-toolkit'); ?></p>
             <span class="mt-hero-version">v<?php echo esc_html(MEDIA_TOOLKIT_VERSION); ?></span>
         </div>
     </div>
@@ -47,7 +47,7 @@ $hasBanner = file_exists($bannerPath);
             </span>
             <?php esc_html_e('Media Migration', 'media-toolkit'); ?>
         </h1>
-        <p class="text-lg text-gray-500 max-w-xl"><?php esc_html_e('Migrate existing media files to Amazon S3', 'media-toolkit'); ?></p>
+        <p class="text-lg text-gray-500 max-w-xl"><?php esc_html_e('Migrate existing media files to cloud storage', 'media-toolkit'); ?></p>
     </header>
     <?php endif; ?>
 
@@ -56,8 +56,8 @@ $hasBanner = file_exists($bannerPath);
     <div class="flex gap-4 p-5 rounded-xl border mt-alert-error">
         <span class="dashicons dashicons-warning text-red-600 flex-shrink-0"></span>
         <div>
-            <strong class="block font-semibold mb-1"><?php esc_html_e('S3 Offload is not configured.', 'media-toolkit'); ?></strong>
-            <p><?php printf(esc_html__('Please %sconfigure your S3 settings%s before migrating.', 'media-toolkit'), '<a href="' . esc_url(admin_url('admin.php?page=media-toolkit-settings')) . '" class="underline font-medium">', '</a>'); ?></p>
+            <strong class="block font-semibold mb-1"><?php esc_html_e('Storage is not configured.', 'media-toolkit'); ?></strong>
+            <p><?php printf(esc_html__('Please %sconfigure your storage provider%s before migrating.', 'media-toolkit'), '<a href="' . esc_url(admin_url('admin.php?page=media-toolkit-settings')) . '" class="underline font-medium">', '</a>'); ?></p>
         </div>
     </div>
     <?php else: ?>

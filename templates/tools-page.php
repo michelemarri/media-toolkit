@@ -83,8 +83,8 @@ $hasBanner = file_exists($bannerPath);
     <div class="flex gap-4 p-5 rounded-xl border mt-alert-error">
         <span class="dashicons dashicons-warning text-red-600 flex-shrink-0"></span>
         <div>
-            <strong class="block font-semibold mb-1"><?php esc_html_e('S3 Offload is not configured.', 'media-toolkit'); ?></strong>
-            <p><?php printf(esc_html__('Please %sconfigure your S3 settings%s before using these tools.', 'media-toolkit'), '<a href="' . esc_url(admin_url('admin.php?page=media-toolkit-settings')) . '" class="underline font-medium">', '</a>'); ?></p>
+            <strong class="block font-semibold mb-1"><?php esc_html_e('Storage is not configured.', 'media-toolkit'); ?></strong>
+            <p><?php printf(esc_html__('Please %sconfigure your storage provider%s before using these tools.', 'media-toolkit'), '<a href="' . esc_url(admin_url('admin.php?page=media-toolkit-settings')) . '" class="underline font-medium">', '</a>'); ?></p>
         </div>
     </div>
     <?php else: ?>
@@ -279,7 +279,7 @@ $hasBanner = file_exists($bannerPath);
                             <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-gray-200 text-gray-600">
                                 <span class="dashicons dashicons-format-gallery"></span>
                             </div>
-                            <span class="text-sm text-gray-500"><?php esc_html_e('Files on S3', 'media-toolkit'); ?></span>
+                            <span class="text-sm text-gray-500"><?php esc_html_e('Files on Cloud', 'media-toolkit'); ?></span>
                         </div>
                         <span class="block text-3xl font-bold text-gray-900"><?php echo number_format($dashboard_stats['original_files'] ?? 0); ?></span>
                     </div>
@@ -309,9 +309,9 @@ $hasBanner = file_exists($bannerPath);
                 <div class="p-6 bg-gray-50 border border-gray-200 rounded-xl">
                     <h4 class="flex items-center gap-2 text-base font-semibold text-gray-900 mb-3">
                         <span class="dashicons dashicons-update text-gray-600"></span>
-                        <?php esc_html_e('S3 Statistics Sync', 'media-toolkit'); ?>
+                        <?php esc_html_e('Storage Statistics Sync', 'media-toolkit'); ?>
                     </h4>
-                    <p class="text-sm text-gray-600 mb-5"><?php esc_html_e('Sync statistics from S3 to get accurate file count and storage usage for the current environment.', 'media-toolkit'); ?></p>
+                    <p class="text-sm text-gray-600 mb-5"><?php esc_html_e('Sync statistics from cloud storage to get accurate file count and storage usage for the current environment.', 'media-toolkit'); ?></p>
                     
                     <?php if ($s3_stats): ?>
                     <div class="space-y-2 mb-5">
@@ -344,7 +344,7 @@ $hasBanner = file_exists($bannerPath);
                             <option value="24" <?php selected($sync_interval, 24); ?>><?php esc_html_e('Daily (recommended)', 'media-toolkit'); ?></option>
                             <option value="168" <?php selected($sync_interval, 168); ?>><?php esc_html_e('Weekly', 'media-toolkit'); ?></option>
                         </select>
-                        <p class="mt-1 text-sm text-gray-500"><?php esc_html_e('How often to automatically query S3 for statistics.', 'media-toolkit'); ?></p>
+                        <p class="mt-1 text-sm text-gray-500"><?php esc_html_e('How often to automatically query cloud storage for statistics.', 'media-toolkit'); ?></p>
                     </div>
                     
                     <div class="flex items-center gap-3">
@@ -418,7 +418,7 @@ $hasBanner = file_exists($bannerPath);
                             <span class="dashicons dashicons-admin-settings text-gray-600"></span>
                             <?php esc_html_e('Cache-Control Settings', 'media-toolkit'); ?>
                         </h4>
-                        <p class="text-sm text-gray-600 mb-4"><?php esc_html_e('Update Cache-Control headers on all files already uploaded to S3 for the current environment.', 'media-toolkit'); ?></p>
+                        <p class="text-sm text-gray-600 mb-4"><?php esc_html_e('Update Cache-Control headers on all files already uploaded to cloud storage for the current environment.', 'media-toolkit'); ?></p>
                         
                         <div>
                             <label for="cache_control_value" class="block text-sm font-medium text-gray-700 mb-2"><?php esc_html_e('Cache-Control Value', 'media-toolkit'); ?></label>
@@ -429,7 +429,7 @@ $hasBanner = file_exists($bannerPath);
                                 <option value="2592000" <?php selected($cache_control, 2592000); ?>><?php esc_html_e('1 month', 'media-toolkit'); ?></option>
                                 <option value="31536000" <?php selected($cache_control, 31536000); ?>><?php esc_html_e('1 year — Recommended', 'media-toolkit'); ?></option>
                             </select>
-                            <p class="mt-1 text-sm text-gray-500"><?php esc_html_e('This will be applied to all existing files on S3.', 'media-toolkit'); ?></p>
+                            <p class="mt-1 text-sm text-gray-500"><?php esc_html_e('This will be applied to all existing files on cloud storage.', 'media-toolkit'); ?></p>
                         </div>
                     </div>
 
@@ -505,7 +505,7 @@ $hasBanner = file_exists($bannerPath);
                     <span class="dashicons dashicons-info text-blue-600 flex-shrink-0"></span>
                     <div>
                         <strong class="block font-semibold mb-1"><?php esc_html_e('What is Reconciliation?', 'media-toolkit'); ?></strong>
-                        <p class="text-sm opacity-90"><?php esc_html_e('This tool compares files on S3 with WordPress attachments and syncs the metadata. Use it when files were uploaded to S3 before the plugin was installed, or when the sync status appears incorrect.', 'media-toolkit'); ?></p>
+                        <p class="text-sm opacity-90"><?php esc_html_e('This tool compares files on cloud storage with WordPress attachments and syncs the metadata. Use it when files were uploaded before the plugin was installed, or when the sync status appears incorrect.', 'media-toolkit'); ?></p>
                     </div>
                 </div>
 
@@ -536,7 +536,7 @@ $hasBanner = file_exists($bannerPath);
                             <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-gray-200 text-gray-600">
                                 <span class="dashicons dashicons-cloud-upload"></span>
                             </div>
-                            <span class="text-sm text-gray-500"><?php esc_html_e('S3 Original Files', 'media-toolkit'); ?></span>
+                            <span class="text-sm text-gray-500"><?php esc_html_e('Cloud Files', 'media-toolkit'); ?></span>
                         </div>
                         <span class="block text-2xl font-bold text-gray-900" id="recon-s3-files"><?php echo number_format($reconciliation_stats['s3_original_files'] ?? 0); ?></span>
                     </div>
@@ -580,16 +580,16 @@ $hasBanner = file_exists($bannerPath);
                             <span class="dashicons dashicons-search text-gray-600"></span>
                             <?php esc_html_e('Scan Preview', 'media-toolkit'); ?>
                         </h4>
-                        <p class="text-sm text-gray-600 mb-4"><?php esc_html_e('Scan S3 to see how many files match WordPress attachments before running reconciliation.', 'media-toolkit'); ?></p>
+                        <p class="text-sm text-gray-600 mb-4"><?php esc_html_e('Scan cloud storage to see how many files match WordPress attachments before running reconciliation.', 'media-toolkit'); ?></p>
                         
                         <button type="button" class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 shadow-xs transition-all" id="btn-scan-s3">
                             <span class="dashicons dashicons-search"></span>
-                            <?php esc_html_e('Scan S3', 'media-toolkit'); ?>
+                            <?php esc_html_e('Scan Storage', 'media-toolkit'); ?>
                         </button>
                         
                         <div id="scan-results" class="hidden mt-4 space-y-2">
                             <div class="flex items-center justify-between p-3 bg-white rounded-lg">
-                                <span class="text-sm text-gray-500"><?php esc_html_e('S3 Original Files', 'media-toolkit'); ?></span>
+                                <span class="text-sm text-gray-500"><?php esc_html_e('Cloud Files', 'media-toolkit'); ?></span>
                                 <span class="text-sm font-semibold text-gray-900" id="scan-s3-files">-</span>
                             </div>
                             <div class="flex items-center justify-between p-3 bg-white rounded-lg">
@@ -601,7 +601,7 @@ $hasBanner = file_exists($bannerPath);
                                 <span class="text-sm font-semibold text-gray-900" id="scan-matches">-</span>
                             </div>
                             <div class="flex items-center justify-between p-3 bg-white rounded-lg">
-                                <span class="text-sm text-gray-500"><?php esc_html_e('Not Found on S3', 'media-toolkit'); ?></span>
+                                <span class="text-sm text-gray-500"><?php esc_html_e('Not Found on Cloud', 'media-toolkit'); ?></span>
                                 <span class="text-sm font-semibold text-gray-900" id="scan-not-found">-</span>
                             </div>
                             <div class="flex items-center justify-between p-3 bg-white rounded-lg">
@@ -764,11 +764,11 @@ $hasBanner = file_exists($bannerPath);
                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
                         <div class="text-center p-3 bg-white rounded-lg">
                             <div class="text-xl font-bold text-gray-900" id="summary-s3-scanned">-</div>
-                            <div class="text-xs text-gray-500"><?php esc_html_e('S3 Files (scan)', 'media-toolkit'); ?></div>
+                            <div class="text-xs text-gray-500"><?php esc_html_e('Cloud Files (scan)', 'media-toolkit'); ?></div>
                         </div>
                         <div class="text-center p-3 bg-white rounded-lg">
                             <div class="text-xl font-bold text-gray-400" id="summary-s3-cached">-</div>
-                            <div class="text-xs text-gray-500"><?php esc_html_e('S3 Files (cached)', 'media-toolkit'); ?></div>
+                            <div class="text-xs text-gray-500"><?php esc_html_e('Cloud Files (cached)', 'media-toolkit'); ?></div>
                         </div>
                         <div class="text-center p-3 bg-white rounded-lg">
                             <div class="text-xl font-bold text-gray-900" id="summary-wp-attachments">-</div>
@@ -786,40 +786,40 @@ $hasBanner = file_exists($bannerPath);
                     </div>
                     <div id="cache-mismatch-warning" class="hidden flex items-center gap-2 p-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700">
                         <span class="dashicons dashicons-warning"></span>
-                        <?php esc_html_e('Cached S3 count differs from live scan. Run "Sync Now" in Stats Sync tab to update.', 'media-toolkit'); ?>
+                        <?php esc_html_e('Cached count differs from live scan. Run "Sync Now" in Stats Sync tab to update.', 'media-toolkit'); ?>
                     </div>
                 </div>
                 
-                <!-- Marked but not on S3 -->
+                <!-- Marked but not on cloud -->
                 <div id="discrepancies-not-on-s3" class="hidden">
                     <h4 class="flex items-center gap-2 text-sm font-semibold text-gray-900 mb-3">
                         <span class="dashicons dashicons-cloud-saved text-red-500"></span>
-                        <?php esc_html_e('Marked as migrated but NOT found on S3', 'media-toolkit'); ?>
+                        <?php esc_html_e('Marked as migrated but NOT found on cloud', 'media-toolkit'); ?>
                         <span class="px-2 py-0.5 text-xs font-medium rounded bg-red-100 text-red-700" id="count-not-on-s3">0</span>
                     </h4>
-                    <p class="text-xs text-gray-500 mb-2"><?php esc_html_e('These files have metadata saying they are on S3, but the actual file was not found.', 'media-toolkit'); ?></p>
+                    <p class="text-xs text-gray-500 mb-2"><?php esc_html_e('These files have metadata saying they are on cloud storage, but the actual file was not found.', 'media-toolkit'); ?></p>
                     <div class="bg-gray-50 rounded-lg border border-gray-200 divide-y divide-gray-200 max-h-48 overflow-y-auto" id="list-not-on-s3"></div>
                 </div>
                 
-                <!-- On S3 but not marked -->
+                <!-- On cloud but not marked -->
                 <div id="discrepancies-not-marked" class="hidden">
                     <h4 class="flex items-center gap-2 text-sm font-semibold text-gray-900 mb-3">
                         <span class="dashicons dashicons-database text-amber-500"></span>
-                        <?php esc_html_e('On S3 but NOT marked as migrated', 'media-toolkit'); ?>
+                        <?php esc_html_e('On cloud but NOT marked as migrated', 'media-toolkit'); ?>
                         <span class="px-2 py-0.5 text-xs font-medium rounded bg-amber-100 text-amber-700" id="count-not-marked">0</span>
                     </h4>
-                    <p class="text-xs text-gray-500 mb-2"><?php esc_html_e('These files exist on S3 and match a WP attachment, but are not marked as migrated. Run reconciliation to fix.', 'media-toolkit'); ?></p>
+                    <p class="text-xs text-gray-500 mb-2"><?php esc_html_e('These files exist on cloud storage and match a WP attachment, but are not marked as migrated. Run reconciliation to fix.', 'media-toolkit'); ?></p>
                     <div class="bg-gray-50 rounded-lg border border-gray-200 divide-y divide-gray-200 max-h-48 overflow-y-auto" id="list-not-marked"></div>
                 </div>
                 
-                <!-- Orphan files on S3 -->
+                <!-- Orphan files on cloud -->
                 <div id="discrepancies-orphans" class="hidden">
                     <h4 class="flex items-center gap-2 text-sm font-semibold text-gray-900 mb-3">
                         <span class="dashicons dashicons-media-default text-purple-500"></span>
-                        <?php esc_html_e('Orphan files on S3 (no WP attachment)', 'media-toolkit'); ?>
+                        <?php esc_html_e('Orphan files on cloud (no WP attachment)', 'media-toolkit'); ?>
                         <span class="px-2 py-0.5 text-xs font-medium rounded bg-purple-100 text-purple-700" id="count-orphans">0</span>
                     </h4>
-                    <p class="text-xs text-gray-500 mb-2"><?php esc_html_e('These files exist on S3 but have no corresponding attachment in WordPress. They may be leftover from deleted media.', 'media-toolkit'); ?></p>
+                    <p class="text-xs text-gray-500 mb-2"><?php esc_html_e('These files exist on cloud storage but have no corresponding attachment in WordPress. They may be leftover from deleted media.', 'media-toolkit'); ?></p>
                     <div class="bg-gray-50 rounded-lg border border-gray-200 divide-y divide-gray-200 max-h-48 overflow-y-auto" id="list-orphans"></div>
                 </div>
                 

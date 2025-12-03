@@ -305,10 +305,10 @@ final class Error_Handler
             return;
         }
 
-        $subject = '[Media S3 Offload] Operation Failed After Max Retries';
+        $subject = '[Media Toolkit] Operation Failed After Max Retries';
         
         $message = sprintf(
-            "An S3 operation has failed after %d retry attempts.\n\n" .
+            "A storage operation has failed after %d retry attempts.\n\n" .
             "Operation: %s\n" .
             "File: %s\n" .
             "Attachment ID: %d\n" .
@@ -359,11 +359,11 @@ final class Error_Handler
         return match ($error_code) {
             'InvalidAccessKeyId' => 'Invalid AWS Access Key. Please check your credentials.',
             'SignatureDoesNotMatch' => 'Invalid AWS Secret Key. Please check your credentials.',
-            'NoSuchBucket' => 'The specified S3 bucket does not exist.',
+            'NoSuchBucket' => 'The specified storage bucket does not exist.',
             'AccessDenied' => 'Access denied. Please check your IAM permissions.',
             'InvalidBucketName' => 'Invalid bucket name. Bucket names must follow AWS naming rules.',
             'RequestTimeout' => 'Request timed out. Please try again.',
-            'ServiceUnavailable' => 'AWS S3 service is temporarily unavailable. Please try again later.',
+            'ServiceUnavailable' => 'Storage service is temporarily unavailable. Please try again later.',
             'ThrottlingException' => 'Too many requests. Please wait and try again.',
             'SlowDown' => 'Request rate too high. Please reduce the request rate.',
             default => $e->getMessage(),

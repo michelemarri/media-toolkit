@@ -118,17 +118,17 @@ final class Reconciliation extends Batch_Processor
         $config = $this->settings->get_storage_config();
 
         if ($client === null) {
-            $this->logger->error('reconciliation', 'S3 client is null');
+            $this->logger->error('reconciliation', 'Storage client is null');
             return [];
         }
         
         if ($config === null) {
-            $this->logger->error('reconciliation', 'S3 config is null');
+            $this->logger->error('reconciliation', 'Storage config is null');
             return [];
         }
 
         $base_path = $this->settings->get_s3_base_path();
-        $this->logger->info('reconciliation', 'Scanning S3 with base_path: ' . $base_path);
+        $this->logger->info('reconciliation', 'Scanning storage with base_path: ' . $base_path);
         
         $files = [];
         $continuation_token = null;
@@ -178,7 +178,7 @@ final class Reconciliation extends Batch_Processor
                 
             } while ($result['IsTruncated'] ?? false);
             
-            $this->logger->info('reconciliation', 'S3 scan completed: ' . count($files) . ' files found');
+            $this->logger->info('reconciliation', 'Storage scan completed: ' . count($files) . ' files found');
 
         } catch (AwsException $e) {
             $this->logger->error('reconciliation', 'AWS Exception in scan_s3_files(): ' . $e->getMessage());
@@ -361,18 +361,18 @@ final class Reconciliation extends Batch_Processor
     {
         try {
             // First, scan S3 for all files
-            $this->logger->info('reconciliation', 'Scanning S3 bucket for files...');
+            $this->logger->info('reconciliation', 'Scanning storage bucket for files...');
             
             $s3_files = $this->scan_s3_files();
             $s3_count = count($s3_files);
             
-            $this->logger->info('reconciliation', "Found {$s3_count} original files on S3");
+            $this->logger->info('reconciliation', "Found {$s3_count} original files on storage");
 
             // Store S3 files in a separate transient (not in state, too large)
             $transient_saved = set_transient(self::STORAGE_FILES_CACHE_KEY, $s3_files, HOUR_IN_SECONDS);
             
             if (!$transient_saved) {
-                $this->logger->error('reconciliation', 'Failed to save S3 files transient - data might be too large');
+                $this->logger->error('reconciliation', 'Failed to save storage files transient - data might be too large');
             }
             
             // Only store count in options (lightweight)
@@ -401,17 +401,17 @@ final class Reconciliation extends Batch_Processor
             
             if ($s3_files === false) {
                 // Need to re-scan if cache expired (might happen on resume)
-                $this->logger->info('reconciliation', 'S3 cache expired or not found, re-scanning...');
+                $this->logger->info('reconciliation', 'Storage cache expired or not found, re-scanning...');
                 $s3_files = $this->scan_s3_files();
                 
                 if (empty($s3_files)) {
-                    $this->logger->error('reconciliation', 'S3 scan returned empty array');
+                    $this->logger->error('reconciliation', 'Storage scan returned empty array');
                 }
                 
                 set_transient(self::STORAGE_FILES_CACHE_KEY, $s3_files, HOUR_IN_SECONDS);
             }
             
-            $this->logger->info('reconciliation', 'S3 files loaded: ' . count($s3_files) . ' files');
+            $this->logger->info('reconciliation', 'Storage files loaded: ' . count($s3_files) . ' files');
             
             // Store in memory for process_item() to use
             $this->storage_files_cache = $s3_files;
@@ -459,7 +459,7 @@ final class Reconciliation extends Batch_Processor
             wp_send_json_error(['message' => 'Permission denied']);
         }
 
-        $this->logger->info('reconciliation', 'Starting S3 scan for preview...');
+        $this->logger->info('reconciliation', 'Starting storage scan for preview...');
         
         $s3_files = $this->scan_s3_files();
         $s3_count = count($s3_files);

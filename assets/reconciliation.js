@@ -111,7 +111,7 @@
             return num.toLocaleString();
         }
 
-        // Scan S3 button
+        // Scan storage button
         $('#btn-scan-s3').on('click', function () {
             const $btn = $(this);
             const originalText = $btn.html();
@@ -140,16 +140,16 @@
                         $('#scan-would-mark').text(formatNumber(data.would_be_marked || 0));
 
                         // Log the scan results
-                        reconciliation.log('S3 scan completed', 'success');
-                        reconciliation.log(`Found ${formatNumber(data.s3_original_files)} files on S3`, 'info');
+                        reconciliation.log('Storage scan completed', 'success');
+                        reconciliation.log(`Found ${formatNumber(data.s3_original_files)} files on cloud storage`, 'info');
                         reconciliation.log(`${formatNumber(data.matches)} files match WordPress attachments`, 'info');
                     } else {
-                        reconciliation.log('Failed to scan S3: ' + (response.data?.message || 'Unknown error'), 'error');
+                        reconciliation.log('Failed to scan storage: ' + (response.data?.message || 'Unknown error'), 'error');
                     }
                 },
                 error: function () {
                     $btn.prop('disabled', false).html(originalText);
-                    reconciliation.log('Failed to scan S3', 'error');
+                    reconciliation.log('Failed to scan storage', 'error');
                 }
             });
         });
@@ -287,7 +287,7 @@
                 return;
             }
 
-            // Render "marked but not on S3"
+            // Render "marked but not on cloud"
             if (hasNotOnS3) {
                 $notOnS3.show();
                 const countText = data.not_on_s3_total > data.not_on_s3_count
@@ -299,7 +299,7 @@
                 );
             }
 
-            // Render "on S3 but not marked"
+            // Render "on cloud but not marked"
             if (hasNotMarked) {
                 $notMarked.show();
                 const countText = data.not_marked_total > data.not_marked_count
@@ -311,7 +311,7 @@
                 );
             }
 
-            // Render "orphan files on S3"
+            // Render "orphan files on cloud"
             if (hasOrphans) {
                 $orphans.show();
                 const countText = data.orphans_total > data.orphans_count

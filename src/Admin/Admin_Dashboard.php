@@ -51,7 +51,7 @@ final class Admin_Dashboard
     public function render_dashboard_widget(): void
     {
         if (!$this->settings->is_configured()) {
-            echo '<p>S3 Offload is not configured. <a href="' . admin_url('admin.php?page=media-toolkit-settings') . '">Configure now</a></p>';
+            echo '<p>Storage is not configured. <a href="' . admin_url('admin.php?page=media-toolkit-settings') . '">Configure now</a></p>';
             return;
         }
 
@@ -62,7 +62,7 @@ final class Admin_Dashboard
             <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px;">
                 <div style="text-align: center; padding: 12px; background: #f9fafb; border-radius: 8px;">
                     <span style="display: block; font-size: 24px; font-weight: 700; color: #111827;"><?php echo esc_html($stats['total_files']); ?></span>
-                    <span style="font-size: 12px; color: #6b7280;"><?php esc_html_e('Files on S3', 'media-toolkit'); ?></span>
+                    <span style="font-size: 12px; color: #6b7280;"><?php esc_html_e('Files on Cloud', 'media-toolkit'); ?></span>
                 </div>
                 <div style="text-align: center; padding: 12px; background: #f9fafb; border-radius: 8px;">
                     <span style="display: block; font-size: 24px; font-weight: 700; color: #111827;"><?php echo esc_html($stats['total_storage_formatted']); ?></span>

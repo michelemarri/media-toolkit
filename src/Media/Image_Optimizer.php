@@ -597,7 +597,7 @@ final class Image_Optimizer extends Batch_Processor
             if (!$downloaded) {
                 return [
                     'success' => false,
-                    'error' => 'Failed to download file from S3',
+                    'error' => 'Failed to download file from storage',
                 ];
             }
         } else {
@@ -689,7 +689,7 @@ final class Image_Optimizer extends Batch_Processor
             if ($upload_result->success) {
                 $this->logger->success(
                     'optimization',
-                    'Optimized image re-uploaded to S3',
+                    'Optimized image re-uploaded to storage',
                     $attachment_id,
                     basename($file),
                     ['saved' => size_format($bytes_saved)]

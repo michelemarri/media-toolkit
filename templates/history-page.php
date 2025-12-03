@@ -31,7 +31,7 @@ $hasBanner = file_exists($bannerPath);
             <img src="<?php echo esc_url($bannerUrl); ?>" alt="Media Toolkit" class="mt-hero-banner">
             <div class="mt-hero-overlay">
                 <h1 class="mt-hero-title"><?php esc_html_e('Operation History', 'media-toolkit'); ?></h1>
-                <p class="mt-hero-description"><?php esc_html_e('Permanent record of all S3 operations', 'media-toolkit'); ?></p>
+                <p class="mt-hero-description"><?php esc_html_e('Permanent record of all storage operations', 'media-toolkit'); ?></p>
                 <span class="mt-hero-version">v<?php echo esc_html(MEDIA_TOOLKIT_VERSION); ?></span>
             </div>
         </div>
@@ -44,7 +44,7 @@ $hasBanner = file_exists($bannerPath);
                 </span>
                 <?php esc_html_e('Operation History', 'media-toolkit'); ?>
             </h1>
-            <p class="text-lg text-gray-500 max-w-xl"><?php esc_html_e('Permanent record of all S3 operations', 'media-toolkit'); ?></p>
+            <p class="text-lg text-gray-500 max-w-xl"><?php esc_html_e('Permanent record of all storage operations', 'media-toolkit'); ?></p>
         </header>
         <?php endif; ?>
 

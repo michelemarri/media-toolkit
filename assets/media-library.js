@@ -1,8 +1,8 @@
 /**
- * Media Library S3 Offload Integration
+ * Media Library Cloud Storage Integration
  * 
  * Handles:
- * - S3 info display in attachment details modal
+ * - Cloud storage info display in attachment details modal
  * - Row action handlers (upload, re-upload, download)
  * - Bulk action confirmation
  */
@@ -32,7 +32,7 @@
      * Initialize row actions for list view
      */
     function initRowActions() {
-        // Upload to S3 (new)
+        // Upload to cloud storage (new)
         $(document).on('click', '.mt-action-upload', function (e) {
             e.preventDefault();
 
@@ -73,7 +73,7 @@
             });
         });
 
-        // Re-upload to S3
+        // Re-upload to cloud storage
         $(document).on('click', '.mt-action-reupload', function (e) {
             e.preventDefault();
 
@@ -118,7 +118,7 @@
             });
         });
 
-        // Download from S3
+        // Download from cloud storage
         $(document).on('click', '.mt-action-download', function (e) {
             e.preventDefault();
 

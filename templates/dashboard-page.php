@@ -43,7 +43,7 @@ $hasBanner = file_exists($bannerPath);
             <img src="<?php echo esc_url($bannerUrl); ?>" alt="Media Toolkit" class="mt-hero-banner">
             <div class="mt-hero-overlay">
                 <h1 class="mt-hero-title"><?php esc_html_e('Media Toolkit', 'media-toolkit'); ?></h1>
-                <p class="mt-hero-description"><?php esc_html_e('Complete media management toolkit for WordPress. S3 offloading, CDN integration, and image optimization.', 'media-toolkit'); ?></p>
+                <p class="mt-hero-description"><?php esc_html_e('Complete media management toolkit for WordPress. Cloud storage offloading, CDN integration, and image optimization.', 'media-toolkit'); ?></p>
                 <span class="mt-hero-version">v<?php echo esc_html(MEDIA_TOOLKIT_VERSION); ?></span>
             </div>
         </div>
@@ -56,7 +56,7 @@ $hasBanner = file_exists($bannerPath);
                 </span>
                 <?php esc_html_e('Media Toolkit', 'media-toolkit'); ?>
             </h1>
-            <p class="text-lg text-gray-500 max-w-xl"><?php esc_html_e('Complete media management toolkit for WordPress. S3 offloading, CDN integration, and image optimization.', 'media-toolkit'); ?></p>
+            <p class="text-lg text-gray-500 max-w-xl"><?php esc_html_e('Complete media management toolkit for WordPress. Cloud storage offloading, CDN integration, and image optimization.', 'media-toolkit'); ?></p>
         </header>
         <?php endif; ?>
 
@@ -66,7 +66,7 @@ $hasBanner = file_exists($bannerPath);
             <span class="dashicons dashicons-admin-generic text-amber-600 flex-shrink-0"></span>
             <div>
                 <strong class="block text-lg font-semibold mb-2"><?php esc_html_e('Complete Your Setup', 'media-toolkit'); ?></strong>
-                <p class="mb-4 opacity-90"><?php esc_html_e('Configure your AWS credentials to start offloading media files to S3. This only takes a minute.', 'media-toolkit'); ?></p>
+                <p class="mb-4 opacity-90"><?php esc_html_e('Configure your storage provider to start offloading media files to the cloud. This only takes a minute.', 'media-toolkit'); ?></p>
                 <a href="<?php echo esc_url(admin_url('admin.php?page=media-toolkit-settings')); ?>" class="inline-flex items-center gap-2 px-5 py-3 text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 rounded-lg shadow-sm transition-all">
                     <span class="dashicons dashicons-arrow-right-alt"></span>
                     <?php esc_html_e('Configure Now', 'media-toolkit'); ?>

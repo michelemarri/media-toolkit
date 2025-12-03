@@ -543,7 +543,7 @@ final class Admin_Settings
             $s3Client->putObject([
                 'Bucket' => $bucket,
                 'Key' => $test_key,
-                'Body' => 'Media S3 Offload connection test',
+                'Body' => 'Media Toolkit connection test',
                 'ContentType' => 'text/plain',
             ]);
 
@@ -584,7 +584,7 @@ final class Admin_Settings
         } else {
             $results['cdn'] = [
                 'success' => true,
-                'message' => 'CDN not configured (using direct S3 URLs)',
+                'message' => 'CDN not configured (using direct storage URLs)',
             ];
         }
 
@@ -603,7 +603,7 @@ final class Admin_Settings
         }
 
         if ($this->storage === null) {
-            wp_send_json_error(['message' => 'S3 client not configured']);
+            wp_send_json_error(['message' => 'Storage not configured']);
         }
 
         $results = $this->storage->test_connection();
@@ -771,20 +771,20 @@ final class Admin_Settings
         }
 
         if ($this->storage === null) {
-            wp_send_json_error(['message' => 'S3 client not configured']);
+            wp_send_json_error(['message' => 'Storage not configured']);
         }
 
         $stats = $this->storage->get_bucket_stats();
         
         if ($stats === null) {
-            wp_send_json_error(['message' => 'Failed to retrieve S3 statistics']);
+            wp_send_json_error(['message' => 'Failed to retrieve storage statistics']);
         }
 
         $this->settings->save_s3_stats($stats);
         $this->stats->clear_cache();
 
         wp_send_json_success([
-            'message' => 'S3 statistics synced successfully',
+            'message' => 'Storage statistics synced successfully',
             'stats' => $stats,
             'stats_formatted' => [
                 'files' => number_format($stats['files']),
@@ -808,7 +808,7 @@ final class Admin_Settings
         }
 
         if ($this->storage === null) {
-            wp_send_json_error(['message' => 'S3 client not configured']);
+            wp_send_json_error(['message' => 'Storage not configured']);
         }
 
         $cache_max_age = isset($_POST['cache_max_age']) ? (int) $_POST['cache_max_age'] : $this->settings->get_cache_control_max_age();
@@ -819,7 +819,7 @@ final class Admin_Settings
         $result = $this->storage->list_objects_batch($batch_size, $continuation_token);
 
         if ($result === null) {
-            wp_send_json_error(['message' => 'Failed to list S3 objects']);
+            wp_send_json_error(['message' => 'Failed to list storage objects']);
         }
 
         $keys = $result['keys'];
@@ -857,7 +857,7 @@ final class Admin_Settings
         }
 
         if ($this->storage === null) {
-            wp_send_json_error(['message' => 'S3 client not configured']);
+            wp_send_json_error(['message' => 'Storage not configured']);
         }
 
         // Get cached stats if available
@@ -875,7 +875,7 @@ final class Admin_Settings
         $stats = $this->storage->get_bucket_stats();
         
         if ($stats === null) {
-            wp_send_json_error(['message' => 'Failed to count S3 files']);
+            wp_send_json_error(['message' => 'Failed to count storage files']);
         }
 
         // Save stats

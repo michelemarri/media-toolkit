@@ -348,7 +348,7 @@ final class Migration
 
         $this->logger->success(
             'migration',
-            'Attachment migrated to S3',
+            'Attachment migrated to storage',
             $attachment_id,
             basename($file)
         );

@@ -95,7 +95,7 @@ final class Image_Editor
 
         $this->logger->info(
             'image_editor',
-            'Downloading file from S3 for editing',
+            'Downloading file from storage for editing',
             $attachment_id,
             basename($file)
         );
@@ -112,7 +112,7 @@ final class Image_Editor
         if (!$downloaded) {
             $this->logger->error(
                 'image_editor',
-                'Failed to download file from S3 for editing',
+                'Failed to download file from storage for editing',
                 $attachment_id,
                 basename($file)
             );
@@ -153,7 +153,7 @@ final class Image_Editor
 
         $this->logger->info(
             'image_editor',
-            'Image edited, syncing to S3',
+            'Image edited, syncing to storage',
             $attachment_id
         );
 
@@ -210,7 +210,7 @@ final class Image_Editor
 
         $this->logger->success(
             'image_editor',
-            'Edited image synced to S3',
+            'Edited image synced to storage',
             $attachment_id,
             basename($file_path)
         );
@@ -350,7 +350,7 @@ final class Image_Editor
             
             $this->logger->info(
                 'image_editor',
-                'Cleaned up ' . count($keys_to_delete) . ' backup files from S3',
+                'Cleaned up ' . count($keys_to_delete) . ' backup files from storage',
                 $attachment_id
             );
         }

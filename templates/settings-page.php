@@ -280,7 +280,7 @@ $hasBanner = file_exists($bannerPath);
                         <div>
                             <label for="cdn_provider" class="block text-sm font-semibold text-gray-900 mb-2"><?php esc_html_e('CDN Provider', 'media-toolkit'); ?></label>
                             <select name="cdn_provider" id="cdn_provider" class="mt-select w-full px-4 py-2.5 text-sm bg-white border border-gray-300 rounded-lg outline-none transition-all">
-                                <option value="none" <?php selected($credentials['cdn_provider'] ?? 'none', 'none'); ?>><?php esc_html_e('None (direct S3 URLs)', 'media-toolkit'); ?></option>
+                                <option value="none" <?php selected($credentials['cdn_provider'] ?? 'none', 'none'); ?>><?php esc_html_e('None (direct storage URLs)', 'media-toolkit'); ?></option>
                                 <option value="cloudflare" <?php selected($credentials['cdn_provider'] ?? '', 'cloudflare'); ?>>Cloudflare</option>
                                 <option value="cloudfront" <?php selected($credentials['cdn_provider'] ?? '', 'cloudfront'); ?>>CloudFront</option>
                                 <option value="other" <?php selected($credentials['cdn_provider'] ?? '', 'other'); ?>><?php esc_html_e('Other CDN', 'media-toolkit'); ?></option>
@@ -507,8 +507,8 @@ $hasBanner = file_exists($bannerPath);
                                        <?php checked($settings ? $settings->should_remove_local_files() : false); ?>>
                                 <span class="mt-toggle-slider"></span>
                                 <div>
-                                    <div class="text-sm font-semibold text-gray-900"><?php esc_html_e('Delete local files after uploading to S3', 'media-toolkit'); ?></div>
-                                    <div class="text-xs text-gray-500"><?php esc_html_e('This saves disk space but means files only exist on S3', 'media-toolkit'); ?></div>
+                                    <div class="text-sm font-semibold text-gray-900"><?php esc_html_e('Delete local files after uploading to cloud', 'media-toolkit'); ?></div>
+                                    <div class="text-xs text-gray-500"><?php esc_html_e('This saves disk space but means files only exist on cloud storage', 'media-toolkit'); ?></div>
                                 </div>
                             </label>
                         </div>
@@ -520,7 +520,7 @@ $hasBanner = file_exists($bannerPath);
                                 <span class="mt-toggle-slider"></span>
                                 <div>
                                     <div class="text-sm font-semibold text-gray-900"><?php esc_html_e('Delete all plugin data when uninstalling', 'media-toolkit'); ?></div>
-                                    <div class="text-xs text-gray-500"><?php esc_html_e('Files on S3 will NOT be deleted', 'media-toolkit'); ?></div>
+                                    <div class="text-xs text-gray-500"><?php esc_html_e('Files on cloud storage will NOT be deleted', 'media-toolkit'); ?></div>
                                 </div>
                             </label>
                         </div>

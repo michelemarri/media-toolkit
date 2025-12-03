@@ -229,19 +229,19 @@ final class Media_Library
         $s3_url = get_post_meta($attachment_id, '_media_toolkit_url', true);
 
         $form_fields['media_toolkit_info'] = [
-            'label' => 'S3 Offload',
+            'label' => 'Cloud Storage',
             'input' => 'html',
             'html' => sprintf(
                 '<div class="mt-offload-info">
                     <p><strong>Status:</strong> <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-700">Offloaded</span></p>
-                    <p><strong>S3 Key:</strong> <code class="px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-sm">%s</code></p>
+                    <p><strong>Storage Key:</strong> <code class="px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-sm">%s</code></p>
                     <p><strong>URL:</strong> <a href="%s" target="_blank" class="text-gray-900 hover:text-accent-500">%s</a></p>
                 </div>',
                 esc_html($s3_key),
                 esc_url($s3_url),
                 esc_html($s3_url)
             ),
-            'helps' => 'This file is stored on Amazon S3',
+            'helps' => 'This file is stored on cloud storage',
         ];
 
         return $form_fields;

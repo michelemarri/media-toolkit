@@ -109,7 +109,7 @@ final class Upload_Handler
         if (!$result->success) {
             $this->logger->error(
                 'upload',
-                "Failed to upload to S3: {$result->error}",
+                "Failed to upload to storage: {$result->error}",
                 null,
                 basename($file_path)
             );
@@ -121,7 +121,7 @@ final class Upload_Handler
 
         $this->logger->success(
             'upload',
-            'File uploaded to S3',
+            'File uploaded to storage',
             null,
             basename($file_path),
             ['s3_key' => $result->key]
@@ -270,7 +270,7 @@ final class Upload_Handler
         if ($success) {
             $this->logger->success(
                 'delete',
-                'Attachment files deleted from S3',
+                'Attachment files deleted from storage',
                 $attachment_id,
                 null,
                 ['keys' => $s3_keys]
@@ -294,7 +294,7 @@ final class Upload_Handler
         } else {
             $this->logger->error(
                 'delete',
-                'Failed to delete attachment files from S3',
+                'Failed to delete attachment files from storage',
                 $attachment_id,
                 null,
                 ['keys' => $s3_keys]
@@ -377,7 +377,7 @@ final class Upload_Handler
         if (!$force && $this->is_offloaded($attachment_id)) {
             return [
                 'success' => true,
-                'message' => 'Already on S3',
+                'message' => 'Already on cloud',
                 's3_key' => $this->get_s3_key($attachment_id),
                 's3_url' => $this->get_s3_url($attachment_id),
             ];
@@ -458,7 +458,7 @@ final class Upload_Handler
 
         return [
             'success' => true,
-            'message' => 'File uploaded to S3',
+            'message' => 'File uploaded to storage',
             's3_key' => $result->key,
             's3_url' => $result->url,
         ];

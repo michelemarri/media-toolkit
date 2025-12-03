@@ -130,7 +130,7 @@ Switch environments in **Settings → Environment**.
 
 ---
 
-## S3 Offloading
+## Storage Offloading
 
 ### Automatic Upload
 
