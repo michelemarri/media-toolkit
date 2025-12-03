@@ -30,6 +30,7 @@ global $wpdb;
 // Drop custom tables
 $wpdb->query("DROP TABLE IF EXISTS {$wpdb->prefix}media_toolkit_logs");
 $wpdb->query("DROP TABLE IF EXISTS {$wpdb->prefix}media_toolkit_history");
+$wpdb->query("DROP TABLE IF EXISTS {$wpdb->prefix}media_toolkit_optimization");
 
 // Delete plugin options
 delete_option('media_toolkit_settings');
@@ -41,6 +42,8 @@ delete_option('media_toolkit_cache_control');
 delete_option('media_toolkit_content_disposition');
 delete_option('media_toolkit_sync_interval');
 delete_option('media_toolkit_s3_stats');
+delete_option('media_toolkit_optimization_stats');
+delete_option('media_toolkit_optimization_db_version');
 
 // Delete transients
 $wpdb->query(

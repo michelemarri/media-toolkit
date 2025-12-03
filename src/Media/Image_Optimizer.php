@@ -15,6 +15,7 @@ use Metodo\MediaToolkit\Core\Settings;
 use Metodo\MediaToolkit\Core\Logger;
 use Metodo\MediaToolkit\History\History;
 use Metodo\MediaToolkit\History\HistoryAction;
+use Metodo\MediaToolkit\Database\OptimizationTable;
 
 /**
  * Handles image optimization/compression for media files
@@ -53,7 +54,7 @@ final class Image_Optimizer extends Batch_Processor
     }
 
     /**
-     * Handle attachment deletion - update aggregated stats
+     * Handle attachment deletion - update aggregated stats and remove from table
      */
     public function on_attachment_deleted(int $attachment_id): void
     {
@@ -63,8 +64,11 @@ final class Image_Optimizer extends Batch_Processor
             return;
         }
         
-        // Decrement stats if it was optimized
-        $this->decrement_stats_for_attachment($attachment_id);
+        // Delete from optimization table (this handles stats update)
+        OptimizationTable::delete_by_attachment($attachment_id);
+        
+        // Invalidate stats cache so it rebuilds from table
+        $this->invalidate_stats_cache();
         
         // Decrement total images count
         $this->decrement_total_images();
@@ -245,23 +249,18 @@ final class Image_Optimizer extends Batch_Processor
     }
 
     /**
-     * Initialize stats - either fresh or from existing data
+     * Initialize stats - either fresh or from custom table
      */
     private function initialize_stats(): array
     {
-        global $wpdb;
-        
-        // Check if there are existing optimized images (migration scenario)
-        $has_existing = (int) $wpdb->get_var(
-            $wpdb->prepare(
-                "SELECT 1 FROM {$wpdb->postmeta} WHERE meta_key = %s LIMIT 1",
-                '_media_toolkit_optimized'
-            )
-        );
-        
-        if ($has_existing > 0) {
-            // Rebuild from existing meta data (one-time migration)
-            return $this->rebuild_aggregated_stats();
+        // Check if optimization table has data
+        if (OptimizationTable::table_exists()) {
+            $table_stats = OptimizationTable::get_aggregate_stats();
+            
+            if ($table_stats['total_records'] > 0) {
+                // Rebuild from custom table
+                return $this->rebuild_aggregated_stats();
+            }
         }
         
         // Fresh install - count current images and save
@@ -327,24 +326,19 @@ final class Image_Optimizer extends Batch_Processor
      * Decrement stats when an image is deleted or re-optimized
      * 
      * @param int $attachment_id The attachment being removed/changed
+     * @deprecated Use OptimizationTable::delete_by_attachment() instead
      */
     public function decrement_stats_for_attachment(int $attachment_id): void
     {
-        $original_size = (int) get_post_meta($attachment_id, '_media_toolkit_original_size', true);
-        $bytes_saved = (int) get_post_meta($attachment_id, '_media_toolkit_bytes_saved', true);
-        $was_optimized = get_post_meta($attachment_id, '_media_toolkit_optimized', true) === '1';
+        // Get data from custom table
+        $record = OptimizationTable::get_by_attachment($attachment_id);
         
-        if (!$was_optimized) {
+        if (!$record || $record['status'] !== 'optimized') {
             return;
         }
         
-        $stats = $this->get_aggregated_stats();
-        
-        $stats['optimized_count'] = max(0, $stats['optimized_count'] - 1);
-        $stats['total_bytes_saved'] = max(0, $stats['total_bytes_saved'] - $bytes_saved);
-        $stats['total_original_size'] = max(0, $stats['total_original_size'] - $original_size);
-        
-        $this->save_stats($stats);
+        // Stats are now calculated from the table directly, so just invalidate cache
+        $this->invalidate_stats_cache();
     }
 
     /**
@@ -382,51 +376,31 @@ final class Image_Optimizer extends Batch_Processor
     }
 
     /**
-     * Rebuild aggregated stats from database
+     * Rebuild aggregated stats from custom table
      * 
-     * Use this if stats get out of sync (e.g., after manual DB edits)
-     * or for initial migration from old system.
-     * 
-     * Uses efficient single-pass query where possible.
+     * Use this if stats get out of sync (e.g., after manual DB edits).
+     * Now uses the efficient custom optimization table.
      */
     public function rebuild_aggregated_stats(): array
     {
-        global $wpdb;
-
-        // Get total images
+        // Get total images from posts table
         $total_images = $this->count_total_images_from_db();
 
-        // Efficient single query for all optimization stats
-        $optimization_stats = $wpdb->get_row(
-            $wpdb->prepare(
-                "SELECT 
-                    COUNT(DISTINCT CASE WHEN pm1.meta_key = %s AND pm1.meta_value = '1' THEN pm1.post_id END) as optimized_count,
-                    COALESCE(SUM(CASE WHEN pm1.meta_key = %s THEN CAST(pm1.meta_value AS UNSIGNED) END), 0) as total_bytes_saved,
-                    COALESCE(SUM(CASE WHEN pm1.meta_key = %s THEN CAST(pm1.meta_value AS UNSIGNED) END), 0) as total_original_size
-                FROM {$wpdb->postmeta} pm1
-                WHERE pm1.meta_key IN (%s, %s, %s)",
-                '_media_toolkit_optimized',
-                '_media_toolkit_bytes_saved',
-                '_media_toolkit_original_size',
-                '_media_toolkit_optimized',
-                '_media_toolkit_bytes_saved',
-                '_media_toolkit_original_size'
-            ),
-            ARRAY_A
-        );
+        // Get optimization stats from custom table (single efficient query)
+        $table_stats = OptimizationTable::get_aggregate_stats();
 
         $stats = [
             'total_images' => $total_images,
-            'optimized_count' => (int) ($optimization_stats['optimized_count'] ?? 0),
-            'total_bytes_saved' => (int) ($optimization_stats['total_bytes_saved'] ?? 0),
-            'total_original_size' => (int) ($optimization_stats['total_original_size'] ?? 0),
+            'optimized_count' => $table_stats['optimized_count'],
+            'total_bytes_saved' => $table_stats['total_bytes_saved'],
+            'total_original_size' => $table_stats['total_original_size'],
             'last_updated' => time(),
-            'version' => 2,
+            'version' => 3, // Bumped version for custom table
         ];
 
         $this->save_stats($stats);
         
-        $this->logger->info('optimization', 'Aggregated stats rebuilt from database');
+        $this->logger->info('optimization', 'Aggregated stats rebuilt from optimization table');
 
         return $stats;
     }
@@ -531,39 +505,34 @@ final class Image_Optimizer extends Batch_Processor
     /**
      * Count pending items to optimize
      * 
-     * Uses aggregated stats for O(1) performance instead of expensive LEFT JOIN.
+     * Uses custom table for efficient counting.
      */
     protected function count_pending_items(array $options = []): int
     {
-        $stats = $this->get_aggregated_stats();
-        return max(0, $stats['total_images'] - $stats['optimized_count']);
+        // Count images not in table + images with pending status
+        $untracked_count = count(OptimizationTable::get_untracked_attachment_ids(10000, 0));
+        $pending_count = OptimizationTable::count_by_status('pending');
+        
+        return $untracked_count + $pending_count;
     }
 
     /**
      * Get pending items for optimization
+     * 
+     * Uses the custom optimization table for efficient queries.
+     * First checks for images not yet tracked, then for pending status.
      */
     protected function get_pending_items(int $limit, int $after_id, array $options = []): array
     {
-        global $wpdb;
-
-        $mime_types = $this->get_supported_mime_types();
-        $placeholders = implode(',', array_fill(0, count($mime_types), '%s'));
-
-        $query_args = array_merge($mime_types, [$after_id, $limit]);
-
-        return $wpdb->get_col(
-            $wpdb->prepare(
-                "SELECT p.ID FROM {$wpdb->posts} p
-                 LEFT JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id AND pm.meta_key = '_media_toolkit_optimized'
-                 WHERE p.post_type = 'attachment' 
-                 AND p.post_mime_type IN ($placeholders)
-                 AND (pm.meta_value IS NULL OR pm.meta_value != '1')
-                 AND p.ID > %d
-                 ORDER BY p.ID ASC
-                 LIMIT %d",
-                ...$query_args
-            )
-        );
+        // First: Get images not yet in the optimization table
+        $untracked = OptimizationTable::get_untracked_attachment_ids($limit, $after_id);
+        
+        if (!empty($untracked)) {
+            return $untracked;
+        }
+        
+        // Then: Get images with 'pending' status in the table
+        return OptimizationTable::get_pending_attachment_ids($limit, $after_id);
     }
 
     /**
@@ -648,8 +617,8 @@ final class Image_Optimizer extends Batch_Processor
         // Validate image file is readable
         $image_info = @getimagesize($file);
         if ($image_info === false) {
-            update_post_meta($attachment_id, '_media_toolkit_optimized', '1');
-            update_post_meta($attachment_id, '_media_toolkit_optimize_skipped', 'corrupted_file');
+            OptimizationTable::mark_failed($attachment_id, 'Failed to read file - image may be corrupted');
+            $this->invalidate_stats_cache();
             
             return [
                 'success' => false,
@@ -660,9 +629,9 @@ final class Image_Optimizer extends Batch_Processor
         // Check max file size
         $max_size = ($settings['max_file_size_mb'] ?? 10) * 1024 * 1024;
         if ($original_size > $max_size) {
-            // Mark as optimized but skipped
-            update_post_meta($attachment_id, '_media_toolkit_optimized', '1');
-            update_post_meta($attachment_id, '_media_toolkit_optimize_skipped', 'file_too_large');
+            // Mark as skipped in custom table
+            OptimizationTable::mark_skipped($attachment_id, 'File too large: ' . size_format($original_size));
+            $this->invalidate_stats_cache();
             
             return [
                 'success' => true,
@@ -695,23 +664,22 @@ final class Image_Optimizer extends Batch_Processor
             // Restore original if savings too small? No, keep optimized version
         }
 
-        // Check if this is a re-optimization (already optimized before)
-        $was_already_optimized = get_post_meta($attachment_id, '_media_toolkit_optimized', true) === '1';
-        
-        // If re-optimizing, first decrement the old stats
-        if ($was_already_optimized) {
-            $this->decrement_stats_for_attachment($attachment_id);
-        }
+        // Save to custom optimization table with settings used
+        OptimizationTable::mark_optimized(
+            $attachment_id,
+            $original_size,
+            $new_size,
+            [
+                'jpeg_quality' => $settings['jpeg_quality'] ?? null,
+                'png_compression' => $settings['png_compression'] ?? null,
+                'strip_metadata' => $settings['strip_metadata'] ?? null,
+                'max_file_size_mb' => $settings['max_file_size_mb'] ?? null,
+                'min_savings_percent' => $settings['min_savings_percent'] ?? null,
+            ]
+        );
 
-        // Update meta for this file
-        update_post_meta($attachment_id, '_media_toolkit_optimized', '1');
-        update_post_meta($attachment_id, '_media_toolkit_original_size', $original_size);
-        update_post_meta($attachment_id, '_media_toolkit_optimized_size', $new_size);
-        update_post_meta($attachment_id, '_media_toolkit_bytes_saved', max(0, $bytes_saved));
-        update_post_meta($attachment_id, '_media_toolkit_optimized_at', time());
-
-        // Update aggregated stats (always count as new since we decremented if re-optimizing)
-        $this->update_aggregated_stats(max(0, $bytes_saved), $original_size, true);
+        // Invalidate stats cache so it rebuilds from table
+        $this->invalidate_stats_cache();
 
         // Re-upload to S3 if already offloaded
         $s3_key = get_post_meta($attachment_id, '_media_toolkit_key', true);

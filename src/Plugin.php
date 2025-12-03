@@ -41,6 +41,7 @@ use Metodo\MediaToolkit\Admin\Admin_Settings;
 use Metodo\MediaToolkit\Admin\Admin_Migration;
 use Metodo\MediaToolkit\Admin\Admin_Dashboard;
 use Metodo\MediaToolkit\Updater\GitHubUpdater;
+use Metodo\MediaToolkit\Database\OptimizationTable;
 
 /**
  * Main plugin class
@@ -381,6 +382,9 @@ final class Plugin
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
         dbDelta($logs_sql);
         dbDelta($history_sql);
+        
+        // Optimization table (custom table for performance)
+        OptimizationTable::create_table();
     }
 
     public function register_admin_menu(): void
