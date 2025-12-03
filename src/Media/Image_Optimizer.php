@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace Metodo\MediaToolkit\Media;
 
 use Metodo\MediaToolkit\Migration\Batch_Processor;
-use Metodo\MediaToolkit\S3\S3_Client;
+use Metodo\MediaToolkit\Storage\StorageInterface;
 use Metodo\MediaToolkit\Core\Settings;
 use Metodo\MediaToolkit\Core\Logger;
 use Metodo\MediaToolkit\History\History;
@@ -25,7 +25,7 @@ final class Image_Optimizer extends Batch_Processor
     private const SETTINGS_KEY = 'media_toolkit_optimize_settings';
     private const STATS_KEY = 'media_toolkit_optimization_stats';
     
-    private ?S3_Client $s3_client;
+    private ?StorageInterface $storage;
     private History $history;
     
     /** @var array|null In-memory cache for stats within same request */
@@ -34,12 +34,12 @@ final class Image_Optimizer extends Batch_Processor
     public function __construct(
         Logger $logger,
         Settings $settings,
-        ?S3_Client $s3_client = null,
+        ?StorageInterface $storage = null,
         ?History $history = null
     ) {
         parent::__construct($logger, $settings, 'optimization');
         
-        $this->s3_client = $s3_client;
+        $this->storage = $storage;
         $this->history = $history ?? new History();
         
         // Register settings AJAX handler
@@ -576,7 +576,7 @@ final class Image_Optimizer extends Batch_Processor
         }
 
         $s3_key = get_post_meta($attachment_id, '_media_toolkit_key', true);
-        $is_s3_active = $this->s3_client !== null;
+        $is_s3_active = $this->storage !== null;
         $is_on_s3 = !empty($s3_key);
         
         // Determine source of truth based on S3 configuration
@@ -593,7 +593,7 @@ final class Image_Optimizer extends Batch_Processor
                 @unlink($file);
             }
             
-            $downloaded = $this->s3_client->download_file($s3_key, $file, $attachment_id);
+            $downloaded = $this->storage->download_file($s3_key, $file, $attachment_id);
             if (!$downloaded) {
                 return [
                     'success' => false,
@@ -683,8 +683,8 @@ final class Image_Optimizer extends Batch_Processor
 
         // Re-upload to S3 if already offloaded
         $s3_key = get_post_meta($attachment_id, '_media_toolkit_key', true);
-        if (!empty($s3_key) && $this->s3_client !== null) {
-            $upload_result = $this->s3_client->upload_file($file, $attachment_id);
+        if (!empty($s3_key) && $this->storage !== null) {
+            $upload_result = $this->storage->upload_file($file, $attachment_id);
             
             if ($upload_result->success) {
                 $this->logger->success(
@@ -917,7 +917,7 @@ final class Image_Optimizer extends Batch_Processor
         $file = get_attached_file($attachment_id);
         $file_dir = dirname($file);
         
-        $is_s3_active = $this->s3_client !== null;
+        $is_s3_active = $this->storage !== null;
         $thumb_keys = get_post_meta($attachment_id, '_media_toolkit_thumb_keys', true) ?: [];
 
         foreach ($metadata['sizes'] as $size_name => $size_data) {
@@ -936,7 +936,7 @@ final class Image_Optimizer extends Batch_Processor
                     @unlink($thumb_file);
                 }
                 
-                $downloaded = $this->s3_client->download_file($thumb_s3_key, $thumb_file, $attachment_id);
+                $downloaded = $this->storage->download_file($thumb_s3_key, $thumb_file, $attachment_id);
                 if (!$downloaded) {
                     continue; // Skip this thumbnail if download fails
                 }
@@ -959,7 +959,7 @@ final class Image_Optimizer extends Batch_Processor
 
             // Re-upload to S3 if needed
             if ($result['success'] && $is_s3_active && !empty($thumb_s3_key)) {
-                $this->s3_client->upload_file($thumb_file, $attachment_id);
+                $this->storage->upload_file($thumb_file, $attachment_id);
             }
         }
     }
@@ -969,7 +969,7 @@ final class Image_Optimizer extends Batch_Processor
      */
     private function ensure_local_file(int $attachment_id, string $file): bool
     {
-        if ($this->s3_client === null) {
+        if ($this->storage === null) {
             return false;
         }
 
@@ -985,7 +985,7 @@ final class Image_Optimizer extends Batch_Processor
             wp_mkdir_p($dir);
         }
 
-        return $this->s3_client->download_file($s3_key, $file, $attachment_id);
+        return $this->storage->download_file($s3_key, $file, $attachment_id);
     }
 
     /**

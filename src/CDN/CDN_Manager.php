@@ -13,7 +13,7 @@ namespace Metodo\MediaToolkit\CDN;
 
 use Metodo\MediaToolkit\Core\Settings;
 use Metodo\MediaToolkit\Core\Logger;
-use Metodo\MediaToolkit\S3\S3Config;
+use Metodo\MediaToolkit\Storage\StorageConfig;
 
 use Aws\CloudFront\CloudFrontClient;
 use Aws\Exception\AwsException;
@@ -42,7 +42,7 @@ final class CDN_Manager
      */
     public function is_available(): bool
     {
-        $config = $this->settings->get_config();
+        $config = $this->settings->get_storage_config();
         
         if ($config === null) {
             return false;
@@ -82,7 +82,7 @@ final class CDN_Manager
             wp_schedule_single_event(time() + self::BATCH_INTERVAL, 'media_toolkit_batch_invalidation');
         }
 
-        $config = $this->settings->get_config();
+        $config = $this->settings->get_storage_config();
         $this->logger->info(
             'invalidation',
             'Queued ' . count($paths) . ' path(s) for ' . ucfirst($config->cdnProvider->value) . ' cache purge',
@@ -174,7 +174,7 @@ final class CDN_Manager
      */
     public function purge(array $paths): array
     {
-        $config = $this->settings->get_config();
+        $config = $this->settings->get_storage_config();
         
         if ($config === null) {
             return ['success' => false, 'message' => 'CDN not configured'];
@@ -190,7 +190,7 @@ final class CDN_Manager
     /**
      * Purge CloudFront cache
      */
-    private function purge_cloudfront(array $paths, S3Config $config): array
+    private function purge_cloudfront(array $paths, StorageConfig $config): array
     {
         if (empty($config->cloudfrontDistributionId)) {
             return ['success' => false, 'message' => 'CloudFront Distribution ID not configured'];
@@ -250,7 +250,7 @@ final class CDN_Manager
     /**
      * Purge Cloudflare cache
      */
-    private function purge_cloudflare(array $paths, S3Config $config): array
+    private function purge_cloudflare(array $paths, StorageConfig $config): array
     {
         if (empty($config->cloudflareZoneId) || empty($config->cloudflareApiToken)) {
             return ['success' => false, 'message' => 'Cloudflare Zone ID or API Token not configured'];
@@ -322,7 +322,7 @@ final class CDN_Manager
     /**
      * Get CloudFront client
      */
-    private function get_cloudfront_client(S3Config $config): ?CloudFrontClient
+    private function get_cloudfront_client(StorageConfig $config): ?CloudFrontClient
     {
         if ($this->cloudfront_client !== null) {
             return $this->cloudfront_client;
@@ -345,7 +345,7 @@ final class CDN_Manager
      */
     public function test_connection(): array
     {
-        $config = $this->settings->get_config();
+        $config = $this->settings->get_storage_config();
         
         if ($config === null || !$config->hasCDN()) {
             return [

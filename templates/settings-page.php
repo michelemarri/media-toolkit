@@ -8,6 +8,8 @@
 declare(strict_types=1);
 
 use Metodo\MediaToolkit\Core\Environment;
+use Metodo\MediaToolkit\Storage\StorageProvider;
+use Metodo\MediaToolkit\Storage\StorageFactory;
 
 if (!defined('ABSPATH')) {
     exit;
@@ -20,12 +22,15 @@ $is_configured = false;
 $credentials = [];
 $active_environment = 'production';
 $cache_control = 31536000;
+$current_provider = StorageProvider::AWS_S3;
+$providers_info = StorageFactory::getProvidersInfo();
 
 if ($settings) {
     $is_configured = $settings->is_configured();
     $credentials = $settings->get_masked_credentials();
     $active_environment = $settings->get_active_environment()->value;
     $cache_control = $settings->get_cache_control_max_age();
+    $current_provider = $settings->get_storage_provider();
 }
 
 $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'environment';
@@ -43,7 +48,7 @@ $hasBanner = file_exists($bannerPath);
             <img src="<?php echo esc_url($bannerUrl); ?>" alt="Media Toolkit" class="mt-hero-banner">
             <div class="mt-hero-overlay">
                 <h1 class="mt-hero-title"><?php esc_html_e('Settings', 'media-toolkit'); ?></h1>
-                <p class="mt-hero-description"><?php esc_html_e('Configure AWS S3 and CDN settings for your media files.', 'media-toolkit'); ?></p>
+                <p class="mt-hero-description"><?php esc_html_e('Configure storage provider and CDN settings for your media files.', 'media-toolkit'); ?></p>
                 <span class="mt-hero-version">v<?php echo esc_html(MEDIA_TOOLKIT_VERSION); ?></span>
             </div>
         </div>
@@ -57,7 +62,7 @@ $hasBanner = file_exists($bannerPath);
                 <?php esc_html_e('Settings', 'media-toolkit'); ?>
             </h1>
             <p class="text-lg text-gray-500 max-w-xl">
-                <?php esc_html_e('Configure AWS S3 and CDN settings for your media files.', 'media-toolkit'); ?>
+                <?php esc_html_e('Configure storage provider and CDN settings for your media files.', 'media-toolkit'); ?>
             </p>
         </header>
         <?php endif; ?>
@@ -69,8 +74,8 @@ $hasBanner = file_exists($bannerPath);
                 <?php esc_html_e('Environment', 'media-toolkit'); ?>
             </a>
             <a href="?page=media-toolkit-settings&tab=credentials" class="flex items-center gap-2 px-5 py-3 text-sm font-medium rounded-lg transition-all whitespace-nowrap <?php echo $active_tab === 'credentials' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'; ?>">
-                <span class="dashicons dashicons-lock"></span>
-                <?php esc_html_e('Credentials', 'media-toolkit'); ?>
+                <span class="dashicons dashicons-cloud-upload"></span>
+                <?php esc_html_e('Storage Provider', 'media-toolkit'); ?>
             </a>
             <a href="?page=media-toolkit-settings&tab=cdn" class="flex items-center gap-2 px-5 py-3 text-sm font-medium rounded-lg transition-all whitespace-nowrap <?php echo $active_tab === 'cdn' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'; ?>">
                 <span class="dashicons dashicons-networking"></span>
@@ -138,82 +143,116 @@ $hasBanner = file_exists($bannerPath);
             </div>
 
         <?php elseif ($active_tab === 'credentials'): ?>
-            <!-- ==================== CREDENTIALS TAB ==================== -->
-            <div class="bg-white rounded-xl shadow-sm overflow-hidden" id="s3-credentials-panel">
+            <!-- ==================== STORAGE PROVIDER TAB ==================== -->
+            <div class="bg-white rounded-xl shadow-sm overflow-hidden" id="storage-credentials-panel">
 
                 <div class="flex flex-col gap-1 px-6 py-4 border-b border-gray-200">
                     <div class="flex flex-row items-center justify-between gap-2">
                         <div class="flex flex-row items-center gap-2">
-                            <span class="dashicons dashicons-lock text-gray-700"></span>
-                            <h3 class="text-lg font-semibold text-gray-900 m-0"><?php esc_html_e('AWS Credentials', 'media-toolkit'); ?></h3>
+                            <span class="dashicons dashicons-cloud-upload text-gray-700"></span>
+                            <h3 class="text-lg font-semibold text-gray-900 m-0"><?php esc_html_e('Storage Provider', 'media-toolkit'); ?></h3>
                         </div>
                         <?php if ($is_configured): ?>
-                            <span class="inline-flex items-center px-3 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800"><?php esc_html_e('Configured', 'media-toolkit'); ?></span>
+                            <span class="inline-flex items-center px-3 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
+                                <?php echo esc_html($current_provider->label()); ?>
+                            </span>
                         <?php endif; ?>
                     </div>
                     <p class="text-sm text-gray-600 m-0">
-                    <?php esc_html_e('Configure your AWS credentials for S3 access. A single bucket is shared across all environments.', 'media-toolkit'); ?>
+                        <?php esc_html_e('Select and configure your cloud storage provider. A single bucket is shared across all environments.', 'media-toolkit'); ?>
                     </p>
                 </div>
 
                 <div class="p-6">
-                    
-                    <form id="s3-credentials-form">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                        <div>
-                            <label for="access_key" class="block text-sm font-semibold text-gray-900 mb-2"><?php esc_html_e('AWS Access Key', 'media-toolkit'); ?></label>
-                            <input type="text" name="access_key" id="access_key" 
-                                   value="<?php echo esc_attr($credentials['access_key'] ?? ''); ?>"
-                                   class="w-full px-4 py-2.5 mt-input text-sm bg-white border border-gray-300 rounded-lg outline-none transition-all" autocomplete="off"
-                                   placeholder="AKIAIOSFODNN7EXAMPLE">
-                        </div>
-                        
-                        <div>
-                            <label for="secret_key" class="block text-sm font-semibold text-gray-900 mb-2"><?php esc_html_e('AWS Secret Key', 'media-toolkit'); ?></label>
-                            <input type="password" name="secret_key" id="secret_key" 
-                                   value="<?php echo esc_attr($credentials['secret_key'] ?? ''); ?>"
-                                   class="w-full px-4 py-2.5 mt-input text-sm bg-white border border-gray-300 rounded-lg outline-none transition-all" autocomplete="off"
-                                   placeholder="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY">
-                        </div>
-                        
-                        <div>
-                            <label for="region" class="block text-sm font-semibold text-gray-900 mb-2"><?php esc_html_e('AWS Region', 'media-toolkit'); ?></label>
-                            <select name="region" id="region" class="mt-select w-full px-4 py-2.5 text-sm bg-white border border-gray-300 rounded-lg outline-none transition-all">
-                                <option value=""><?php esc_html_e('Select Region', 'media-toolkit'); ?></option>
-                                <option value="us-east-1" <?php selected($credentials['region'] ?? '', 'us-east-1'); ?>>US East (N. Virginia)</option>
-                                <option value="us-east-2" <?php selected($credentials['region'] ?? '', 'us-east-2'); ?>>US East (Ohio)</option>
-                                <option value="us-west-1" <?php selected($credentials['region'] ?? '', 'us-west-1'); ?>>US West (N. California)</option>
-                                <option value="us-west-2" <?php selected($credentials['region'] ?? '', 'us-west-2'); ?>>US West (Oregon)</option>
-                                <option value="eu-west-1" <?php selected($credentials['region'] ?? '', 'eu-west-1'); ?>>EU (Ireland)</option>
-                                <option value="eu-west-2" <?php selected($credentials['region'] ?? '', 'eu-west-2'); ?>>EU (London)</option>
-                                <option value="eu-west-3" <?php selected($credentials['region'] ?? '', 'eu-west-3'); ?>>EU (Paris)</option>
-                                <option value="eu-central-1" <?php selected($credentials['region'] ?? '', 'eu-central-1'); ?>>EU (Frankfurt)</option>
-                                <option value="eu-south-1" <?php selected($credentials['region'] ?? '', 'eu-south-1'); ?>>EU (Milan)</option>
-                                <option value="ap-northeast-1" <?php selected($credentials['region'] ?? '', 'ap-northeast-1'); ?>>Asia Pacific (Tokyo)</option>
-                                <option value="ap-southeast-1" <?php selected($credentials['region'] ?? '', 'ap-southeast-1'); ?>>Asia Pacific (Singapore)</option>
-                                <option value="ap-southeast-2" <?php selected($credentials['region'] ?? '', 'ap-southeast-2'); ?>>Asia Pacific (Sydney)</option>
+                    <form id="storage-credentials-form">
+                        <!-- Provider Selection -->
+                        <div class="mb-6">
+                            <label for="storage_provider" class="block text-sm font-semibold text-gray-900 mb-2"><?php esc_html_e('Storage Provider', 'media-toolkit'); ?></label>
+                            <select name="storage_provider" id="storage_provider" class="mt-select w-full max-w-md px-4 py-2.5 text-sm bg-white border border-gray-300 rounded-lg outline-none transition-all">
+                                <?php foreach (StorageProvider::cases() as $provider): ?>
+                                    <option value="<?php echo esc_attr($provider->value); ?>" <?php selected($current_provider->value, $provider->value); ?>>
+                                        <?php echo esc_html($provider->label()); ?>
+                                    </option>
+                                <?php endforeach; ?>
                             </select>
+                            <p class="mt-2 text-sm text-gray-500" id="provider-description">
+                                <?php echo esc_html($current_provider->description()); ?>
+                            </p>
+                        </div>
+
+                        <!-- Provider-specific warning for R2 -->
+                        <div id="r2-cdn-warning" class="hidden mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                            <div class="flex items-start gap-3">
+                                <span class="dashicons dashicons-warning text-amber-600 mt-0.5"></span>
+                                <div>
+                                    <p class="text-sm font-medium text-amber-800 m-0"><?php esc_html_e('CDN URL Required', 'media-toolkit'); ?></p>
+                                    <p class="text-sm text-amber-700 mt-1 m-0"><?php esc_html_e('Cloudflare R2 does not provide public URLs. You must configure a CDN URL or custom domain in the CDN tab for files to be accessible.', 'media-toolkit'); ?></p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                            <!-- Account ID (R2 only) -->
+                            <div id="field-account-id" class="hidden">
+                                <label for="account_id" class="block text-sm font-semibold text-gray-900 mb-2"><?php esc_html_e('Account ID', 'media-toolkit'); ?></label>
+                                <input type="text" name="account_id" id="account_id" 
+                                       value="<?php echo esc_attr($credentials['account_id'] ?? ''); ?>"
+                                       class="w-full px-4 py-2.5 mt-input text-sm bg-white border border-gray-300 rounded-lg outline-none transition-all" autocomplete="off"
+                                       placeholder="<?php esc_attr_e('Your Cloudflare Account ID', 'media-toolkit'); ?>">
+                                <p class="mt-1 text-xs text-gray-500"><?php esc_html_e('Found in Cloudflare Dashboard > R2 > Overview', 'media-toolkit'); ?></p>
+                            </div>
+
+                            <!-- Access Key -->
+                            <div>
+                                <label for="access_key" class="block text-sm font-semibold text-gray-900 mb-2" id="label-access-key"><?php esc_html_e('Access Key', 'media-toolkit'); ?></label>
+                                <input type="text" name="access_key" id="access_key" 
+                                       value="<?php echo esc_attr($credentials['access_key'] ?? ''); ?>"
+                                       class="w-full px-4 py-2.5 mt-input text-sm bg-white border border-gray-300 rounded-lg outline-none transition-all" autocomplete="off"
+                                       placeholder="AKIAIOSFODNN7EXAMPLE">
+                            </div>
+                            
+                            <!-- Secret Key -->
+                            <div>
+                                <label for="secret_key" class="block text-sm font-semibold text-gray-900 mb-2" id="label-secret-key"><?php esc_html_e('Secret Key', 'media-toolkit'); ?></label>
+                                <input type="password" name="secret_key" id="secret_key" 
+                                       value="<?php echo esc_attr($credentials['secret_key'] ?? ''); ?>"
+                                       class="w-full px-4 py-2.5 mt-input text-sm bg-white border border-gray-300 rounded-lg outline-none transition-all" autocomplete="off"
+                                       placeholder="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY">
+                            </div>
+                            
+                            <!-- Region -->
+                            <div id="field-region">
+                                <label for="region" class="block text-sm font-semibold text-gray-900 mb-2"><?php esc_html_e('Region', 'media-toolkit'); ?></label>
+                                <select name="region" id="region" class="mt-select w-full px-4 py-2.5 text-sm bg-white border border-gray-300 rounded-lg outline-none transition-all">
+                                    <option value=""><?php esc_html_e('Select Region', 'media-toolkit'); ?></option>
+                                    <?php foreach ($current_provider->get_regions() as $region_code => $region_label): ?>
+                                        <option value="<?php echo esc_attr($region_code); ?>" <?php selected($credentials['region'] ?? '', $region_code); ?>>
+                                            <?php echo esc_html($region_label); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            
+                            <!-- Bucket -->
+                            <div>
+                                <label for="bucket" class="block text-sm font-semibold text-gray-900 mb-2"><?php esc_html_e('Bucket Name', 'media-toolkit'); ?></label>
+                                <input type="text" name="bucket" id="bucket" 
+                                       value="<?php echo esc_attr($credentials['bucket'] ?? ''); ?>"
+                                       class="mt-input w-full px-4 py-2.5 text-sm bg-white border border-gray-300 rounded-lg outline-none transition-all"
+                                       placeholder="my-bucket-name">
+                            </div>
                         </div>
                         
-                        <div>
-                            <label for="bucket" class="block text-sm font-semibold text-gray-900 mb-2"><?php esc_html_e('S3 Bucket Name', 'media-toolkit'); ?></label>
-                            <input type="text" name="bucket" id="bucket" 
-                                   value="<?php echo esc_attr($credentials['bucket'] ?? ''); ?>"
-                                   class="mt-input w-full px-4 py-2.5 text-sm bg-white border border-gray-300 rounded-lg outline-none transition-all"
-                                   placeholder="my-bucket-name">
+                        <div class="flex items-center gap-3">
+                            <button type="button" class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-gray-800 hover:bg-gray-900 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed" id="btn-save-credentials" disabled>
+                                <span class="dashicons dashicons-saved"></span>
+                                <?php esc_html_e('Save Configuration', 'media-toolkit'); ?>
+                            </button>
+                            <button type="button" class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 rounded-lg transition-all border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed" id="btn-test-credentials" disabled>
+                                <span class="dashicons dashicons-admin-plugins"></span>
+                                <?php esc_html_e('Test Connection', 'media-toolkit'); ?>
+                            </button>
                         </div>
-                    </div>
-                    
-                    <div class="flex items-center gap-3">
-                        <button type="button" class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-gray-800 hover:bg-gray-900 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed" id="btn-save-credentials" disabled>
-                            <span class="dashicons dashicons-saved"></span>
-                            <?php esc_html_e('Save Credentials', 'media-toolkit'); ?>
-                        </button>
-                        <button type="button" class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed" id="btn-test-credentials" disabled>
-                            <span class="dashicons dashicons-admin-plugins"></span>
-                            <?php esc_html_e('Test Connection', 'media-toolkit'); ?>
-                        </button>
-                    </div>
                     </form>
                 </div>
             </div>

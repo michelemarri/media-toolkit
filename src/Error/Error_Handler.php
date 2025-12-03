@@ -225,9 +225,9 @@ final class Error_Handler
         }
 
         $plugin = media_toolkit();
-        $s3_client = $plugin->get_s3_client();
+        $storage = $plugin->get_storage();
         
-        if ($s3_client === null) {
+        if ($storage === null) {
             return;
         }
 
@@ -254,12 +254,12 @@ final class Error_Handler
                 switch ($op->operation) {
                     case 'upload':
                         if (file_exists($op->file_path)) {
-                            $s3_client->upload_file($op->file_path, $op->attachment_id);
+                            $storage->upload_file($op->file_path, $op->attachment_id);
                         }
                         break;
                     
                     case 'delete':
-                        $s3_client->delete_file($op->file_path);
+                        $storage->delete_file($op->file_path);
                         break;
                     
                     default:

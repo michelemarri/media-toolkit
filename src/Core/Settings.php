@@ -10,7 +10,8 @@ declare(strict_types=1);
 namespace Metodo\MediaToolkit\Core;
 
 use Metodo\MediaToolkit\CDN\CDNProvider;
-use Metodo\MediaToolkit\S3\S3Config;
+use Metodo\MediaToolkit\Storage\StorageConfig;
+use Metodo\MediaToolkit\Storage\StorageProvider;
 
 /**
  * Manages plugin settings with encryption
@@ -68,19 +69,32 @@ final class Settings
     }
 
     /**
-     * Get S3 configuration (single set of credentials)
+     * Get current storage provider
      */
-    public function get_config(): ?S3Config
+    public function get_storage_provider(): StorageProvider
+    {
+        $provider = $this->settings['provider'] ?? 'aws_s3';
+        return StorageProvider::tryFrom($provider) ?? StorageProvider::AWS_S3;
+    }
+
+    /**
+     * Get storage configuration (new multi-provider format)
+     */
+    public function get_storage_config(): ?StorageConfig
     {
         if (empty($this->settings)) {
             return null;
         }
 
-        return new S3Config(
+        $provider = $this->get_storage_provider();
+
+        return new StorageConfig(
+            provider: $provider,
             accessKey: $this->encryption->decrypt($this->settings['access_key'] ?? ''),
             secretKey: $this->encryption->decrypt($this->settings['secret_key'] ?? ''),
-            region: $this->settings['region'] ?? '',
             bucket: $this->settings['bucket'] ?? '',
+            region: $this->settings['region'] ?? '',
+            accountId: $this->settings['account_id'] ?? '',
             cdnUrl: $this->settings['cdn_url'] ?? '',
             cdnProvider: CDNProvider::tryFrom($this->settings['cdn_provider'] ?? '') ?? CDNProvider::NONE,
             cloudflareZoneId: $this->settings['cloudflare_zone_id'] ?? '',
@@ -90,13 +104,15 @@ final class Settings
     }
 
     /**
-     * Save S3 configuration
+     * Save storage configuration (new multi-provider format)
      */
-    public function save_config(
+    public function save_storage_config(
+        StorageProvider $provider,
         string $accessKey,
         string $secretKey,
-        string $region,
         string $bucket,
+        string $region = '',
+        string $accountId = '',
         string $cdnUrl = '',
         string $cdnProvider = 'none',
         string $cloudflareZoneId = '',
@@ -104,10 +120,12 @@ final class Settings
         string $cloudfrontDistributionId = ''
     ): bool {
         $this->settings = [
+            'provider' => $provider->value,
             'access_key' => $this->encryption->encrypt($accessKey),
             'secret_key' => $this->encryption->encrypt($secretKey),
-            'region' => sanitize_text_field($region),
             'bucket' => sanitize_text_field($bucket),
+            'region' => sanitize_text_field($region),
+            'account_id' => sanitize_text_field($accountId),
             'cdn_url' => esc_url_raw($cdnUrl),
             'cdn_provider' => sanitize_text_field($cdnProvider),
             'cloudflare_zone_id' => sanitize_text_field($cloudflareZoneId),
@@ -123,7 +141,7 @@ final class Settings
      */
     public function is_configured(): bool
     {
-        $config = $this->get_config();
+        $config = $this->get_storage_config();
         return $config !== null && $config->isValid();
     }
 
@@ -132,14 +150,16 @@ final class Settings
      */
     public function get_masked_credentials(): array
     {
-        $config = $this->get_config();
+        $config = $this->get_storage_config();
         
         if ($config === null) {
             return [
+                'provider' => 'aws_s3',
                 'access_key' => '',
                 'secret_key' => '',
                 'region' => '',
                 'bucket' => '',
+                'account_id' => '',
                 'cdn_url' => '',
                 'cdn_provider' => 'none',
                 'cloudflare_zone_id' => '',
@@ -149,10 +169,12 @@ final class Settings
         }
 
         return [
+            'provider' => $config->provider->value,
             'access_key' => $this->encryption->mask($config->accessKey),
             'secret_key' => $this->encryption->mask($config->secretKey),
             'region' => $config->region,
             'bucket' => $config->bucket,
+            'account_id' => $config->accountId,
             'cdn_url' => $config->cdnUrl,
             'cdn_provider' => $config->cdnProvider->value,
             'cloudflare_zone_id' => $config->cloudflareZoneId,
@@ -162,7 +184,7 @@ final class Settings
     }
 
     /**
-     * Get S3 base path including environment folder
+     * Get storage base path including environment folder
      * Structure: media/{environment}/wp-content/uploads
      */
     public function get_s3_base_path(): string
@@ -172,44 +194,32 @@ final class Settings
     }
 
     /**
-     * Get public URL for file (CDN or direct S3)
+     * Get public URL for file (CDN or direct storage)
      */
-    public function get_file_url(string $s3_key): string
+    public function get_file_url(string $key): string
     {
-        $config = $this->get_config();
+        $config = $this->get_storage_config();
         
         if ($config === null) {
             return '';
         }
 
-        // If CDN is configured, use CDN URL
-        if ($config->hasCDN()) {
-            $base_url = rtrim($config->cdnUrl, '/');
-            $key = ltrim($s3_key, '/');
-            return $base_url . '/' . $key;
-        }
-
-        // Otherwise use direct S3 URL
-        return $this->get_s3_url($s3_key);
+        return $config->getPublicUrl($key);
     }
 
     /**
-     * Get S3 URL for file (direct bucket access)
+     * Get direct storage URL for file
+     * @deprecated Use get_file_url() with StorageConfig
      */
     public function get_s3_url(string $s3_key): string
     {
-        $config = $this->get_config();
+        $config = $this->get_storage_config();
         
         if ($config === null) {
             return '';
         }
 
-        return sprintf(
-            'https://%s.s3.%s.amazonaws.com/%s',
-            $config->bucket,
-            $config->region,
-            ltrim($s3_key, '/')
-        );
+        return $config->getDirectUrl($s3_key);
     }
 
     /**
@@ -392,7 +402,7 @@ final class Settings
     }
 
     /**
-     * Get S3 stats sync interval in hours (0 = disabled)
+     * Get storage stats sync interval in hours (0 = disabled)
      */
     public function get_s3_sync_interval(): int
     {
@@ -400,7 +410,7 @@ final class Settings
     }
 
     /**
-     * Set S3 stats sync interval
+     * Set storage stats sync interval
      */
     public function set_s3_sync_interval(int $hours): bool
     {
@@ -408,7 +418,7 @@ final class Settings
     }
 
     /**
-     * Get cached S3 bucket stats
+     * Get cached storage bucket stats
      */
     public function get_cached_s3_stats(): ?array
     {
@@ -417,7 +427,7 @@ final class Settings
     }
 
     /**
-     * Save S3 bucket stats
+     * Save storage bucket stats
      */
     public function save_s3_stats(array $stats): bool
     {
@@ -437,5 +447,45 @@ final class Settings
         delete_option('media_toolkit_content_disposition');
         delete_option('media_toolkit_sync_interval');
         delete_option('media_toolkit_s3_stats');
+    }
+
+    /**
+     * Check if there are files migrated to any provider
+     */
+    public function has_migrated_files(): bool
+    {
+        global $wpdb;
+        
+        $count = $wpdb->get_var(
+            "SELECT COUNT(*) FROM {$wpdb->postmeta} WHERE meta_key = '_media_toolkit_migrated' AND meta_value = '1'"
+        );
+        
+        return (int) $count > 0;
+    }
+
+    /**
+     * Get count of files migrated per provider
+     */
+    public function get_migrated_files_by_provider(): array
+    {
+        global $wpdb;
+        
+        $results = $wpdb->get_results(
+            "SELECT pm2.meta_value as provider, COUNT(*) as count
+             FROM {$wpdb->postmeta} pm1
+             LEFT JOIN {$wpdb->postmeta} pm2 ON pm1.post_id = pm2.post_id AND pm2.meta_key = '_media_toolkit_provider'
+             WHERE pm1.meta_key = '_media_toolkit_migrated' AND pm1.meta_value = '1'
+             GROUP BY pm2.meta_value",
+            ARRAY_A
+        );
+        
+        $counts = [];
+        foreach ($results as $row) {
+            // Files without provider meta are assumed to be AWS S3 (legacy)
+            $provider = $row['provider'] ?: 'aws_s3';
+            $counts[$provider] = (int) $row['count'];
+        }
+        
+        return $counts;
     }
 }

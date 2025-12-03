@@ -1,6 +1,6 @@
 <?php
 /**
- * Reconciliation class for syncing S3 state with WordPress metadata
+ * Reconciliation class for syncing storage state with WordPress metadata
  *
  * @package Metodo\MediaToolkit
  */
@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace Metodo\MediaToolkit\Migration;
 
-use Metodo\MediaToolkit\S3\S3_Client;
+use Metodo\MediaToolkit\Storage\StorageInterface;
 use Metodo\MediaToolkit\Core\Settings;
 use Metodo\MediaToolkit\Core\Logger;
 use Metodo\MediaToolkit\History\History;
@@ -18,35 +18,35 @@ use Metodo\MediaToolkit\History\HistoryAction;
 use Aws\Exception\AwsException;
 
 /**
- * Handles reconciliation between S3 bucket and WordPress metadata
+ * Handles reconciliation between storage bucket and WordPress metadata
  * 
- * This tool scans S3 and matches files with WordPress attachments,
+ * This tool scans storage and matches files with WordPress attachments,
  * then updates the `_media_toolkit_migrated` metadata accordingly.
  */
 final class Reconciliation extends Batch_Processor
 {
-    private S3_Client $s3_client;
+    private StorageInterface $storage;
     private History $history;
     
-    /** @var array Cached S3 file list during reconciliation */
-    private array $s3_files_cache = [];
+    /** @var array Cached storage file list during reconciliation */
+    private array $storage_files_cache = [];
     
-    /** @var string Transient key for S3 files cache */
-    private const S3_FILES_CACHE_KEY = 'media_toolkit_reconciliation_s3_files';
+    /** @var string Transient key for storage files cache */
+    private const STORAGE_FILES_CACHE_KEY = 'media_toolkit_reconciliation_storage_files';
 
     public function __construct(
-        S3_Client $s3_client,
+        StorageInterface $storage,
         Settings $settings,
         Logger $logger,
         History $history
     ) {
         parent::__construct($logger, $settings, 'reconciliation');
         
-        $this->s3_client = $s3_client;
+        $this->storage = $storage;
         $this->history = $history;
         
         // Register additional AJAX handlers
-        add_action('wp_ajax_media_toolkit_reconciliation_scan_s3', [$this, 'ajax_scan_s3']);
+        add_action('wp_ajax_media_toolkit_reconciliation_scan_storage', [$this, 'ajax_scan_storage']);
         add_action('wp_ajax_media_toolkit_reconciliation_preview', [$this, 'ajax_preview']);
         add_action('wp_ajax_media_toolkit_clear_metadata', [$this, 'ajax_clear_metadata']);
         add_action('wp_ajax_media_toolkit_get_discrepancies', [$this, 'ajax_get_discrepancies']);
@@ -114,8 +114,8 @@ final class Reconciliation extends Batch_Processor
     {
         $this->logger->info('reconciliation', 'scan_s3_files() started');
         
-        $client = $this->s3_client->get_client();
-        $config = $this->settings->get_config();
+        $client = $this->storage->get_client();
+        $config = $this->settings->get_storage_config();
 
         if ($client === null) {
             $this->logger->error('reconciliation', 'S3 client is null');
@@ -306,7 +306,7 @@ final class Reconciliation extends Batch_Processor
         }
 
         // Get S3 files from internal cache (populated in process_batch)
-        $s3_files = $this->s3_files_cache;
+        $s3_files = $this->storage_files_cache;
         
         // Check if file exists in S3
         $found_on_s3 = isset($s3_files[$file_path]);
@@ -369,7 +369,7 @@ final class Reconciliation extends Batch_Processor
             $this->logger->info('reconciliation', "Found {$s3_count} original files on S3");
 
             // Store S3 files in a separate transient (not in state, too large)
-            $transient_saved = set_transient(self::S3_FILES_CACHE_KEY, $s3_files, HOUR_IN_SECONDS);
+            $transient_saved = set_transient(self::STORAGE_FILES_CACHE_KEY, $s3_files, HOUR_IN_SECONDS);
             
             if (!$transient_saved) {
                 $this->logger->error('reconciliation', 'Failed to save S3 files transient - data might be too large');
@@ -397,7 +397,7 @@ final class Reconciliation extends Batch_Processor
             $this->logger->info('reconciliation', 'process_batch() called');
             
             // Get S3 files from separate transient cache (not from state)
-            $s3_files = get_transient(self::S3_FILES_CACHE_KEY);
+            $s3_files = get_transient(self::STORAGE_FILES_CACHE_KEY);
             
             if ($s3_files === false) {
                 // Need to re-scan if cache expired (might happen on resume)
@@ -408,13 +408,13 @@ final class Reconciliation extends Batch_Processor
                     $this->logger->error('reconciliation', 'S3 scan returned empty array');
                 }
                 
-                set_transient(self::S3_FILES_CACHE_KEY, $s3_files, HOUR_IN_SECONDS);
+                set_transient(self::STORAGE_FILES_CACHE_KEY, $s3_files, HOUR_IN_SECONDS);
             }
             
             $this->logger->info('reconciliation', 'S3 files loaded: ' . count($s3_files) . ' files');
             
             // Store in memory for process_item() to use
-            $this->s3_files_cache = $s3_files;
+            $this->storage_files_cache = $s3_files;
 
             return parent::process_batch();
             
@@ -431,8 +431,8 @@ final class Reconciliation extends Batch_Processor
     public function stop(): void
     {
         // Clean up S3 files cache
-        delete_transient(self::S3_FILES_CACHE_KEY);
-        $this->s3_files_cache = [];
+        delete_transient(self::STORAGE_FILES_CACHE_KEY);
+        $this->storage_files_cache = [];
         
         parent::stop();
     }
@@ -570,7 +570,7 @@ final class Reconciliation extends Batch_Processor
 
         // Check if file exists on S3
         $s3_key = $this->settings->get_s3_base_path() . '/' . $file_path;
-        $exists = $this->s3_client->file_exists($s3_key);
+        $exists = $this->storage->file_exists($s3_key);
 
         if ($exists) {
             update_post_meta($attachment_id, '_media_toolkit_migrated', '1');

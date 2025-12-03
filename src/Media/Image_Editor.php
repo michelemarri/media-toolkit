@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace Metodo\MediaToolkit\Media;
 
-use Metodo\MediaToolkit\S3\S3_Client;
-use Metodo\MediaToolkit\S3\UploadResult;
+use Metodo\MediaToolkit\Storage\StorageInterface;
+use Metodo\MediaToolkit\Storage\UploadResult;
 use Metodo\MediaToolkit\Core\Settings;
 use Metodo\MediaToolkit\Core\Logger;
 use Metodo\MediaToolkit\History\History;
@@ -22,20 +22,20 @@ use Metodo\MediaToolkit\CDN\CDN_Manager;
  */
 final class Image_Editor
 {
-    private S3_Client $s3_client;
+    private StorageInterface $storage;
     private ?CDN_Manager $cdn_manager;
     private Logger $logger;
     private History $history;
     private Settings $settings;
 
     public function __construct(
-        S3_Client $s3_client,
+        StorageInterface $storage,
         ?CDN_Manager $cdn_manager,
         Logger $logger,
         History $history,
         Settings $settings
     ) {
-        $this->s3_client = $s3_client;
+        $this->storage = $storage;
         $this->cdn_manager = $cdn_manager;
         $this->logger = $logger;
         $this->history = $history;
@@ -107,7 +107,7 @@ final class Image_Editor
         }
 
         // Download from S3
-        $downloaded = $this->s3_client->download_file($s3_key, $file, $attachment_id);
+        $downloaded = $this->storage->download_file($s3_key, $file, $attachment_id);
         
         if (!$downloaded) {
             $this->logger->error(
@@ -182,7 +182,7 @@ final class Image_Editor
         $old_s3_key = get_post_meta($attachment_id, '_media_toolkit_key', true);
 
         // Upload new file
-        $result = $this->s3_client->upload_file($file_path, $attachment_id);
+        $result = $this->storage->upload_file($file_path, $attachment_id);
 
         if (!$result->success) {
             $this->logger->error(
@@ -195,7 +195,7 @@ final class Image_Editor
         }
 
         // Update meta
-        update_post_meta($attachment_id, '_media_toolkit_key', $result->s3_key);
+        update_post_meta($attachment_id, '_media_toolkit_key', $result->key);
         update_post_meta($attachment_id, '_media_toolkit_url', $result->url);
 
         // Record in history
@@ -203,7 +203,7 @@ final class Image_Editor
             HistoryAction::EDITED,
             $attachment_id,
             $file_path,
-            $result->s3_key,
+            $result->key,
             filesize($file_path) ?: 0,
             ['previous_key' => $old_s3_key]
         );
@@ -216,8 +216,8 @@ final class Image_Editor
         );
 
         // Delete old S3 file if key changed
-        if (!empty($old_s3_key) && $old_s3_key !== $result->s3_key) {
-            $this->s3_client->delete_file($old_s3_key, $attachment_id);
+        if (!empty($old_s3_key) && $old_s3_key !== $result->key) {
+            $this->storage->delete_file($old_s3_key, $attachment_id);
         }
 
         return $result;
@@ -259,7 +259,7 @@ final class Image_Editor
         $result = $this->sync_edited_image($attachment_id, $main_file);
         
         if ($result && $result->success) {
-            $keys_to_invalidate[] = '/' . $result->s3_key;
+            $keys_to_invalidate[] = '/' . $result->key;
         }
 
         // Sync thumbnails
@@ -270,11 +270,11 @@ final class Image_Editor
                 $thumb_file = $file_dir . '/' . $size_data['file'];
                 
                 if (file_exists($thumb_file)) {
-                    $thumb_result = $this->s3_client->upload_file($thumb_file, $attachment_id);
+                    $thumb_result = $this->storage->upload_file($thumb_file, $attachment_id);
                     
                     if ($thumb_result->success) {
-                        $thumb_keys[$size_name] = $thumb_result->s3_key;
-                        $keys_to_invalidate[] = '/' . $thumb_result->s3_key;
+                        $thumb_keys[$size_name] = $thumb_result->key;
+                        $keys_to_invalidate[] = '/' . $thumb_result->key;
                     }
                 }
             }
@@ -335,7 +335,7 @@ final class Image_Editor
         }
 
         $base_path = dirname($metadata['file']);
-        $s3_base = rtrim($this->s3_client->generate_s3_key($upload_dir['basedir'] . '/' . $base_path), '/');
+        $s3_base = rtrim($this->storage->generate_s3_key($upload_dir['basedir'] . '/' . $base_path), '/');
 
         $keys_to_delete = [];
         
@@ -346,7 +346,7 @@ final class Image_Editor
         }
 
         if (!empty($keys_to_delete)) {
-            $this->s3_client->delete_files($keys_to_delete, $attachment_id);
+            $this->storage->delete_files($keys_to_delete, $attachment_id);
             
             $this->logger->info(
                 'image_editor',

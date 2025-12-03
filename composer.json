@@ -1,6 +1,6 @@
 {
     "name": "metodo-dev/media-toolkit",
-    "description": "WordPress plugin for complete media management - S3 offloading, CDN integration, image optimization",
+    "description": "WordPress plugin for complete media management - Multi-provider storage (S3, R2, Spaces, B2, Wasabi), CDN integration, image optimization",
     "type": "wordpress-plugin",
     "license": "GPL-3.0-or-later",
     "authors": [

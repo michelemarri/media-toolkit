@@ -41,6 +41,10 @@
             $('#cdn_provider').on('change', this.toggleCDNSettings.bind(this));
             this.toggleCDNSettings();
 
+            // Storage provider toggle
+            $('#storage_provider').on('change', this.toggleStorageProvider.bind(this));
+            this.toggleStorageProvider();
+
             // Sync S3 stats (Tools page)
             $('#btn-sync-stats').on('click', this.syncS3Stats.bind(this));
 
@@ -157,12 +161,22 @@
         // Setup validation for test button
         setupTestButtonValidation: function () {
             const checkFields = function () {
+                const provider = $('#storage_provider').val() || 'aws_s3';
                 const accessKey = $('#access_key').val();
                 const secretKey = $('#secret_key').val();
-                const region = $('#region').val();
                 const bucket = $('#bucket').val();
+                
+                // R2 requires account_id instead of region
+                let isValid = accessKey && secretKey && bucket;
+                
+                if (provider === 'cloudflare_r2') {
+                    const accountId = $('#account_id').val();
+                    isValid = isValid && accountId;
+                } else {
+                    const region = $('#region').val();
+                    isValid = isValid && region;
+                }
 
-                const isValid = accessKey && secretKey && region && bucket;
                 $('#btn-save-credentials').prop('disabled', !isValid);
                 $('#btn-test-credentials').prop('disabled', !isValid);
                 $('#btn-test-settings').prop('disabled', !isValid);
@@ -172,7 +186,61 @@
             checkFields();
 
             // Check on input change
+            $('#storage-credentials-panel input, #storage-credentials-panel select').on('input change', checkFields);
+            // Legacy panel support
             $('#s3-credentials-panel input, #s3-credentials-panel select').on('input change', checkFields);
+        },
+
+        // Toggle storage provider specific fields
+        toggleStorageProvider: function () {
+            const provider = $('#storage_provider').val() || 'aws_s3';
+            const providers = window.mediaToolkit?.providers || {};
+            const providerInfo = providers[provider] || {};
+
+            // Update description
+            if (providerInfo.description) {
+                $('#provider-description').text(providerInfo.description);
+            }
+
+            // Show/hide R2 warning
+            if (provider === 'cloudflare_r2') {
+                $('#r2-cdn-warning').removeClass('hidden');
+                $('#field-account-id').removeClass('hidden');
+                $('#field-region').addClass('hidden');
+            } else {
+                $('#r2-cdn-warning').addClass('hidden');
+                $('#field-account-id').addClass('hidden');
+                $('#field-region').removeClass('hidden');
+            }
+
+            // Update regions dropdown based on provider
+            this.updateRegionsForProvider(provider, providerInfo.regions || {});
+
+            // Update field labels for B2
+            if (provider === 'backblaze_b2') {
+                $('#label-access-key').text('Application Key ID');
+                $('#label-secret-key').text('Application Key');
+            } else {
+                $('#label-access-key').text('Access Key');
+                $('#label-secret-key').text('Secret Key');
+            }
+
+            // Re-check validation
+            this.setupTestButtonValidation();
+        },
+
+        // Update regions dropdown for the selected provider
+        updateRegionsForProvider: function (provider, regions) {
+            const $select = $('#region');
+            const currentValue = $select.val();
+
+            $select.empty();
+            $select.append('<option value="">' + (window.mediaToolkit?.i18n?.selectRegion || 'Select Region') + '</option>');
+
+            for (const [code, label] of Object.entries(regions)) {
+                const selected = (code === currentValue) ? ' selected' : '';
+                $select.append(`<option value="${code}"${selected}>${label}</option>`);
+            }
         },
 
         // Toggle CDN-specific settings based on provider
@@ -227,14 +295,17 @@
         // Save Credentials (Tab 2)
         saveCredentials: function () {
             const $btn = $('#btn-save-credentials');
+            const provider = $('#storage_provider').val() || 'aws_s3';
 
             const data = {
                 action: 'media_toolkit_save_credentials',
                 nonce: mediaToolkit.nonce,
+                storage_provider: provider,
                 access_key: $('#access_key').val(),
                 secret_key: $('#secret_key').val(),
                 region: $('#region').val(),
-                bucket: $('#bucket').val()
+                bucket: $('#bucket').val(),
+                account_id: $('#account_id').val() || ''
             };
 
             $btn.prop('disabled', true);
@@ -247,12 +318,12 @@
                 data: data,
                 success: function (response) {
                     if (response.success) {
-                        MediaToolkit.showNotice('Credentials saved successfully!', 'success');
+                        MediaToolkit.showNotice('Configuration saved successfully!', 'success');
                         setTimeout(function () {
                             location.reload();
                         }, 1000);
                     } else {
-                        MediaToolkit.showNotice(response.data.message || 'Failed to save credentials', 'error');
+                        MediaToolkit.showNotice(response.data.message || 'Failed to save configuration', 'error');
                     }
                 },
                 error: function () {

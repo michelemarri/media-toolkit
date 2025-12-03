@@ -1,6 +1,6 @@
 # Media Toolkit
 
-A powerful WordPress plugin for complete media management. Offload media files to Amazon S3 with CDN support (Cloudflare, CloudFront), image optimization, and advanced management tools.
+A powerful WordPress plugin for complete media management. Offload media files to multiple cloud storage providers (AWS S3, Cloudflare R2, DigitalOcean Spaces, Backblaze B2, Wasabi) with CDN support, image optimization, and advanced management tools.
 
 **Author:** Metodo  
 **Plugin URI:** https://metodo.dev  
@@ -8,8 +8,14 @@ A powerful WordPress plugin for complete media management. Offload media files t
 
 ## Features
 
-### 🚀 Automatic Media Offloading
-- Automatically uploads new media files to Amazon S3 when added to WordPress
+### 🚀 Multi-Provider Storage
+- **5 Storage Providers Supported**:
+  - **Amazon S3**: Industry standard with global CDN options
+  - **Cloudflare R2**: Zero egress fees, requires CDN URL for public access
+  - **DigitalOcean Spaces**: Simple S3-compatible storage with built-in CDN
+  - **Backblaze B2**: Cost-effective storage with S3 compatibility
+  - **Wasabi**: Hot cloud storage with no egress fees
+- Automatically uploads new media files to your chosen provider
 - Supports all file types handled by WordPress Media Library
 - Preserves original file structure (`wp-content/uploads/YYYY/MM/filename.ext`)
 - Handles image thumbnails and all generated sizes
@@ -456,6 +462,19 @@ $skip = apply_filters('media_toolkit_skip_resize', false, $file_path, $mime_type
 5. **Image Optimization**: Process during low-traffic periods
 
 ## Changelog
+
+### 2.0.0
+- **Major**: Multi-provider storage architecture
+- **New**: Support for Amazon S3, Cloudflare R2, DigitalOcean Spaces, Backblaze B2, and Wasabi
+- **New**: Storage Provider selection in Settings with dynamic configuration fields
+- **New**: Provider-specific regions and endpoint configuration
+- **New**: Automatic backward compatibility for existing S3 configurations
+- **Improved**: Renamed "Credentials" tab to "Storage Provider"
+- **Improved**: Refactored codebase with StorageInterface abstraction for extensibility
+- **Note**: Existing S3 configurations are automatically recognized as "Amazon S3"
+
+### 1.3.1
+- Bug fixes and improvements
 
 ### 1.3.0
 - **New**: Optimization Status tab in Logs page

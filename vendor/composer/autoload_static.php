@@ -17,70 +17,70 @@ class ComposerStaticInitcd6aaab1d0f2d1781b9ef67d1da8c0ad
     );
 
     public static $prefixLengthsPsr4 = array (
-        'S' => 
+        'S' =>
         array (
             'Symfony\\Polyfill\\Mbstring\\' => 26,
         ),
-        'P' => 
+        'P' =>
         array (
             'Psr\\Http\\Message\\' => 17,
             'Psr\\Http\\Client\\' => 16,
         ),
-        'M' => 
+        'M' =>
         array (
             'Metodo\\MediaToolkit\\' => 20,
         ),
-        'J' => 
+        'J' =>
         array (
             'JmesPath\\' => 9,
         ),
-        'G' => 
+        'G' =>
         array (
             'GuzzleHttp\\Psr7\\' => 16,
             'GuzzleHttp\\Promise\\' => 19,
             'GuzzleHttp\\' => 11,
         ),
-        'A' => 
+        'A' =>
         array (
             'Aws\\' => 4,
         ),
     );
 
     public static $prefixDirsPsr4 = array (
-        'Symfony\\Polyfill\\Mbstring\\' => 
+        'Symfony\\Polyfill\\Mbstring\\' =>
         array (
             0 => __DIR__ . '/..' . '/symfony/polyfill-mbstring',
         ),
-        'Psr\\Http\\Message\\' => 
+        'Psr\\Http\\Message\\' =>
         array (
             0 => __DIR__ . '/..' . '/psr/http-factory/src',
             1 => __DIR__ . '/..' . '/psr/http-message/src',
         ),
-        'Psr\\Http\\Client\\' => 
+        'Psr\\Http\\Client\\' =>
         array (
             0 => __DIR__ . '/..' . '/psr/http-client/src',
         ),
-        'Metodo\\MediaToolkit\\' => 
+        'Metodo\\MediaToolkit\\' =>
         array (
             0 => __DIR__ . '/../..' . '/src',
         ),
-        'JmesPath\\' => 
+        'JmesPath\\' =>
         array (
             0 => __DIR__ . '/..' . '/mtdowling/jmespath.php/src',
         ),
-        'GuzzleHttp\\Psr7\\' => 
+        'GuzzleHttp\\Psr7\\' =>
         array (
             0 => __DIR__ . '/..' . '/guzzlehttp/psr7/src',
         ),
-        'GuzzleHttp\\Promise\\' => 
+        'GuzzleHttp\\Promise\\' =>
         array (
             0 => __DIR__ . '/..' . '/guzzlehttp/promises/src',
         ),
-        'GuzzleHttp\\' => 
+        'GuzzleHttp\\' =>
         array (
             0 => __DIR__ . '/..' . '/guzzlehttp/guzzle/src',
         ),
-        'Aws\\' => 
+        'Aws\\' =>
         array (
             0 => __DIR__ . '/..' . '/aws/aws-sdk-php/src',
         ),
@@ -891,10 +891,6 @@ class ComposerStaticInitcd6aaab1d0f2d1781b9ef67d1da8c0ad
         'Aws\\PI\\PIClient' => __DIR__ . '/..' . '/aws/aws-sdk-php/src/PI/PIClient.php',
         'Aws\\Panorama\\Exception\\PanoramaException' => __DIR__ . '/..' . '/aws/aws-sdk-php/src/Panorama/Exception/PanoramaException.php',
         'Aws\\Panorama\\PanoramaClient' => __DIR__ . '/..' . '/aws/aws-sdk-php/src/Panorama/PanoramaClient.php',
-        'Aws\\PartnerCentralAccount\\Exception\\PartnerCentralAccountException' => __DIR__ . '/..' . '/aws/aws-sdk-php/src/PartnerCentralAccount/Exception/PartnerCentralAccountException.php',
-        'Aws\\PartnerCentralAccount\\PartnerCentralAccountClient' => __DIR__ . '/..' . '/aws/aws-sdk-php/src/PartnerCentralAccount/PartnerCentralAccountClient.php',
-        'Aws\\PartnerCentralBenefits\\Exception\\PartnerCentralBenefitsException' => __DIR__ . '/..' . '/aws/aws-sdk-php/src/PartnerCentralBenefits/Exception/PartnerCentralBenefitsException.php',
-        'Aws\\PartnerCentralBenefits\\PartnerCentralBenefitsClient' => __DIR__ . '/..' . '/aws/aws-sdk-php/src/PartnerCentralBenefits/PartnerCentralBenefitsClient.php',
         'Aws\\PartnerCentralChannel\\Exception\\PartnerCentralChannelException' => __DIR__ . '/..' . '/aws/aws-sdk-php/src/PartnerCentralChannel/Exception/PartnerCentralChannelException.php',
         'Aws\\PartnerCentralChannel\\PartnerCentralChannelClient' => __DIR__ . '/..' . '/aws/aws-sdk-php/src/PartnerCentralChannel/PartnerCentralChannelClient.php',
         'Aws\\PartnerCentralSelling\\Exception\\PartnerCentralSellingException' => __DIR__ . '/..' . '/aws/aws-sdk-php/src/PartnerCentralSelling/Exception/PartnerCentralSellingException.php',
@@ -991,8 +987,6 @@ class ComposerStaticInitcd6aaab1d0f2d1781b9ef67d1da8c0ad
         'Aws\\RolesAnywhere\\RolesAnywhereClient' => __DIR__ . '/..' . '/aws/aws-sdk-php/src/RolesAnywhere/RolesAnywhereClient.php',
         'Aws\\Route53Domains\\Exception\\Route53DomainsException' => __DIR__ . '/..' . '/aws/aws-sdk-php/src/Route53Domains/Exception/Route53DomainsException.php',
         'Aws\\Route53Domains\\Route53DomainsClient' => __DIR__ . '/..' . '/aws/aws-sdk-php/src/Route53Domains/Route53DomainsClient.php',
-        'Aws\\Route53GlobalResolver\\Exception\\Route53GlobalResolverException' => __DIR__ . '/..' . '/aws/aws-sdk-php/src/Route53GlobalResolver/Exception/Route53GlobalResolverException.php',
-        'Aws\\Route53GlobalResolver\\Route53GlobalResolverClient' => __DIR__ . '/..' . '/aws/aws-sdk-php/src/Route53GlobalResolver/Route53GlobalResolverClient.php',
         'Aws\\Route53Profiles\\Exception\\Route53ProfilesException' => __DIR__ . '/..' . '/aws/aws-sdk-php/src/Route53Profiles/Exception/Route53ProfilesException.php',
         'Aws\\Route53Profiles\\Route53ProfilesClient' => __DIR__ . '/..' . '/aws/aws-sdk-php/src/Route53Profiles/Route53ProfilesClient.php',
         'Aws\\Route53RecoveryCluster\\Exception\\Route53RecoveryClusterException' => __DIR__ . '/..' . '/aws/aws-sdk-php/src/Route53RecoveryCluster/Exception/Route53RecoveryClusterException.php',
@@ -1354,12 +1348,12 @@ class ComposerStaticInitcd6aaab1d0f2d1781b9ef67d1da8c0ad
         'Metodo\\MediaToolkit\\Admin\\Admin_Settings' => __DIR__ . '/../..' . '/src/Admin/Admin_Settings.php',
         'Metodo\\MediaToolkit\\CDN\\CDNProvider' => __DIR__ . '/../..' . '/src/CDN/CDNProvider.php',
         'Metodo\\MediaToolkit\\CDN\\CDN_Manager' => __DIR__ . '/../..' . '/src/CDN/CDN_Manager.php',
-        'Metodo\\MediaToolkit\\CDN\\CloudFront' => __DIR__ . '/../..' . '/src/CDN/CloudFront.php',
         'Metodo\\MediaToolkit\\Core\\Encryption' => __DIR__ . '/../..' . '/src/Core/Encryption.php',
         'Metodo\\MediaToolkit\\Core\\Environment' => __DIR__ . '/../..' . '/src/Core/Environment.php',
         'Metodo\\MediaToolkit\\Core\\LogLevel' => __DIR__ . '/../..' . '/src/Core/LogLevel.php',
         'Metodo\\MediaToolkit\\Core\\Logger' => __DIR__ . '/../..' . '/src/Core/Logger.php',
         'Metodo\\MediaToolkit\\Core\\Settings' => __DIR__ . '/../..' . '/src/Core/Settings.php',
+        'Metodo\\MediaToolkit\\Database\\OptimizationTable' => __DIR__ . '/../..' . '/src/Database/OptimizationTable.php',
         'Metodo\\MediaToolkit\\Error\\Error_Handler' => __DIR__ . '/../..' . '/src/Error/Error_Handler.php',
         'Metodo\\MediaToolkit\\Error\\FailedOperation' => __DIR__ . '/../..' . '/src/Error/FailedOperation.php',
         'Metodo\\MediaToolkit\\Error\\RetryableError' => __DIR__ . '/../..' . '/src/Error/RetryableError.php',
@@ -1367,6 +1361,7 @@ class ComposerStaticInitcd6aaab1d0f2d1781b9ef67d1da8c0ad
         'Metodo\\MediaToolkit\\History\\HistoryAction' => __DIR__ . '/../..' . '/src/History/HistoryAction.php',
         'Metodo\\MediaToolkit\\Media\\Image_Editor' => __DIR__ . '/../..' . '/src/Media/Image_Editor.php',
         'Metodo\\MediaToolkit\\Media\\Image_Optimizer' => __DIR__ . '/../..' . '/src/Media/Image_Optimizer.php',
+        'Metodo\\MediaToolkit\\Media\\Image_Resizer' => __DIR__ . '/../..' . '/src/Media/Image_Resizer.php',
         'Metodo\\MediaToolkit\\Media\\Media_Library' => __DIR__ . '/../..' . '/src/Media/Media_Library.php',
         'Metodo\\MediaToolkit\\Media\\Media_Library_UI' => __DIR__ . '/../..' . '/src/Media/Media_Library_UI.php',
         'Metodo\\MediaToolkit\\Media\\Upload_Handler' => __DIR__ . '/../..' . '/src/Media/Upload_Handler.php',
@@ -1376,10 +1371,20 @@ class ComposerStaticInitcd6aaab1d0f2d1781b9ef67d1da8c0ad
         'Metodo\\MediaToolkit\\Migration\\MigrationStatus' => __DIR__ . '/../..' . '/src/Migration/MigrationStatus.php',
         'Metodo\\MediaToolkit\\Migration\\Reconciliation' => __DIR__ . '/../..' . '/src/Migration/Reconciliation.php',
         'Metodo\\MediaToolkit\\Plugin' => __DIR__ . '/../..' . '/src/Plugin.php',
-        'Metodo\\MediaToolkit\\S3\\S3Config' => __DIR__ . '/../..' . '/src/S3/S3Config.php',
-        'Metodo\\MediaToolkit\\S3\\S3_Client' => __DIR__ . '/../..' . '/src/S3/S3_Client.php',
-        'Metodo\\MediaToolkit\\S3\\UploadResult' => __DIR__ . '/../..' . '/src/S3/UploadResult.php',
         'Metodo\\MediaToolkit\\Stats\\Stats' => __DIR__ . '/../..' . '/src/Stats/Stats.php',
+        'Metodo\\MediaToolkit\\Storage\\AbstractObjectStorage' => __DIR__ . '/../..' . '/src/Storage/AbstractObjectStorage.php',
+        'Metodo\\MediaToolkit\\Storage\\Providers\\AwsS3' => __DIR__ . '/../..' . '/src/Storage/Providers/AwsS3.php',
+        'Metodo\\MediaToolkit\\Storage\\Providers\\BackblazeB2' => __DIR__ . '/../..' . '/src/Storage/Providers/BackblazeB2.php',
+        'Metodo\\MediaToolkit\\Storage\\Providers\\CloudflareR2' => __DIR__ . '/../..' . '/src/Storage/Providers/CloudflareR2.php',
+        'Metodo\\MediaToolkit\\Storage\\Providers\\DigitalOceanSpaces' => __DIR__ . '/../..' . '/src/Storage/Providers/DigitalOceanSpaces.php',
+        'Metodo\\MediaToolkit\\Storage\\Providers\\Wasabi' => __DIR__ . '/../..' . '/src/Storage/Providers/Wasabi.php',
+        'Metodo\\MediaToolkit\\Storage\\StorageConfig' => __DIR__ . '/../..' . '/src/Storage/StorageConfig.php',
+        'Metodo\\MediaToolkit\\Storage\\StorageFactory' => __DIR__ . '/../..' . '/src/Storage/StorageFactory.php',
+        'Metodo\\MediaToolkit\\Storage\\StorageInterface' => __DIR__ . '/../..' . '/src/Storage/StorageInterface.php',
+        'Metodo\\MediaToolkit\\Storage\\StorageProvider' => __DIR__ . '/../..' . '/src/Storage/StorageProvider.php',
+        'Metodo\\MediaToolkit\\Storage\\UploadResult' => __DIR__ . '/../..' . '/src/Storage/UploadResult.php',
+        'Metodo\\MediaToolkit\\Tools\\Exporter' => __DIR__ . '/../..' . '/src/Tools/Exporter.php',
+        'Metodo\\MediaToolkit\\Tools\\Importer' => __DIR__ . '/../..' . '/src/Tools/Importer.php',
         'Metodo\\MediaToolkit\\Updater\\GitHubUpdater' => __DIR__ . '/../..' . '/src/Updater/GitHubUpdater.php',
         'Psr\\Http\\Client\\ClientExceptionInterface' => __DIR__ . '/..' . '/psr/http-client/src/ClientExceptionInterface.php',
         'Psr\\Http\\Client\\ClientInterface' => __DIR__ . '/..' . '/psr/http-client/src/ClientInterface.php',

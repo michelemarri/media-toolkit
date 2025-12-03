@@ -1,6 +1,6 @@
 <?php
 /**
- * Migration class for batch migrating existing media to S3
+ * Migration class for batch migrating existing media to storage
  *
  * @package Metodo\MediaToolkit
  */
@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace Metodo\MediaToolkit\Migration;
 
-use Metodo\MediaToolkit\S3\S3_Client;
+use Metodo\MediaToolkit\Storage\StorageInterface;
 use Metodo\MediaToolkit\Core\Settings;
 use Metodo\MediaToolkit\Core\Logger;
 use Metodo\MediaToolkit\History\History;
@@ -18,7 +18,7 @@ use Metodo\MediaToolkit\Error\Error_Handler;
 use Metodo\MediaToolkit\Stats\Stats;
 
 /**
- * Handles batch migration of existing media to S3
+ * Handles batch migration of existing media to storage
  */
 final class Migration
 {
@@ -26,20 +26,20 @@ final class Migration
     private const STATE_BACKUP = 'media_toolkit_migration_checkpoint';
     private const TRANSIENT_TTL = 3600; // 1 hour
 
-    private S3_Client $s3_client;
+    private StorageInterface $storage;
     private Settings $settings;
     private Logger $logger;
     private History $history;
     private Error_Handler $error_handler;
 
     public function __construct(
-        S3_Client $s3_client,
+        StorageInterface $storage,
         Settings $settings,
         Logger $logger,
         History $history,
         Error_Handler $error_handler
     ) {
-        $this->s3_client = $s3_client;
+        $this->storage = $storage;
         $this->settings = $settings;
         $this->logger = $logger;
         $this->history = $history;
@@ -287,7 +287,7 @@ final class Migration
         }
 
         // Upload main file
-        $result = $this->s3_client->upload_file($file, $attachment_id);
+        $result = $this->storage->upload_file($file, $attachment_id);
 
         if (!$result->success) {
             return [
@@ -297,9 +297,12 @@ final class Migration
         }
 
         // Update meta
-        update_post_meta($attachment_id, '_media_toolkit_key', $result->s3_key);
+        update_post_meta($attachment_id, '_media_toolkit_key', $result->key);
         update_post_meta($attachment_id, '_media_toolkit_url', $result->url);
         update_post_meta($attachment_id, '_media_toolkit_migrated', '1');
+        if ($result->provider !== null) {
+            update_post_meta($attachment_id, '_media_toolkit_provider', $result->provider->value);
+        }
 
         $file_size = filesize($file) ?: 0;
 
@@ -308,7 +311,7 @@ final class Migration
             HistoryAction::MIGRATED,
             $attachment_id,
             $file,
-            $result->s3_key,
+            $result->key,
             $file_size
         );
 
@@ -323,10 +326,10 @@ final class Migration
                 $thumb_file = $file_dir . '/' . $size_data['file'];
                 
                 if (file_exists($thumb_file)) {
-                    $thumb_result = $this->s3_client->upload_file($thumb_file, $attachment_id);
+                    $thumb_result = $this->storage->upload_file($thumb_file, $attachment_id);
                     
                     if ($thumb_result->success) {
-                        $thumb_keys[$size_name] = $thumb_result->s3_key;
+                        $thumb_keys[$size_name] = $thumb_result->key;
                         
                         if ($remove_local) {
                             @unlink($thumb_file);
@@ -352,7 +355,7 @@ final class Migration
 
         return [
             'success' => true,
-            's3_key' => $result->s3_key,
+            's3_key' => $result->key,
             'url' => $result->url,
         ];
     }

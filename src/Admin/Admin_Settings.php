@@ -14,8 +14,9 @@ use Metodo\MediaToolkit\Core\Encryption;
 use Metodo\MediaToolkit\Core\Logger;
 use Metodo\MediaToolkit\Core\LogLevel;
 use Metodo\MediaToolkit\Core\Environment;
-use Metodo\MediaToolkit\S3\S3_Client;
-use Metodo\MediaToolkit\CDN\CloudFront;
+use Metodo\MediaToolkit\Storage\StorageInterface;
+use Metodo\MediaToolkit\Storage\StorageProvider;
+use Metodo\MediaToolkit\Storage\StorageFactory;
 use Metodo\MediaToolkit\History\History;
 use Metodo\MediaToolkit\History\HistoryAction;
 use Metodo\MediaToolkit\Stats\Stats;
@@ -30,8 +31,7 @@ final class Admin_Settings
 {
     private Settings $settings;
     private Encryption $encryption;
-    private ?S3_Client $s3_client;
-    private ?CloudFront $cloudfront;
+    private ?StorageInterface $storage;
     private Logger $logger;
     private History $history;
     private Stats $stats;
@@ -39,16 +39,14 @@ final class Admin_Settings
     public function __construct(
         Settings $settings,
         Encryption $encryption,
-        ?S3_Client $s3_client,
-        ?CloudFront $cloudfront,
+        ?StorageInterface $storage,
         Logger $logger,
         History $history,
         Stats $stats
     ) {
         $this->settings = $settings;
         $this->encryption = $encryption;
-        $this->s3_client = $s3_client;
-        $this->cloudfront = $cloudfront;
+        $this->storage = $storage;
         $this->logger = $logger;
         $this->history = $history;
         $this->stats = $stats;
@@ -147,7 +145,7 @@ final class Admin_Settings
     }
 
     /**
-     * AJAX: Save credentials (Tab 2)
+     * AJAX: Save storage provider credentials (Tab 2)
      */
     public function ajax_save_credentials(): void
     {
@@ -157,13 +155,18 @@ final class Admin_Settings
             wp_send_json_error(['message' => 'Permission denied']);
         }
 
+        $storage_provider = sanitize_text_field($_POST['storage_provider'] ?? 'aws_s3');
         $access_key = sanitize_text_field($_POST['access_key'] ?? '');
         $secret_key = sanitize_text_field($_POST['secret_key'] ?? '');
         $region = sanitize_text_field($_POST['region'] ?? '');
         $bucket = sanitize_text_field($_POST['bucket'] ?? '');
+        $account_id = sanitize_text_field($_POST['account_id'] ?? '');
+
+        // Get the storage provider enum
+        $provider = StorageProvider::tryFrom($storage_provider) ?? StorageProvider::AWS_S3;
 
         // If keys are masked (unchanged), get current values
-        $current = $this->settings->get_config();
+        $current = $this->settings->get_storage_config();
         
         if (str_contains($access_key, '•') && $current !== null) {
             $access_key = $current->accessKey;
@@ -180,11 +183,13 @@ final class Admin_Settings
         $cloudflare_api_token = $current ? $current->cloudflareApiToken : '';
         $cloudfront_dist_id = $current ? $current->cloudfrontDistributionId : '';
 
-        $saved = $this->settings->save_config(
+        $saved = $this->settings->save_storage_config(
+            $provider,
             $access_key,
             $secret_key,
-            $region,
             $bucket,
+            $region,
+            $account_id,
             $cdn_url,
             $cdn_provider,
             $cloudflare_zone_id,
@@ -193,21 +198,27 @@ final class Admin_Settings
         );
 
         if (!$saved) {
-            wp_send_json_error(['message' => 'Failed to save credentials']);
+            wp_send_json_error(['message' => 'Failed to save configuration']);
         }
 
-        // Reset S3 client to use new settings
-        $this->s3_client?->reset_client();
+        // Reset storage client to use new settings
+        $this->storage?->reset_client();
 
         // Record in history
         $this->history->record(
-            HistoryAction::SETTINGS_CHANGED
+            HistoryAction::SETTINGS_CHANGED,
+            null,
+            null,
+            null,
+            null,
+            ['provider' => $provider->value]
         );
 
-        $this->logger->info('settings', 'Credentials updated');
+        $this->logger->info('settings', 'Storage provider configuration updated: ' . $provider->label());
 
         wp_send_json_success([
-            'message' => 'Credentials saved successfully',
+            'message' => 'Configuration saved successfully',
+            'provider' => $provider->value,
         ]);
     }
 
@@ -229,7 +240,7 @@ final class Admin_Settings
         $cloudfront_dist_id = sanitize_text_field($_POST['cloudfront_distribution_id'] ?? '');
 
         // Get existing credentials to preserve them
-        $current = $this->settings->get_config();
+        $current = $this->settings->get_storage_config();
         
         if ($current === null) {
             wp_send_json_error(['message' => 'Please configure AWS credentials first']);
@@ -352,7 +363,7 @@ final class Admin_Settings
         $cloudfront_dist_id = sanitize_text_field($_POST['cloudfront_distribution_id'] ?? '');
 
         // If keys are masked (unchanged), get current values
-        $current = $this->settings->get_config();
+        $current = $this->settings->get_storage_config();
         
         if (str_contains($access_key, '•') && $current !== null) {
             $access_key = $current->accessKey;
@@ -402,7 +413,7 @@ final class Admin_Settings
         }
 
         // Reset S3 client to use new settings
-        $this->s3_client?->reset_client();
+        $this->storage?->reset_client();
 
         // Record in history
         $this->history->record(
@@ -435,7 +446,7 @@ final class Admin_Settings
         $cdn_url = esc_url_raw($_POST['cdn_url'] ?? '');
 
         // Check if keys contain masked values (dots), get real values from saved config
-        $config = $this->settings->get_config();
+        $config = $this->settings->get_storage_config();
         
         if (str_contains($access_key, '•') && $config !== null) {
             $access_key = $config->accessKey;
@@ -591,11 +602,11 @@ final class Admin_Settings
             wp_send_json_error(['message' => 'Permission denied']);
         }
 
-        if ($this->s3_client === null) {
+        if ($this->storage === null) {
             wp_send_json_error(['message' => 'S3 client not configured']);
         }
 
-        $results = $this->s3_client->test_connection();
+        $results = $this->storage->test_connection();
 
         // Update connection status cache
         $all_success = true;
@@ -759,11 +770,11 @@ final class Admin_Settings
             wp_send_json_error(['message' => 'Permission denied']);
         }
 
-        if ($this->s3_client === null) {
+        if ($this->storage === null) {
             wp_send_json_error(['message' => 'S3 client not configured']);
         }
 
-        $stats = $this->s3_client->get_bucket_stats();
+        $stats = $this->storage->get_bucket_stats();
         
         if ($stats === null) {
             wp_send_json_error(['message' => 'Failed to retrieve S3 statistics']);
@@ -796,7 +807,7 @@ final class Admin_Settings
             wp_send_json_error(['message' => 'Permission denied']);
         }
 
-        if ($this->s3_client === null) {
+        if ($this->storage === null) {
             wp_send_json_error(['message' => 'S3 client not configured']);
         }
 
@@ -805,7 +816,7 @@ final class Admin_Settings
         $batch_size = 50; // Process 50 files per request
 
         // Get batch of objects
-        $result = $this->s3_client->list_objects_batch($batch_size, $continuation_token);
+        $result = $this->storage->list_objects_batch($batch_size, $continuation_token);
 
         if ($result === null) {
             wp_send_json_error(['message' => 'Failed to list S3 objects']);
@@ -816,7 +827,7 @@ final class Admin_Settings
         $is_truncated = $result['is_truncated'];
 
         // Update metadata for this batch
-        $batch_result = $this->s3_client->update_objects_metadata_batch($keys, $cache_max_age);
+        $batch_result = $this->storage->update_objects_metadata_batch($keys, $cache_max_age);
 
         // Log the operation
         $this->logger->info('cache_headers', sprintf(
@@ -845,7 +856,7 @@ final class Admin_Settings
             wp_send_json_error(['message' => 'Permission denied']);
         }
 
-        if ($this->s3_client === null) {
+        if ($this->storage === null) {
             wp_send_json_error(['message' => 'S3 client not configured']);
         }
 
@@ -861,7 +872,7 @@ final class Admin_Settings
         }
 
         // Otherwise count from S3
-        $stats = $this->s3_client->get_bucket_stats();
+        $stats = $this->storage->get_bucket_stats();
         
         if ($stats === null) {
             wp_send_json_error(['message' => 'Failed to count S3 files']);

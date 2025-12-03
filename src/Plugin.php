@@ -9,12 +9,11 @@ declare(strict_types=1);
 
 namespace Metodo\MediaToolkit;
 
-use Metodo\MediaToolkit\S3\S3_Client;
-use Metodo\MediaToolkit\S3\S3Config;
-use Metodo\MediaToolkit\S3\UploadResult;
+use Metodo\MediaToolkit\Storage\StorageInterface;
+use Metodo\MediaToolkit\Storage\StorageFactory;
+use Metodo\MediaToolkit\Storage\StorageProvider;
 use Metodo\MediaToolkit\CDN\CDN_Manager;
 use Metodo\MediaToolkit\CDN\CDNProvider;
-use Metodo\MediaToolkit\CDN\CloudFront;
 use Metodo\MediaToolkit\Core\Encryption;
 use Metodo\MediaToolkit\Core\Environment;
 use Metodo\MediaToolkit\Core\Logger;
@@ -48,8 +47,7 @@ use Metodo\MediaToolkit\Database\OptimizationTable;
  */
 final class Plugin
 {
-    private ?S3_Client $s3_client = null;
-    private ?CloudFront $cloudfront = null;
+    private ?StorageInterface $storage = null;
     private ?CDN_Manager $cdn_manager = null;
     private ?Encryption $encryption = null;
     private ?Settings $settings = null;
@@ -96,7 +94,7 @@ final class Plugin
         add_action('media_toolkit_cleanup_logs', [$this, 'cleanup_logs']);
         add_action('media_toolkit_retry_failed', [$this, 'retry_failed_operations']);
         add_action('media_toolkit_batch_invalidation', [$this, 'process_batch_invalidation']);
-        add_action('media_toolkit_sync_s3_stats', [$this, 'sync_s3_stats']);
+        add_action('media_toolkit_sync_s3_stats', [$this, 'sync_storage_stats']);
         
         // Add custom cron intervals (must be registered before scheduling)
         add_filter('cron_schedules', function (array $schedules): array {
@@ -127,14 +125,14 @@ final class Plugin
             wp_schedule_event(time(), 'fifteen_minutes', 'media_toolkit_retry_failed');
         }
         
-        // Schedule S3 stats sync based on settings
-        $this->schedule_s3_sync();
+        // Schedule storage stats sync based on settings
+        $this->schedule_storage_sync();
     }
 
     /**
-     * Schedule or unschedule S3 stats sync based on interval setting
+     * Schedule or unschedule storage stats sync based on interval setting
      */
-    public function schedule_s3_sync(): void
+    public function schedule_storage_sync(): void
     {
         $hook = 'media_toolkit_sync_s3_stats';
         $interval = $this->settings?->get_s3_sync_interval() ?? 24;
@@ -177,20 +175,21 @@ final class Plugin
         
         self::debug_log('Settings configured: ' . ($this->settings->is_configured() ? 'yes' : 'no'));
         
-        // Only initialize S3 if configured
+        // Only initialize storage if configured
         if ($this->settings->is_configured()) {
-            self::debug_log('Creating S3_Client...');
-            $this->s3_client = new S3_Client($this->settings, $this->error_handler, $this->logger);
-            
-            self::debug_log('Creating CloudFront...');
-            $this->cloudfront = new CloudFront($this->settings, $this->logger);
+            self::debug_log('Creating Storage via Factory...');
+            $this->storage = StorageFactory::create(
+                $this->settings,
+                $this->error_handler,
+                $this->logger
+            );
             
             self::debug_log('Creating CDN_Manager...');
             $this->cdn_manager = new CDN_Manager($this->settings, $this->logger);
             
-            // Media handlers
+            // Media handlers - use storage interface where possible
             $this->upload_handler = new Upload_Handler(
-                $this->s3_client,
+                $this->storage,
                 $this->settings,
                 $this->logger,
                 $this->history,
@@ -199,7 +198,7 @@ final class Plugin
             );
             
             $this->image_editor = new Image_Editor(
-                $this->s3_client,
+                $this->storage,
                 $this->cdn_manager,
                 $this->logger,
                 $this->history,
@@ -207,12 +206,12 @@ final class Plugin
             );
             
             $this->media_library = new Media_Library(
-                $this->s3_client,
+                $this->storage,
                 $this->settings
             );
             
             $this->migration = new Migration(
-                $this->s3_client,
+                $this->storage,
                 $this->settings,
                 $this->logger,
                 $this->history,
@@ -222,18 +221,18 @@ final class Plugin
             $this->image_optimizer = new Image_Optimizer(
                 $this->logger,
                 $this->settings,
-                $this->s3_client,
+                $this->storage,
                 $this->history
             );
             
-            // Image resizer works at upload time, before S3 offload
+            // Image resizer works at upload time, before storage offload
             $this->image_resizer = new Image_Resizer(
                 $this->logger,
                 $this->history
             );
             
             $this->reconciliation = new Reconciliation(
-                $this->s3_client,
+                $this->storage,
                 $this->settings,
                 $this->logger,
                 $this->history
@@ -243,13 +242,13 @@ final class Plugin
             if (is_admin()) {
                 $this->media_library_ui = new Media_Library_UI(
                     $this->settings,
-                    $this->s3_client,
+                    $this->storage,
                     $this->logger,
                     $this->history
                 );
             }
         } else {
-            // Image optimizer can work without S3 (local optimization only)
+            // Image optimizer can work without storage (local optimization only)
             $this->image_optimizer = new Image_Optimizer(
                 $this->logger,
                 $this->settings,
@@ -257,13 +256,13 @@ final class Plugin
                 $this->history
             );
             
-            // Image resizer works at upload time, independent of S3
+            // Image resizer works at upload time, independent of storage
             $this->image_resizer = new Image_Resizer(
                 $this->logger,
                 $this->history
             );
             
-            // Media Library UI still works to show status (without S3 actions)
+            // Media Library UI still works to show status (without storage actions)
             if (is_admin()) {
                 $this->media_library_ui = new Media_Library_UI(
                     $this->settings,
@@ -274,11 +273,11 @@ final class Plugin
             }
         }
         
-        // Register AJAX handler for clearing metadata (needs to work even if S3 not configured)
+        // Register AJAX handler for clearing metadata (needs to work even if storage not configured)
         add_action('wp_ajax_media_toolkit_clear_migration_metadata', [$this, 'ajax_clear_migration_metadata']);
         
         self::debug_log('Creating GitHubUpdater...');
-        // Initialize updater (works regardless of S3 configuration)
+        // Initialize updater (works regardless of storage configuration)
         $this->updater = new GitHubUpdater();
         
         self::debug_log('Calling GitHubUpdater->init()...');
@@ -292,8 +291,7 @@ final class Plugin
             new Admin_Settings(
                 $this->settings,
                 $this->encryption,
-                $this->s3_client,
-                $this->cloudfront,
+                $this->storage,
                 $this->logger,
                 $this->history,
                 $this->stats
@@ -518,6 +516,8 @@ final class Plugin
             'ajaxUrl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('media_toolkit_nonce'),
             'page' => $hook,
+            'providers' => StorageFactory::getProvidersInfo(),
+            'currentProvider' => $this->settings?->get_storage_provider()->value ?? 'aws_s3',
         ];
         
         wp_localize_script('media-toolkit-settings', 'mediaToolkit', $localize_data);
@@ -667,31 +667,43 @@ final class Plugin
     }
 
     /**
-     * Sync S3 bucket statistics
+     * Sync storage bucket statistics
      */
-    public function sync_s3_stats(): void
+    public function sync_storage_stats(): void
     {
-        if ($this->s3_client === null || $this->settings === null) {
+        if ($this->storage === null || $this->settings === null) {
             return;
         }
 
-        $stats = $this->s3_client->get_bucket_stats();
+        $stats = $this->storage->get_bucket_stats();
         
         if ($stats !== null) {
             $this->settings->save_s3_stats($stats);
-            $this->logger?->info('sync', 'S3 stats synced: ' . $stats['files'] . ' files, ' . size_format($stats['size']));
+            $this->logger?->info('sync', 'Storage stats synced: ' . $stats['files'] . ' files, ' . size_format($stats['size']));
             
             // Clear stats cache to refresh dashboard
             $this->stats?->clear_cache();
         } else {
-            $this->logger?->warning('sync', 'Failed to sync S3 stats');
+            $this->logger?->warning('sync', 'Failed to sync storage stats');
         }
     }
 
-    // Getters for components
-    public function get_s3_client(): ?S3_Client
+    /**
+     * @deprecated Use sync_storage_stats() instead
+     */
+    public function sync_s3_stats(): void
     {
-        return $this->s3_client;
+        $this->sync_storage_stats();
+    }
+
+    // Getters for components
+    
+    /**
+     * Get storage interface (new multi-provider)
+     */
+    public function get_storage(): ?StorageInterface
+    {
+        return $this->storage;
     }
 
     public function get_settings(): ?Settings
@@ -712,11 +724,6 @@ final class Plugin
     public function get_cdn_manager(): ?CDN_Manager
     {
         return $this->cdn_manager;
-    }
-
-    public function get_cloudfront(): ?CloudFront
-    {
-        return $this->cloudfront;
     }
 
     public function get_image_optimizer(): ?Image_Optimizer
@@ -749,6 +756,11 @@ final class Plugin
         return $this->image_resizer;
     }
 
+    public function get_error_handler(): ?Error_Handler
+    {
+        return $this->error_handler;
+    }
+
     /**
      * AJAX handler for clearing all migration metadata
      */
@@ -764,11 +776,12 @@ final class Plugin
 
         $deleted = $wpdb->query(
             $wpdb->prepare(
-                "DELETE FROM {$wpdb->postmeta} WHERE meta_key IN (%s, %s, %s, %s)",
+                "DELETE FROM {$wpdb->postmeta} WHERE meta_key IN (%s, %s, %s, %s, %s)",
                 '_media_toolkit_migrated',
                 '_media_toolkit_key',
                 '_media_toolkit_url',
-                '_media_toolkit_thumb_keys'
+                '_media_toolkit_thumb_keys',
+                '_media_toolkit_provider'
             )
         );
 
@@ -780,4 +793,3 @@ final class Plugin
         wp_send_json_success(['deleted' => $deleted]);
     }
 }
-

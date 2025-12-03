@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace Metodo\MediaToolkit\Media;
 
-use Metodo\MediaToolkit\S3\S3_Client;
+use Metodo\MediaToolkit\Storage\StorageInterface;
 use Metodo\MediaToolkit\Core\Settings;
 
 /**
@@ -17,14 +17,14 @@ use Metodo\MediaToolkit\Core\Settings;
  */
 final class Media_Library
 {
-    private S3_Client $s3_client;
+    private StorageInterface $storage;
     private Settings $settings;
 
     public function __construct(
-        S3_Client $s3_client,
+        StorageInterface $storage,
         Settings $settings
     ) {
-        $this->s3_client = $s3_client;
+        $this->storage = $storage;
         $this->settings = $settings;
 
         $this->register_hooks();
@@ -279,7 +279,7 @@ final class Media_Library
      */
     private function get_base_url(): string
     {
-        $config = $this->settings->get_config();
+        $config = $this->settings->get_storage_config();
         
         if ($config === null) {
             return '';

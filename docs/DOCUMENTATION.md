@@ -6,7 +6,7 @@ Complete documentation for the Media Toolkit WordPress plugin.
 
 1. [Installation](#installation)
 2. [Configuration](#configuration)
-3. [S3 Offloading](#s3-offloading)
+3. [Storage Providers](#storage-providers)
 4. [CDN Integration](#cdn-integration)
 5. [Image Optimization](#image-optimization)
 6. [Image Resizing](#image-resizing)
@@ -24,8 +24,8 @@ Complete documentation for the Media Toolkit WordPress plugin.
 
 - PHP 8.2 or higher
 - WordPress 6.0 or higher
-- Amazon S3 bucket with appropriate permissions
-- AWS IAM credentials with S3 access
+- Cloud storage account (AWS S3, Cloudflare R2, DigitalOcean Spaces, Backblaze B2, or Wasabi)
+- API credentials for your chosen provider
 - GD Library or ImageMagick for image optimization
 - Composer (for dependency management)
 
@@ -50,7 +50,9 @@ media-toolkit/
 │   ├── History/           # Operation history tracking
 │   ├── Media/             # Media handlers (Upload, Optimize, etc.)
 │   ├── Migration/         # Bulk migration tools
-│   ├── S3/                # S3 client and operations
+│   ├── Storage/           # Multi-provider storage abstraction
+│   │   ├── Providers/     # Provider implementations
+│   │   └── ...            # Interfaces and base classes
 │   └── Stats/             # Statistics and dashboard data
 ├── assets/                # CSS and JavaScript files
 ├── templates/             # Admin page templates
@@ -61,16 +63,25 @@ media-toolkit/
 
 ## Configuration
 
-### AWS Credentials
+### Storage Provider Selection
 
-Navigate to **Media Toolkit → Settings → Credentials** to configure:
+Navigate to **Media Toolkit → Settings → Storage Provider** to configure your cloud storage.
 
-| Field | Description |
-|-------|-------------|
-| Access Key | AWS IAM Access Key ID |
-| Secret Key | AWS IAM Secret Access Key |
-| Region | AWS region (e.g., `eu-west-1`) |
-| Bucket | S3 bucket name |
+#### Supported Providers
+
+| Provider | Description | Requirements |
+|----------|-------------|--------------|
+| **Amazon S3** | Industry standard with global CDN options | Access Key, Secret Key, Region, Bucket |
+| **Cloudflare R2** | Zero egress fees, requires CDN URL | Account ID, Access Key, Secret Key, Bucket, **CDN URL** |
+| **DigitalOcean Spaces** | Simple S3-compatible with built-in CDN | Access Key, Secret Key, Region, Bucket |
+| **Backblaze B2** | Cost-effective S3-compatible storage | Key ID, Application Key, Region, Bucket |
+| **Wasabi** | Hot cloud storage, no egress fees | Access Key, Secret Key, Region, Bucket |
+
+#### Provider-Specific Notes
+
+- **Cloudflare R2**: Does not provide public URLs. You **must** configure a CDN URL or custom domain in the CDN tab for files to be publicly accessible.
+- **Backblaze B2**: Bucket must have "S3 Compatibility" enabled in B2 settings.
+- **Wasabi**: Has minimum storage charge (1TB) and 90-day retention policy.
 
 **Security Note:** Credentials are encrypted using AES-256-CBC with WordPress salts before storage.
 

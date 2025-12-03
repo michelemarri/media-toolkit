@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace Metodo\MediaToolkit\Media;
 
-use Metodo\MediaToolkit\S3\S3_Client;
+use Metodo\MediaToolkit\Storage\StorageInterface;
 use Metodo\MediaToolkit\Core\Settings;
 use Metodo\MediaToolkit\Core\Logger;
 use Metodo\MediaToolkit\History\History;
@@ -18,11 +18,11 @@ use Metodo\MediaToolkit\Error\Error_Handler;
 use Metodo\MediaToolkit\CDN\CDN_Manager;
 
 /**
- * Handles WordPress upload/sideload hooks to redirect to S3
+ * Handles WordPress upload/sideload hooks to redirect to storage
  */
 final class Upload_Handler
 {
-    private S3_Client $s3_client;
+    private StorageInterface $storage;
     private Settings $settings;
     private Logger $logger;
     private History $history;
@@ -30,14 +30,14 @@ final class Upload_Handler
     private ?CDN_Manager $cdn_manager;
 
     public function __construct(
-        S3_Client $s3_client,
+        StorageInterface $storage,
         Settings $settings,
         Logger $logger,
         History $history,
         Error_Handler $error_handler,
         ?CDN_Manager $cdn_manager = null
     ) {
-        $this->s3_client = $s3_client;
+        $this->storage = $storage;
         $this->settings = $settings;
         $this->logger = $logger;
         $this->history = $history;
@@ -104,7 +104,7 @@ final class Upload_Handler
         $file_path = $upload['file'];
         
         // Upload to S3
-        $result = $this->s3_client->upload_file($file_path);
+        $result = $this->storage->upload_file($file_path);
 
         if (!$result->success) {
             $this->logger->error(
@@ -124,7 +124,7 @@ final class Upload_Handler
             'File uploaded to S3',
             null,
             basename($file_path),
-            ['s3_key' => $result->s3_key]
+            ['s3_key' => $result->key]
         );
 
         // Record in history
@@ -132,7 +132,7 @@ final class Upload_Handler
             HistoryAction::UPLOADED,
             null,
             $file_path,
-            $result->s3_key,
+            $result->key,
             filesize($file_path) ?: 0
         );
 
@@ -147,7 +147,7 @@ final class Upload_Handler
         }
 
         // Store S3 key in a way we can retrieve later
-        $upload['s3_key'] = $result->s3_key;
+        $upload['s3_key'] = $result->key;
 
         return $upload;
     }
@@ -170,18 +170,21 @@ final class Upload_Handler
         $main_s3_key = get_post_meta($attachment_id, '_media_toolkit_key', true);
         
         if (empty($main_s3_key) && file_exists($main_file)) {
-            $result = $this->s3_client->upload_file($main_file, $attachment_id);
+            $result = $this->storage->upload_file($main_file, $attachment_id);
             
             if ($result->success) {
-                update_post_meta($attachment_id, '_media_toolkit_key', $result->s3_key);
+                update_post_meta($attachment_id, '_media_toolkit_key', $result->key);
                 update_post_meta($attachment_id, '_media_toolkit_url', $result->url);
                 update_post_meta($attachment_id, '_media_toolkit_migrated', '1');
+                if ($result->provider !== null) {
+                    update_post_meta($attachment_id, '_media_toolkit_provider', $result->provider->value);
+                }
                 
                 $this->history->record(
                     HistoryAction::UPLOADED,
                     $attachment_id,
                     $main_file,
-                    $result->s3_key,
+                    $result->key,
                     filesize($main_file) ?: 0
                 );
 
@@ -199,12 +202,12 @@ final class Upload_Handler
                 $thumb_file = $file_dir . '/' . $size_data['file'];
                 
                 if (file_exists($thumb_file)) {
-                    $result = $this->s3_client->upload_file($thumb_file, $attachment_id);
+                    $result = $this->storage->upload_file($thumb_file, $attachment_id);
                     
                     if ($result->success) {
                         // Store thumbnail S3 keys
                         $thumb_keys = get_post_meta($attachment_id, '_media_toolkit_thumb_keys', true) ?: [];
-                        $thumb_keys[$size_name] = $result->s3_key;
+                        $thumb_keys[$size_name] = $result->key;
                         update_post_meta($attachment_id, '_media_toolkit_thumb_keys', $thumb_keys);
 
                         if ($this->settings->should_remove_local_files()) {
@@ -262,7 +265,7 @@ final class Upload_Handler
         }
 
         // Delete from S3
-        $success = $this->s3_client->delete_files($s3_keys, $attachment_id);
+        $success = $this->storage->delete_files($s3_keys, $attachment_id);
 
         if ($success) {
             $this->logger->success(
@@ -390,7 +393,7 @@ final class Upload_Handler
         }
 
         // Upload main file
-        $result = $this->s3_client->upload_file($file, $attachment_id);
+        $result = $this->storage->upload_file($file, $attachment_id);
         
         if (!$result->success) {
             return [
@@ -400,15 +403,18 @@ final class Upload_Handler
         }
 
         // Save metadata
-        update_post_meta($attachment_id, '_media_toolkit_key', $result->s3_key);
+        update_post_meta($attachment_id, '_media_toolkit_key', $result->key);
         update_post_meta($attachment_id, '_media_toolkit_url', $result->url);
         update_post_meta($attachment_id, '_media_toolkit_migrated', '1');
+        if ($result->provider !== null) {
+            update_post_meta($attachment_id, '_media_toolkit_provider', $result->provider->value);
+        }
 
         $this->history->record(
             HistoryAction::UPLOADED,
             $attachment_id,
             $file,
-            $result->s3_key,
+            $result->key,
             filesize($file) ?: 0
         );
 
@@ -425,10 +431,10 @@ final class Upload_Handler
                 $thumb_file = $file_dir . '/' . $size_data['file'];
                 
                 if (file_exists($thumb_file)) {
-                    $thumb_result = $this->s3_client->upload_file($thumb_file, $attachment_id);
+                    $thumb_result = $this->storage->upload_file($thumb_file, $attachment_id);
                     
                     if ($thumb_result->success) {
-                        $thumb_keys[$size_name] = $thumb_result->s3_key;
+                        $thumb_keys[$size_name] = $thumb_result->key;
                     }
                 }
             }
@@ -453,7 +459,7 @@ final class Upload_Handler
         return [
             'success' => true,
             'message' => 'File uploaded to S3',
-            's3_key' => $result->s3_key,
+            's3_key' => $result->key,
             's3_url' => $result->url,
         ];
     }

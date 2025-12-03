@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace Metodo\MediaToolkit\Media;
 
-use Metodo\MediaToolkit\S3\S3_Client;
+use Metodo\MediaToolkit\Storage\StorageInterface;
 use Metodo\MediaToolkit\Core\Settings;
 use Metodo\MediaToolkit\Core\Logger;
 use Metodo\MediaToolkit\History\History;
@@ -18,26 +18,26 @@ use function Metodo\MediaToolkit\media_toolkit;
 
 /**
  * Handles Media Library UI enhancements:
- * - S3 status column in list view
- * - S3 info in attachment details
+ * - Storage status column in list view
+ * - Storage info in attachment details
  * - Bulk actions (re-upload, download)
  * - Quick actions
  */
 final class Media_Library_UI
 {
     private Settings $settings;
-    private ?S3_Client $s3_client;
+    private ?StorageInterface $storage;
     private ?Logger $logger;
     private ?History $history;
 
     public function __construct(
         Settings $settings,
-        ?S3_Client $s3_client = null,
+        ?StorageInterface $storage = null,
         ?Logger $logger = null,
         ?History $history = null
     ) {
         $this->settings = $settings;
-        $this->s3_client = $s3_client;
+        $this->storage = $storage;
         $this->logger = $logger;
         $this->history = $history;
 
@@ -167,7 +167,7 @@ final class Media_Library_UI
      */
     public function add_bulk_actions(array $actions): array
     {
-        if ($this->s3_client !== null) {
+        if ($this->storage !== null) {
             $actions['media_toolkit_upload'] = __('Upload to S3', 'media-toolkit');
             $actions['media_toolkit_reupload'] = __('Re-upload to S3', 'media-toolkit');
             $actions['media_toolkit_download'] = __('Download from S3', 'media-toolkit');
@@ -185,7 +185,7 @@ final class Media_Library_UI
             return $redirect_to;
         }
 
-        if ($this->s3_client === null) {
+        if ($this->storage === null) {
             return add_query_arg('s3_bulk_error', 'not_configured', $redirect_to);
         }
 
@@ -265,7 +265,7 @@ final class Media_Library_UI
 
         $is_migrated = !empty(get_post_meta($post->ID, '_media_toolkit_migrated', true));
 
-        if ($this->s3_client !== null) {
+        if ($this->storage !== null) {
             if ($is_migrated) {
                 $actions['s3_reupload'] = sprintf(
                     '<a href="#" class="mt-action-reupload" data-id="%d" data-nonce="%s">%s</a>',
@@ -318,7 +318,7 @@ final class Media_Library_UI
      */
     private function download_attachment(int $attachment_id): bool
     {
-        if ($this->s3_client === null) {
+        if ($this->storage === null) {
             return false;
         }
 
@@ -336,7 +336,7 @@ final class Media_Library_UI
             wp_mkdir_p($dir);
         }
 
-        $result = $this->s3_client->download_file($s3_key, $file, $attachment_id);
+        $result = $this->storage->download_file($s3_key, $file, $attachment_id);
         
         if ($result) {
             $this->logger?->info('media_library', 'File downloaded from S3 via Media Library', $attachment_id, basename($file));
