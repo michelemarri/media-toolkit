@@ -22,9 +22,13 @@ use Metodo\MediaToolkit\History\HistoryAction;
 final class Image_Optimizer extends Batch_Processor
 {
     private const SETTINGS_KEY = 'media_toolkit_optimize_settings';
+    private const STATS_KEY = 'media_toolkit_optimization_stats';
     
     private ?S3_Client $s3_client;
     private History $history;
+    
+    /** @var array|null In-memory cache for stats within same request */
+    private ?array $stats_cache = null;
 
     public function __construct(
         Logger $logger,
@@ -39,6 +43,61 @@ final class Image_Optimizer extends Batch_Processor
         
         // Register settings AJAX handler
         add_action('wp_ajax_media_toolkit_save_optimize_settings', [$this, 'ajax_save_settings']);
+        add_action('wp_ajax_media_toolkit_rebuild_optimization_stats', [$this, 'ajax_rebuild_stats']);
+        
+        // Hook into attachment deletion to update stats
+        add_action('delete_attachment', [$this, 'on_attachment_deleted'], 10, 1);
+        
+        // Invalidate total images cache when new images are uploaded
+        add_action('add_attachment', [$this, 'on_attachment_added'], 10, 1);
+    }
+
+    /**
+     * Handle attachment deletion - update aggregated stats
+     */
+    public function on_attachment_deleted(int $attachment_id): void
+    {
+        // Check if it's an image
+        $mime_type = get_post_mime_type($attachment_id);
+        if (strpos($mime_type, 'image/') !== 0) {
+            return;
+        }
+        
+        // Decrement stats if it was optimized
+        $this->decrement_stats_for_attachment($attachment_id);
+        
+        // Decrement total images count
+        $this->decrement_total_images();
+    }
+
+    /**
+     * Handle new attachment - increment total images
+     */
+    public function on_attachment_added(int $attachment_id): void
+    {
+        $mime_type = get_post_mime_type($attachment_id);
+        if (strpos($mime_type, 'image/') === 0) {
+            $this->increment_total_images();
+        }
+    }
+
+    /**
+     * AJAX: Rebuild optimization stats from database
+     */
+    public function ajax_rebuild_stats(): void
+    {
+        check_ajax_referer('media_toolkit_nonce', 'nonce');
+        
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => 'Permission denied']);
+        }
+
+        $stats = $this->rebuild_aggregated_stats();
+        
+        wp_send_json_success([
+            'message' => 'Stats rebuilt successfully',
+            'stats' => $this->get_stats(),
+        ]);
     }
 
     /**
@@ -91,41 +150,26 @@ final class Image_Optimizer extends Batch_Processor
 
     /**
      * Get optimization statistics
+     * 
+     * Ultra-performant: single option read + in-memory cache.
+     * No database queries on subsequent calls within same request.
      */
     public function get_stats(): array
     {
-        global $wpdb;
-
-        // Total image attachments
-        $total_images = (int) $wpdb->get_var(
-            "SELECT COUNT(*) FROM {$wpdb->posts} 
-             WHERE post_type = 'attachment' 
-             AND post_mime_type LIKE 'image/%'"
-        );
-
-        // Optimized images (have meta key)
-        $optimized_images = (int) $wpdb->get_var(
-            $wpdb->prepare(
-                "SELECT COUNT(*) FROM {$wpdb->posts} p
-                 INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
-                 WHERE p.post_type = 'attachment' 
-                 AND p.post_mime_type LIKE 'image/%%'
-                 AND pm.meta_key = %s",
-                '_media_toolkit_optimized'
-            )
-        );
-
-        // Total bytes saved
-        $total_saved = (int) $wpdb->get_var(
-            $wpdb->prepare(
-                "SELECT SUM(pm.meta_value) FROM {$wpdb->postmeta} pm
-                 WHERE pm.meta_key = %s",
-                '_media_toolkit_bytes_saved'
-            )
-        );
-
-        $pending_images = $total_images - $optimized_images;
+        $stats = $this->get_aggregated_stats();
+        
+        $total_images = $stats['total_images'];
+        $optimized_images = $stats['optimized_count'];
+        $total_saved = $stats['total_bytes_saved'];
+        $total_original_size = $stats['total_original_size'];
+        
+        $pending_images = max(0, $total_images - $optimized_images);
         $progress = $total_images > 0 ? round(($optimized_images / $total_images) * 100, 1) : 0;
+        
+        // Calculate average savings percentage
+        $average_savings_percent = $total_original_size > 0 
+            ? round(($total_saved / $total_original_size) * 100, 1) 
+            : 0;
 
         return [
             'total_images' => $total_images,
@@ -133,30 +177,366 @@ final class Image_Optimizer extends Batch_Processor
             'pending_images' => $pending_images,
             'total_saved' => $total_saved,
             'total_saved_formatted' => size_format($total_saved),
+            'total_original_size' => $total_original_size,
+            'total_original_size_formatted' => size_format($total_original_size),
+            'average_savings_percent' => $average_savings_percent,
             'progress_percentage' => $progress,
         ];
     }
 
     /**
-     * Count pending items to optimize
+     * Get aggregated stats from option with multi-layer caching
+     * 
+     * Cache hierarchy:
+     * 1. In-memory cache (same PHP request) - instant
+     * 2. Object cache (Redis/Memcached if available) - ~1ms
+     * 3. wp_options table - ~5ms
+     * 
+     * Auto-initializes from database if stats don't exist yet (migration).
      */
-    protected function count_pending_items(array $options = []): int
+    private function get_aggregated_stats(): array
+    {
+        // Level 1: In-memory cache (same request)
+        if ($this->stats_cache !== null) {
+            return $this->stats_cache;
+        }
+
+        $defaults = $this->get_stats_defaults();
+        
+        // Level 2: Object cache (Redis/Memcached) - faster than options if available
+        $cache_key = 'media_toolkit_opt_stats';
+        $stats = wp_cache_get($cache_key, 'media_toolkit');
+        
+        if ($stats !== false && is_array($stats)) {
+            $this->stats_cache = array_merge($defaults, $stats);
+            return $this->stats_cache;
+        }
+        
+        // Level 3: Database option
+        $stats = get_option(self::STATS_KEY);
+        
+        // Auto-initialize if option doesn't exist (first run or migration)
+        if ($stats === false) {
+            $stats = $this->initialize_stats();
+        }
+        
+        $stats = array_merge($defaults, is_array($stats) ? $stats : []);
+        
+        // Populate caches
+        wp_cache_set($cache_key, $stats, 'media_toolkit', 300); // 5 min object cache
+        $this->stats_cache = $stats;
+        
+        return $stats;
+    }
+
+    /**
+     * Get default stats structure
+     */
+    private function get_stats_defaults(): array
+    {
+        return [
+            'total_images' => 0,
+            'optimized_count' => 0,
+            'total_bytes_saved' => 0,
+            'total_original_size' => 0,
+            'last_updated' => 0,
+            'version' => 2, // Stats schema version for future migrations
+        ];
+    }
+
+    /**
+     * Initialize stats - either fresh or from existing data
+     */
+    private function initialize_stats(): array
+    {
+        global $wpdb;
+        
+        // Check if there are existing optimized images (migration scenario)
+        $has_existing = (int) $wpdb->get_var(
+            $wpdb->prepare(
+                "SELECT 1 FROM {$wpdb->postmeta} WHERE meta_key = %s LIMIT 1",
+                '_media_toolkit_optimized'
+            )
+        );
+        
+        if ($has_existing > 0) {
+            // Rebuild from existing meta data (one-time migration)
+            return $this->rebuild_aggregated_stats();
+        }
+        
+        // Fresh install - count current images and save
+        $total_images = $this->count_total_images_from_db();
+        
+        $stats = $this->get_stats_defaults();
+        $stats['total_images'] = $total_images;
+        $stats['last_updated'] = time();
+        
+        $this->save_stats($stats);
+        
+        return $stats;
+    }
+
+    /**
+     * Save stats with cache invalidation
+     */
+    private function save_stats(array $stats): void
+    {
+        $stats['last_updated'] = time();
+        
+        // Save to database (autoload = false for performance)
+        update_option(self::STATS_KEY, $stats, false);
+        
+        // Update object cache
+        wp_cache_set('media_toolkit_opt_stats', $stats, 'media_toolkit', 300);
+        
+        // Update in-memory cache
+        $this->stats_cache = $stats;
+    }
+
+    /**
+     * Invalidate all stats caches
+     */
+    private function invalidate_stats_cache(): void
+    {
+        $this->stats_cache = null;
+        wp_cache_delete('media_toolkit_opt_stats', 'media_toolkit');
+    }
+
+    /**
+     * Update aggregated stats incrementally after optimization
+     * 
+     * @param int $bytes_saved Bytes saved in this optimization
+     * @param int $original_size Original file size
+     * @param bool $is_new Whether this is a new optimization (not re-optimization)
+     */
+    private function update_aggregated_stats(int $bytes_saved, int $original_size, bool $is_new = true): void
+    {
+        $stats = $this->get_aggregated_stats();
+        
+        if ($is_new) {
+            $stats['optimized_count']++;
+        }
+        
+        $stats['total_bytes_saved'] += $bytes_saved;
+        $stats['total_original_size'] += $original_size;
+        
+        $this->save_stats($stats);
+    }
+
+    /**
+     * Decrement stats when an image is deleted or re-optimized
+     * 
+     * @param int $attachment_id The attachment being removed/changed
+     */
+    public function decrement_stats_for_attachment(int $attachment_id): void
+    {
+        $original_size = (int) get_post_meta($attachment_id, '_media_toolkit_original_size', true);
+        $bytes_saved = (int) get_post_meta($attachment_id, '_media_toolkit_bytes_saved', true);
+        $was_optimized = get_post_meta($attachment_id, '_media_toolkit_optimized', true) === '1';
+        
+        if (!$was_optimized) {
+            return;
+        }
+        
+        $stats = $this->get_aggregated_stats();
+        
+        $stats['optimized_count'] = max(0, $stats['optimized_count'] - 1);
+        $stats['total_bytes_saved'] = max(0, $stats['total_bytes_saved'] - $bytes_saved);
+        $stats['total_original_size'] = max(0, $stats['total_original_size'] - $original_size);
+        
+        $this->save_stats($stats);
+    }
+
+    /**
+     * Increment total images count (call when new image uploaded)
+     */
+    public function increment_total_images(): void
+    {
+        $stats = $this->get_aggregated_stats();
+        $stats['total_images']++;
+        $this->save_stats($stats);
+    }
+
+    /**
+     * Decrement total images count (call when image deleted)
+     */
+    public function decrement_total_images(): void
+    {
+        $stats = $this->get_aggregated_stats();
+        $stats['total_images'] = max(0, $stats['total_images'] - 1);
+        $this->save_stats($stats);
+    }
+
+    /**
+     * Count total images from database (expensive - use sparingly)
+     */
+    private function count_total_images_from_db(): int
     {
         global $wpdb;
 
-        $mime_types = $this->get_supported_mime_types();
-        $placeholders = implode(',', array_fill(0, count($mime_types), '%s'));
-
         return (int) $wpdb->get_var(
-            $wpdb->prepare(
-                "SELECT COUNT(*) FROM {$wpdb->posts} p
-                 LEFT JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id AND pm.meta_key = '_media_toolkit_optimized'
-                 WHERE p.post_type = 'attachment' 
-                 AND p.post_mime_type IN ($placeholders)
-                 AND (pm.meta_value IS NULL OR pm.meta_value != '1')",
-                ...$mime_types
-            )
+            "SELECT COUNT(*) FROM {$wpdb->posts} 
+             WHERE post_type = 'attachment' 
+             AND post_mime_type LIKE 'image/%'"
         );
+    }
+
+    /**
+     * Rebuild aggregated stats from database
+     * 
+     * Use this if stats get out of sync (e.g., after manual DB edits)
+     * or for initial migration from old system.
+     * 
+     * Uses efficient single-pass query where possible.
+     */
+    public function rebuild_aggregated_stats(): array
+    {
+        global $wpdb;
+
+        // Get total images
+        $total_images = $this->count_total_images_from_db();
+
+        // Efficient single query for all optimization stats
+        $optimization_stats = $wpdb->get_row(
+            $wpdb->prepare(
+                "SELECT 
+                    COUNT(DISTINCT CASE WHEN pm1.meta_key = %s AND pm1.meta_value = '1' THEN pm1.post_id END) as optimized_count,
+                    COALESCE(SUM(CASE WHEN pm1.meta_key = %s THEN CAST(pm1.meta_value AS UNSIGNED) END), 0) as total_bytes_saved,
+                    COALESCE(SUM(CASE WHEN pm1.meta_key = %s THEN CAST(pm1.meta_value AS UNSIGNED) END), 0) as total_original_size
+                FROM {$wpdb->postmeta} pm1
+                WHERE pm1.meta_key IN (%s, %s, %s)",
+                '_media_toolkit_optimized',
+                '_media_toolkit_bytes_saved',
+                '_media_toolkit_original_size',
+                '_media_toolkit_optimized',
+                '_media_toolkit_bytes_saved',
+                '_media_toolkit_original_size'
+            ),
+            ARRAY_A
+        );
+
+        $stats = [
+            'total_images' => $total_images,
+            'optimized_count' => (int) ($optimization_stats['optimized_count'] ?? 0),
+            'total_bytes_saved' => (int) ($optimization_stats['total_bytes_saved'] ?? 0),
+            'total_original_size' => (int) ($optimization_stats['total_original_size'] ?? 0),
+            'last_updated' => time(),
+            'version' => 2,
+        ];
+
+        $this->save_stats($stats);
+        
+        $this->logger->info('optimization', 'Aggregated stats rebuilt from database');
+
+        return $stats;
+    }
+
+    /**
+     * Process a batch of items with bytes saved tracking
+     * 
+     * @override
+     */
+    public function process_batch(): array
+    {
+        $state = $this->get_state();
+
+        if ($state['status'] !== 'running') {
+            return [
+                'success' => false,
+                'message' => 'Processor is not running',
+                'state' => $state,
+                'batch_bytes_saved' => 0,
+            ];
+        }
+
+        $batch_size = $state['options']['batch_size'] ?? 25;
+        $items = $this->get_pending_items($batch_size, $state['last_item_id'], $state['options']);
+
+        if (empty($items)) {
+            // Processing complete
+            $state['status'] = 'completed';
+            $this->save_state($state);
+            
+            $this->logger->success(
+                $this->processor_id,
+                "{$this->get_processor_name()} completed. Processed: {$state['processed']}, Failed: {$state['failed']}"
+            );
+
+            return [
+                'success' => true,
+                'complete' => true,
+                'state' => $state,
+                'batch_bytes_saved' => 0,
+            ];
+        }
+
+        $batch_processed = 0;
+        $batch_failed = 0;
+        $batch_skipped = 0;
+        $batch_errors = [];
+        $batch_bytes_saved = 0;
+
+        foreach ($items as $item) {
+            $item_id = $this->get_item_id($item);
+            $result = $this->process_item($item, $state['options']);
+
+            if ($result['success']) {
+                if ($result['skipped'] ?? false) {
+                    $batch_skipped++;
+                    $state['skipped']++;
+                } else {
+                    $batch_processed++;
+                    $state['processed']++;
+                    
+                    // Track bytes saved
+                    if (!empty($result['bytes_saved'])) {
+                        $batch_bytes_saved += (int) $result['bytes_saved'];
+                    }
+                }
+            } else {
+                $batch_failed++;
+                $state['failed']++;
+                $batch_errors[] = [
+                    'item_id' => $item_id,
+                    'error' => $result['error'] ?? 'Unknown error',
+                ];
+            }
+
+            $state['last_item_id'] = $item_id;
+        }
+
+        $state['current_batch']++;
+        $state['errors'] = array_merge($state['errors'], $batch_errors);
+        
+        // Keep only last 50 errors
+        if (count($state['errors']) > 50) {
+            $state['errors'] = array_slice($state['errors'], -50);
+        }
+
+        $this->save_state($state);
+
+        return [
+            'success' => true,
+            'complete' => false,
+            'batch_processed' => $batch_processed,
+            'batch_failed' => $batch_failed,
+            'batch_skipped' => $batch_skipped,
+            'batch_errors' => $batch_errors,
+            'batch_bytes_saved' => $batch_bytes_saved,
+            'batch_bytes_saved_formatted' => size_format($batch_bytes_saved),
+            'state' => $state,
+        ];
+    }
+
+    /**
+     * Count pending items to optimize
+     * 
+     * Uses aggregated stats for O(1) performance instead of expensive LEFT JOIN.
+     */
+    protected function count_pending_items(array $options = []): int
+    {
+        $stats = $this->get_aggregated_stats();
+        return max(0, $stats['total_images'] - $stats['optimized_count']);
     }
 
     /**
@@ -201,7 +581,15 @@ final class Image_Optimizer extends Batch_Processor
     {
         $attachment_id = (int) $item;
         
-        return $this->optimize_attachment($attachment_id, $options);
+        try {
+            return $this->optimize_attachment($attachment_id, $options);
+        } catch (\Throwable $e) {
+            // Catch any fatal errors from image processing libraries
+            return [
+                'success' => false,
+                'error' => $e->getMessage(),
+            ];
+        }
     }
 
     /**
@@ -218,13 +606,37 @@ final class Image_Optimizer extends Batch_Processor
             ];
         }
 
-        // Check if file exists locally, if not try to download from S3
-        if (!file_exists($file)) {
-            $downloaded = $this->ensure_local_file($attachment_id, $file);
+        $s3_key = get_post_meta($attachment_id, '_media_toolkit_key', true);
+        $is_s3_active = $this->s3_client !== null;
+        $is_on_s3 = !empty($s3_key);
+        
+        // Determine source of truth based on S3 configuration
+        if ($is_s3_active && $is_on_s3) {
+            // S3 is configured AND file is on S3 -> S3 is source of truth
+            // Always download fresh from S3, ignore local copy
+            $dir = dirname($file);
+            if (!file_exists($dir)) {
+                wp_mkdir_p($dir);
+            }
+            
+            // Remove any existing local copy to ensure we get fresh from S3
+            if (file_exists($file)) {
+                @unlink($file);
+            }
+            
+            $downloaded = $this->s3_client->download_file($s3_key, $file, $attachment_id);
             if (!$downloaded) {
                 return [
                     'success' => false,
-                    'error' => 'File does not exist and could not be downloaded from S3',
+                    'error' => 'Failed to download file from S3',
+                ];
+            }
+        } else {
+            // S3 not configured OR file not on S3 -> Local is source of truth
+            if (!file_exists($file)) {
+                return [
+                    'success' => false,
+                    'error' => 'File does not exist locally',
                 ];
             }
         }
@@ -232,6 +644,18 @@ final class Image_Optimizer extends Batch_Processor
         $settings = array_merge($this->get_optimization_settings(), $options);
         $mime_type = get_post_mime_type($attachment_id);
         $original_size = filesize($file);
+
+        // Validate image file is readable
+        $image_info = @getimagesize($file);
+        if ($image_info === false) {
+            update_post_meta($attachment_id, '_media_toolkit_optimized', '1');
+            update_post_meta($attachment_id, '_media_toolkit_optimize_skipped', 'corrupted_file');
+            
+            return [
+                'success' => false,
+                'error' => 'Failed to read the file - image may be corrupted',
+            ];
+        }
 
         // Check max file size
         $max_size = ($settings['max_file_size_mb'] ?? 10) * 1024 * 1024;
@@ -271,12 +695,23 @@ final class Image_Optimizer extends Batch_Processor
             // Restore original if savings too small? No, keep optimized version
         }
 
-        // Update meta
+        // Check if this is a re-optimization (already optimized before)
+        $was_already_optimized = get_post_meta($attachment_id, '_media_toolkit_optimized', true) === '1';
+        
+        // If re-optimizing, first decrement the old stats
+        if ($was_already_optimized) {
+            $this->decrement_stats_for_attachment($attachment_id);
+        }
+
+        // Update meta for this file
         update_post_meta($attachment_id, '_media_toolkit_optimized', '1');
         update_post_meta($attachment_id, '_media_toolkit_original_size', $original_size);
         update_post_meta($attachment_id, '_media_toolkit_optimized_size', $new_size);
         update_post_meta($attachment_id, '_media_toolkit_bytes_saved', max(0, $bytes_saved));
         update_post_meta($attachment_id, '_media_toolkit_optimized_at', time());
+
+        // Update aggregated stats (always count as new since we decremented if re-optimizing)
+        $this->update_aggregated_stats(max(0, $bytes_saved), $original_size, true);
 
         // Re-upload to S3 if already offloaded
         $s3_key = get_post_meta($attachment_id, '_media_toolkit_key', true);
@@ -513,29 +948,50 @@ final class Image_Optimizer extends Batch_Processor
 
         $file = get_attached_file($attachment_id);
         $file_dir = dirname($file);
+        
+        $is_s3_active = $this->s3_client !== null;
+        $thumb_keys = get_post_meta($attachment_id, '_media_toolkit_thumb_keys', true) ?: [];
 
         foreach ($metadata['sizes'] as $size_name => $size_data) {
             $thumb_file = $file_dir . '/' . $size_data['file'];
+            $thumb_s3_key = $thumb_keys[$size_name] ?? null;
             
-            if (!file_exists($thumb_file)) {
-                continue;
+            // Determine source of truth for this thumbnail
+            if ($is_s3_active && !empty($thumb_s3_key)) {
+                // S3 is source of truth - download fresh
+                if (!file_exists($file_dir)) {
+                    wp_mkdir_p($file_dir);
+                }
+                
+                // Remove existing local copy
+                if (file_exists($thumb_file)) {
+                    @unlink($thumb_file);
+                }
+                
+                $downloaded = $this->s3_client->download_file($thumb_s3_key, $thumb_file, $attachment_id);
+                if (!$downloaded) {
+                    continue; // Skip this thumbnail if download fails
+                }
+            } elseif (!file_exists($thumb_file)) {
+                continue; // No local file and not on S3
             }
 
             $mime_type = $size_data['mime-type'] ?? '';
             
-            $result = match ($mime_type) {
-                'image/jpeg', 'image/jpg' => $this->optimize_jpeg($thumb_file, $settings),
-                'image/png' => $this->optimize_png($thumb_file, $settings),
-                'image/webp' => $this->optimize_webp($thumb_file, $settings),
-                default => ['success' => false],
-            };
+            try {
+                $result = match ($mime_type) {
+                    'image/jpeg', 'image/jpg' => $this->optimize_jpeg($thumb_file, $settings),
+                    'image/png' => $this->optimize_png($thumb_file, $settings),
+                    'image/webp' => $this->optimize_webp($thumb_file, $settings),
+                    default => ['success' => false],
+                };
+            } catch (\Throwable $e) {
+                continue; // Skip this thumbnail on error
+            }
 
             // Re-upload to S3 if needed
-            if ($result['success'] && $this->s3_client !== null) {
-                $s3_key = get_post_meta($attachment_id, '_media_toolkit_key', true);
-                if (!empty($s3_key)) {
-                    $this->s3_client->upload_file($thumb_file, $attachment_id);
-                }
+            if ($result['success'] && $is_s3_active && !empty($thumb_s3_key)) {
+                $this->s3_client->upload_file($thumb_file, $attachment_id);
             }
         }
     }

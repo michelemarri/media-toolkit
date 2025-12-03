@@ -359,6 +359,15 @@
   @apply outline-2 outline-gray-900 outline-offset-2;
 }
 
+/* All buttons should have pointer cursor */
+.mt-wrap button,
+.mt-wrap .button,
+.mt-wrap [type="button"],
+.mt-wrap [type="submit"],
+.mt-wrap [type="reset"] {
+  cursor: pointer;
+}
+
 /* Range input styling */
 .mt-wrap input[type="range"] {
   @apply h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer;

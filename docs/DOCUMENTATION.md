@@ -9,11 +9,12 @@ Complete documentation for the Media Toolkit WordPress plugin.
 3. [S3 Offloading](#s3-offloading)
 4. [CDN Integration](#cdn-integration)
 5. [Image Optimization](#image-optimization)
-6. [Migration](#migration)
-7. [Reconciliation](#reconciliation)
-8. [Caching & Headers](#caching--headers)
-9. [Import/Export](#importexport)
-10. [Troubleshooting](#troubleshooting)
+6. [Image Resizing](#image-resizing)
+7. [Migration](#migration)
+8. [Reconciliation](#reconciliation)
+9. [Caching & Headers](#caching--headers)
+10. [Import/Export](#importexport)
+11. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -188,7 +189,21 @@ When files are updated or deleted:
 
 ## Image Optimization
 
-### Supported Formats
+The Optimize page is organized into three tabs: **Dashboard**, **Optimize**, and **Resize**.
+
+### Dashboard Tab
+
+Overview of optimization status:
+
+- Total images count
+- Optimized vs pending images
+- Space saved from optimization
+- Resize statistics
+- Server capabilities (GD, ImageMagick, WebP support)
+
+### Optimize Tab
+
+#### Supported Formats
 
 | Format | Method | Settings |
 |--------|--------|----------|
@@ -197,16 +212,16 @@ When files are updated or deleted:
 | GIF | Preserved | No changes to animated GIFs |
 | WebP | GD/ImageMagick | Quality 60-100% |
 
-### Optimization Process
+#### Optimization Process
 
 1. Original image is compressed locally
 2. All thumbnails are optimized
 3. Files are re-uploaded to S3
 4. Space savings are tracked
 
-### Settings
+#### Settings
 
-Navigate to **Media Toolkit → Optimize**:
+Navigate to **Media Toolkit → Optimize → Optimize tab**:
 
 | Setting | Description | Default |
 |---------|-------------|---------|
@@ -216,12 +231,118 @@ Navigate to **Media Toolkit → Optimize**:
 | Min Savings | Minimum % to keep | 5% |
 | Max File Size | Skip larger files | 10 MB |
 
-### Batch Optimization
+#### Batch Optimization
 
-1. Go to **Media Toolkit → Optimize**
+1. Go to **Media Toolkit → Optimize → Optimize**
 2. Configure settings
 3. Click **Start Optimization**
 4. Monitor progress in real-time
+
+---
+
+## Image Resizing
+
+Automatically resize oversized images when they are uploaded to WordPress.
+
+### Overview
+
+The resize feature intercepts uploads and automatically resizes images that exceed the configured maximum dimensions. This:
+
+- Reduces server space usage
+- Speeds up your website
+- Saves bandwidth
+- Improves SEO (faster page loads)
+
+### Supported Formats
+
+| Format | Resize | Notes |
+|--------|--------|-------|
+| JPEG | ✅ | Full support |
+| PNG | ✅ | Transparency preserved |
+| GIF | ✅ | Non-animated only |
+| WebP | ✅ | Full support |
+| BMP | ✅ | Converts to JPEG |
+
+### Settings
+
+Navigate to **Media Toolkit → Optimize → Resize tab**:
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| Enabled | Enable auto-resize on upload | Disabled |
+| Max Width | Maximum width in pixels (0 = no limit) | 2560 |
+| Max Height | Maximum height in pixels (0 = no limit) | 2560 |
+| JPEG Quality | Compression quality when resizing | 82% |
+| Convert BMP | Convert BMP to JPEG automatically | Enabled |
+
+### Quick Presets
+
+One-click presets for common use cases:
+
+| Preset | Dimensions | Use Case |
+|--------|------------|----------|
+| Full HD | 1920 × 1920 | Standard web displays |
+| 2K / Retina | 2560 × 2560 | High-DPI displays (recommended) |
+| 4K Ultra HD | 3840 × 3840 | Large displays, print |
+| Blog / Web | 1200 × 1200 | Blog posts, small images |
+
+### How It Works
+
+1. User uploads an image via WordPress Media Library
+2. Plugin intercepts the upload (before thumbnails are generated)
+3. If image exceeds max dimensions, it's resized maintaining aspect ratio
+4. Thumbnails are then generated from the resized image
+5. Statistics are updated
+
+### BMP Conversion
+
+BMP files are automatically converted to JPEG when the "Convert BMP to JPEG" option is enabled:
+
+1. BMP file is detected on upload
+2. Image is converted to JPEG using configured quality
+3. Original BMP is deleted
+4. New JPEG file is used for the attachment
+
+### Statistics
+
+The resize feature tracks:
+
+- Total images resized
+- Total bytes saved
+- BMP files converted
+- Last resize timestamp
+
+### Independence from S3
+
+The resize feature works independently of S3 configuration:
+
+- ✅ Works without S3 configured
+- ✅ Works with S3 configured (resized images are then offloaded)
+- ✅ Works before thumbnail generation
+
+### Programmatic Usage
+
+```php
+use Metodo\MediaToolkit\Media\Image_Resizer;
+
+// Get resizer instance
+$plugin = \Metodo\MediaToolkit\media_toolkit();
+$resizer = $plugin->get_image_resizer();
+
+// Get settings
+$settings = $resizer->get_resize_settings();
+
+// Manually resize an attachment
+$result = $resizer->resize_attachment($attachment_id);
+
+// Resize a file directly
+$result = $resizer->resize_image(
+    $file_path,
+    $max_width,
+    $max_height,
+    $jpeg_quality
+);
+```
 
 ---
 

@@ -287,7 +287,16 @@
                             this.handleComplete(response.data.state);
                         }
                     } else {
-                        this.log('Batch processing failed: ' + (response.data?.message || 'Unknown error'), 'error');
+                        // Process was stopped or is not running - stop the interval
+                        const state = response.data?.state;
+                        if (state && (state.status === 'idle' || state.status === 'paused' || state.status === 'completed')) {
+                            this.stopInterval();
+                            this.isRunning = false;
+                            this.setButtonsState(state.status);
+                            this.log('Process stopped', 'warning');
+                        } else {
+                            this.log('Batch processing failed: ' + (response.data?.message || 'Unknown error'), 'error');
+                        }
                     }
                 }, () => {
                     this.log('Batch processing error', 'error');
@@ -318,21 +327,31 @@
          * Pause the batch process
          */
         pause() {
+            // Immediately stop the interval to prevent more batches
+            this.stopInterval();
+            this.isPaused = true;
+            this.isRunning = false;
             this.setButtonsState('paused');
             this.log('Pausing...', 'info');
 
             this.ajax(this.config.actions.pause, {}, (response) => {
                 if (response.success) {
-                    this.isPaused = true;
-                    this.isRunning = false;
                     this.log('Paused', 'warning');
                 } else {
+                    // Restore state if pause failed
+                    this.isPaused = false;
+                    this.isRunning = true;
                     this.setButtonsState('running');
                     this.log('Failed to pause', 'error');
+                    this.startBatchProcessing();
                 }
             }, () => {
+                // Restore state on error
+                this.isPaused = false;
+                this.isRunning = true;
                 this.setButtonsState('running');
                 this.log('Failed to pause', 'error');
+                this.startBatchProcessing();
             });
         }
 
@@ -385,17 +404,20 @@
          * Execute stop action
          */
         doStop() {
+            // Immediately stop processing to prevent race conditions
+            this.isRunning = false;
+            this.isPaused = false;
+            this.stopInterval();
             this.setButtonsState('idle');
             this.log('Stopping...', 'info');
-            this.stopInterval();
 
             this.ajax(this.config.actions.stop, {}, (response) => {
-                this.isRunning = false;
-                this.isPaused = false;
                 this.log('Stopped', 'warning');
                 this.checkCurrentStatus();
             }, () => {
                 this.log('Error stopping', 'error');
+                // Even on error, keep the process stopped
+                this.checkCurrentStatus();
             });
         }
 
@@ -486,8 +508,12 @@
 
             const timestamp = new Date().toLocaleTimeString();
 
-            // Remove placeholder
-            this.$logContainer.find('.mt-terminal-muted').first().remove();
+            // Remove placeholder (the entire line, not just the span)
+            this.$logContainer.find('.mt-terminal-line').first().each(function() {
+                if ($(this).find('.mt-terminal-muted').text().includes('will appear here')) {
+                    $(this).remove();
+                }
+            });
 
             const typeClass = {
                 success: 'mt-terminal-success',

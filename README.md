@@ -50,6 +50,18 @@ Compress and optimize your media library images to save storage and bandwidth:
 - **Space Savings Tracking**: Monitor how much storage you've saved
 - **Server Capability Detection**: Checks for GD, ImageMagick, WebP support
 
+### 📐 Automatic Image Resizing
+Automatically resize oversized images when they are uploaded:
+
+- **Upload-Time Resizing**: Resize images automatically when uploaded to WordPress
+- **Max Width/Height**: Set maximum dimensions (e.g., 2560px for retina displays)
+- **Aspect Ratio**: Maintains original aspect ratio when resizing
+- **Supported Formats**: JPEG, PNG, GIF, WebP
+- **BMP Conversion**: Automatically convert BMP to JPEG for space savings
+- **Quick Presets**: One-click presets for Full HD, 2K/Retina, 4K, and Web sizes
+- **Statistics**: Track total images resized and space saved
+- **Independent of S3**: Works with or without S3 offloading configured
+
 ### 📚 Media Library Integration
 Enhanced Media Library with S3 status and actions:
 
@@ -248,7 +260,7 @@ Once configured, all new media uploads are automatically sent to S3. No action r
 
 ### Image Optimization
 
-1. Go to **Media Toolkit → Optimize**
+1. Go to **Media Toolkit → Optimize → Optimize tab**
 2. Configure compression settings:
    - JPEG Quality (60-100%)
    - PNG Compression Level (0-9)
@@ -256,6 +268,19 @@ Once configured, all new media uploads are automatically sent to S3. No action r
    - Max file size to process
 3. Click **Start Optimization**
 4. Monitor progress and space savings
+
+### Automatic Image Resizing
+
+1. Go to **Media Toolkit → Optimize → Resize tab**
+2. Enable "Auto-Resize on Upload"
+3. Configure resize settings:
+   - Max Width (e.g., 2560 for retina displays)
+   - Max Height (e.g., 2560 for retina displays)
+   - JPEG Quality for resized images
+   - BMP to JPEG conversion (optional)
+4. Or use Quick Presets for common sizes
+5. Click **Save Settings**
+6. All new uploads will be automatically resized if they exceed the limits
 
 ### Reconciliation
 
@@ -314,6 +339,16 @@ Go to **Media Toolkit → History** to see:
 | Min Savings % | Minimum savings threshold to keep optimization | 5% |
 | Max File Size | Skip files larger than this | 10 MB |
 
+### Image Resize Settings
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| Enabled | Auto-resize images on upload | Disabled |
+| Max Width | Maximum image width in pixels (0 = no limit) | 2560 |
+| Max Height | Maximum image height in pixels (0 = no limit) | 2560 |
+| JPEG Quality | Compression quality when resizing | 82% |
+| Convert BMP | Convert BMP images to JPEG | Enabled |
+
 ## Hooks & Filters
 
 ### Actions
@@ -330,6 +365,9 @@ do_action('media_toolkit_migration_complete', $total_migrated, $total_failed);
 
 // Fired after an image is optimized
 do_action('media_toolkit_optimized', $attachment_id, $bytes_saved, $percent_saved);
+
+// Fired after an image is resized on upload
+do_action('media_toolkit_resized', $attachment_id, $bytes_saved, $original_dimensions, $new_dimensions);
 ```
 
 ### Filters
@@ -346,6 +384,12 @@ $skip = apply_filters('media_toolkit_skip_file', false, $attachment_id, $file_pa
 
 // Modify optimization settings per file
 $settings = apply_filters('media_toolkit_optimize_settings', $settings, $attachment_id);
+
+// Modify resize settings per file
+$settings = apply_filters('media_toolkit_resize_settings', $settings, $file_path);
+
+// Skip specific files from resizing
+$skip = apply_filters('media_toolkit_skip_resize', false, $file_path, $mime_type);
 ```
 
 ## Admin Pages
@@ -355,7 +399,7 @@ $settings = apply_filters('media_toolkit_optimize_settings', $settings, $attachm
 | Dashboard | Overview statistics and activity chart |
 | Settings | AWS credentials, CDN, and general settings |
 | Tools | Migration, Stats Sync, Cache Headers, Reconciliation |
-| Optimize | Image optimization with compression settings |
+| Optimize | Image optimization with Dashboard, Optimize, and Resize tabs |
 | Logs | Operation logs with filtering |
 | History | File operation history with export |
 
@@ -412,6 +456,15 @@ $settings = apply_filters('media_toolkit_optimize_settings', $settings, $attachm
 5. **Image Optimization**: Process during low-traffic periods
 
 ## Changelog
+
+### 1.2.0
+- **New**: Automatic image resizing on upload
+- **New**: Max width/height settings to limit uploaded image dimensions
+- **New**: BMP to JPEG automatic conversion
+- **New**: Optimize page reorganized with 3 tabs: Dashboard, Optimize, Resize
+- **New**: Quick presets for common resize dimensions (Full HD, 2K, 4K, Web)
+- **New**: Resize statistics tracking (images resized, space saved, BMP converted)
+- **Feature**: Image resizing works independently of S3 configuration
 
 ### 1.1.0
 - **New**: Import/Export tab in Settings page

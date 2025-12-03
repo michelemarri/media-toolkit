@@ -120,7 +120,8 @@ final class Error_Handler
         $key = "{$operation}_{$attachment_id}";
         
         if (isset($failed_ops[$key])) {
-            $existing = FailedOperation::fromArray($failed_ops[$key]);
+            // $failed_ops[$key] is already a FailedOperation object from get_failed_operations()
+            $existing = $failed_ops[$key];
             $failed_ops[$key] = new FailedOperation(
                 operation: $operation,
                 attachment_id: $attachment_id,

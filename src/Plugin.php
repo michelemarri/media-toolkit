@@ -27,6 +27,7 @@ use Metodo\MediaToolkit\History\History;
 use Metodo\MediaToolkit\History\HistoryAction;
 use Metodo\MediaToolkit\Media\Image_Editor;
 use Metodo\MediaToolkit\Media\Image_Optimizer;
+use Metodo\MediaToolkit\Media\Image_Resizer;
 use Metodo\MediaToolkit\Media\Media_Library;
 use Metodo\MediaToolkit\Media\Media_Library_UI;
 use Metodo\MediaToolkit\Media\Upload_Handler;
@@ -61,14 +62,27 @@ final class Plugin
     private ?Media_Library_UI $media_library_ui = null;
     private ?Migration $migration = null;
     private ?Image_Optimizer $image_optimizer = null;
+    private ?Image_Resizer $image_resizer = null;
     private ?Reconciliation $reconciliation = null;
     private ?GitHubUpdater $updater = null;
+
+    /**
+     * Debug logger (temporary)
+     */
+    private static function debug_log(string $message): void
+    {
+        $log_file = MEDIA_TOOLKIT_PATH . 'logs/debug.log';
+        $timestamp = date('Y-m-d H:i:s');
+        file_put_contents($log_file, "[{$timestamp}] {$message}\n", FILE_APPEND);
+    }
 
     /**
      * Initialize the plugin
      */
     public function init(): void
     {
+        self::debug_log('Plugin::init() started');
+        
         // Initialize core components
         add_action('plugins_loaded', [$this, 'load_components'], 20);
         
@@ -139,18 +153,38 @@ final class Plugin
 
     public function load_components(): void
     {
+        self::debug_log('load_components() started');
+        
         // Core services
+        self::debug_log('Creating Encryption...');
         $this->encryption = new Encryption();
+        
+        self::debug_log('Creating Settings...');
         $this->settings = new Settings($this->encryption);
+        
+        self::debug_log('Creating Logger...');
         $this->logger = new Logger();
+        
+        self::debug_log('Creating History...');
         $this->history = new History();
+        
+        self::debug_log('Creating Stats...');
         $this->stats = new Stats($this->logger, $this->history, $this->settings);
+        
+        self::debug_log('Creating Error_Handler...');
         $this->error_handler = new Error_Handler($this->logger);
+        
+        self::debug_log('Settings configured: ' . ($this->settings->is_configured() ? 'yes' : 'no'));
         
         // Only initialize S3 if configured
         if ($this->settings->is_configured()) {
+            self::debug_log('Creating S3_Client...');
             $this->s3_client = new S3_Client($this->settings, $this->error_handler, $this->logger);
+            
+            self::debug_log('Creating CloudFront...');
             $this->cloudfront = new CloudFront($this->settings, $this->logger);
+            
+            self::debug_log('Creating CDN_Manager...');
             $this->cdn_manager = new CDN_Manager($this->settings, $this->logger);
             
             // Media handlers
@@ -191,6 +225,12 @@ final class Plugin
                 $this->history
             );
             
+            // Image resizer works at upload time, before S3 offload
+            $this->image_resizer = new Image_Resizer(
+                $this->logger,
+                $this->history
+            );
+            
             $this->reconciliation = new Reconciliation(
                 $this->s3_client,
                 $this->settings,
@@ -216,6 +256,12 @@ final class Plugin
                 $this->history
             );
             
+            // Image resizer works at upload time, independent of S3
+            $this->image_resizer = new Image_Resizer(
+                $this->logger,
+                $this->history
+            );
+            
             // Media Library UI still works to show status (without S3 actions)
             if (is_admin()) {
                 $this->media_library_ui = new Media_Library_UI(
@@ -230,12 +276,18 @@ final class Plugin
         // Register AJAX handler for clearing metadata (needs to work even if S3 not configured)
         add_action('wp_ajax_media_toolkit_clear_migration_metadata', [$this, 'ajax_clear_migration_metadata']);
         
+        self::debug_log('Creating GitHubUpdater...');
         // Initialize updater (works regardless of S3 configuration)
         $this->updater = new GitHubUpdater();
+        
+        self::debug_log('Calling GitHubUpdater->init()...');
         $this->updater->init();
+        self::debug_log('GitHubUpdater initialized');
         
         // Admin components
+        self::debug_log('is_admin(): ' . (is_admin() ? 'yes' : 'no'));
         if (is_admin()) {
+            self::debug_log('Creating Admin_Settings...');
             new Admin_Settings(
                 $this->settings,
                 $this->encryption,
@@ -246,9 +298,14 @@ final class Plugin
                 $this->stats
             );
             
+            self::debug_log('Creating Admin_Migration...');
             new Admin_Migration($this->migration, $this->stats);
+            
+            self::debug_log('Creating Admin_Dashboard...');
             new Admin_Dashboard($this->stats, $this->settings);
         }
+        
+        self::debug_log('load_components() completed successfully');
     }
 
     /**
@@ -256,13 +313,18 @@ final class Plugin
      */
     public static function activate(): void
     {
+        self::debug_log('Plugin::activate() started');
+        
         // Create database tables (suppress any output)
         ob_start();
+        self::debug_log('Creating database tables...');
         self::create_tables();
+        self::debug_log('Database tables created');
         ob_end_clean();
         
         // Save plugin version
         update_option('media_toolkit_db_version', MEDIA_TOOLKIT_VERSION);
+        self::debug_log('Plugin::activate() completed');
     }
 
     /**
@@ -474,6 +536,17 @@ final class Plugin
                 true
             );
         }
+        
+        // Load optimization scripts on optimize page
+        if (str_contains($hook, 'optimize')) {
+            wp_enqueue_script(
+                'media-toolkit-optimization',
+                MEDIA_TOOLKIT_URL . 'assets/optimization.js',
+                ['jquery', 'media-toolkit-batch-processor', 'media-toolkit-settings'],
+                MEDIA_TOOLKIT_VERSION,
+                true
+            );
+        }
     }
 
     /**
@@ -665,6 +738,11 @@ final class Plugin
     public function get_updater(): ?GitHubUpdater
     {
         return $this->updater;
+    }
+
+    public function get_image_resizer(): ?Image_Resizer
+    {
+        return $this->image_resizer;
     }
 
     /**

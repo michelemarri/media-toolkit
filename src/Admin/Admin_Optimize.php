@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace Metodo\MediaToolkit\Admin;
 
 use Metodo\MediaToolkit\Media\Image_Optimizer;
+use Metodo\MediaToolkit\Media\Image_Resizer;
 use Metodo\MediaToolkit\Core\Settings;
 
 /**
@@ -18,13 +19,16 @@ use Metodo\MediaToolkit\Core\Settings;
 final class Admin_Optimize
 {
     private ?Image_Optimizer $optimizer;
+    private ?Image_Resizer $resizer;
     private ?Settings $settings;
 
     public function __construct(
         ?Image_Optimizer $optimizer = null,
+        ?Image_Resizer $resizer = null,
         ?Settings $settings = null
     ) {
         $this->optimizer = $optimizer;
+        $this->resizer = $resizer;
         $this->settings = $settings;
     }
 
@@ -34,6 +38,14 @@ final class Admin_Optimize
     public function get_optimizer(): ?Image_Optimizer
     {
         return $this->optimizer;
+    }
+
+    /**
+     * Get resizer instance
+     */
+    public function get_resizer(): ?Image_Resizer
+    {
+        return $this->resizer;
     }
 
     /**
@@ -126,6 +138,51 @@ final class Admin_Optimize
         }
 
         return $this->optimizer->get_state();
+    }
+
+    /**
+     * Get resize settings
+     */
+    public function get_resize_settings(): array
+    {
+        if ($this->resizer === null) {
+            return [
+                'enabled' => false,
+                'max_width' => 2560,
+                'max_height' => 2560,
+                'jpeg_quality' => 82,
+                'convert_bmp_to_jpg' => true,
+                'resize_existing' => false,
+            ];
+        }
+
+        return $this->resizer->get_resize_settings();
+    }
+
+    /**
+     * Get resize statistics
+     */
+    public function get_resize_stats(): array
+    {
+        if ($this->resizer === null) {
+            return [
+                'total_resized' => 0,
+                'total_bytes_saved' => 0,
+                'total_bytes_saved_formatted' => '0 B',
+                'total_bmp_converted' => 0,
+                'last_resize_at' => null,
+            ];
+        }
+
+        return $this->resizer->get_stats();
+    }
+
+    /**
+     * Check if resizer is available
+     */
+    public function is_resizer_available(): bool
+    {
+        return $this->resizer !== null;
     }
 }
 

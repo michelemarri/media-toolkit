@@ -86,6 +86,31 @@
             $('#btn-export-settings').on('click', this.exportSettings.bind(this));
             $('#btn-import-settings').on('click', this.importSettings.bind(this));
             this.setupImportDropZone();
+
+            // Resize settings handlers
+            $('#btn-save-resize-settings').on('click', this.saveResizeSettings.bind(this));
+            $('#resize-jpeg-quality').on('input', function () {
+                $('#resize-jpeg-quality-value').text($(this).val());
+            });
+            
+            // Resize presets
+            $('.resize-preset').on('click', function () {
+                const width = $(this).data('width');
+                const height = $(this).data('height');
+                $('#resize-max-width').val(width);
+                $('#resize-max-height').val(height);
+            });
+
+            // Optimization settings sliders update
+            $('#jpeg-quality').on('input', function () {
+                $('#jpeg-quality-value').text($(this).val());
+            });
+            $('#png-compression').on('input', function () {
+                $('#png-compression-value').text($(this).val());
+            });
+
+            // Save optimization settings (Optimize page)
+            $('#btn-save-settings').on('click', this.saveOptimizationSettings.bind(this));
         },
 
         loadInitialData: function () {
@@ -1560,6 +1585,96 @@
                             <span>An error occurred. Please try again.</span>
                         </div>
                     `);
+                },
+                complete: function () {
+                    $btn.prop('disabled', false).html(originalHtml);
+                }
+            });
+        },
+
+        // Save Resize Settings
+        saveResizeSettings: function () {
+            const $btn = $('#btn-save-resize-settings');
+            const $status = $('#resize-settings-status');
+
+            const data = {
+                action: 'media_toolkit_save_resize_settings',
+                nonce: mediaToolkit.nonce,
+                enabled: $('#resize-enabled').is(':checked') ? 'true' : 'false',
+                max_width: $('#resize-max-width').val(),
+                max_height: $('#resize-max-height').val(),
+                jpeg_quality: $('#resize-jpeg-quality').val(),
+                convert_bmp_to_jpg: $('#resize-convert-bmp').is(':checked') ? 'true' : 'false'
+            };
+
+            $btn.prop('disabled', true);
+            const originalHtml = $btn.html();
+            $btn.html('<span class="dashicons dashicons-update animate-spin"></span> Saving...');
+            $status.text('');
+
+            $.ajax({
+                url: mediaToolkit.ajaxUrl,
+                method: 'POST',
+                data: data,
+                success: function (response) {
+                    if (response.success) {
+                        $status.text('✓ Saved').css('color', '#00a32a');
+                        MediaToolkit.showNotice('Resize settings saved successfully!', 'success');
+                        
+                        // Reload after a short delay to update stats
+                        setTimeout(function () {
+                            location.reload();
+                        }, 1500);
+                    } else {
+                        $status.text('✗ Error').css('color', '#d63638');
+                        MediaToolkit.showNotice(response.data?.message || 'Failed to save settings', 'error');
+                    }
+                },
+                error: function () {
+                    $status.text('✗ Error').css('color', '#d63638');
+                    MediaToolkit.showNotice('An error occurred. Please try again.', 'error');
+                },
+                complete: function () {
+                    $btn.prop('disabled', false).html(originalHtml);
+                }
+            });
+        },
+
+        // Save Optimization Settings (Optimize page)
+        saveOptimizationSettings: function () {
+            const $btn = $('#btn-save-settings');
+            const $status = $('#settings-status');
+
+            const data = {
+                action: 'media_toolkit_save_optimize_settings',
+                nonce: mediaToolkit.nonce,
+                jpeg_quality: $('#jpeg-quality').val(),
+                png_compression: $('#png-compression').val(),
+                max_file_size_mb: $('#max-file-size').val(),
+                strip_metadata: $('#strip-metadata').is(':checked') ? 'true' : 'false'
+            };
+
+            $btn.prop('disabled', true);
+            const originalHtml = $btn.html();
+            $btn.html('<span class="dashicons dashicons-update animate-spin"></span> Saving...');
+            $status.text('');
+
+            $.ajax({
+                url: mediaToolkit.ajaxUrl,
+                method: 'POST',
+                data: data,
+                success: function (response) {
+                    if (response.success) {
+                        $status.text('✓ Saved').css('color', '#00a32a');
+                        MediaToolkit.showNotice('Optimization settings saved!', 'success');
+                    } else {
+                        $status.text('✗ Error').css('color', '#d63638');
+                        MediaToolkit.showNotice(response.data?.message || 'Failed to save settings', 'error');
+                    }
+                },
+                error: function () {
+                    $status.text('✗ Error').css('color', '#d63638');
+                    MediaToolkit.showNotice('An error occurred. Please try again.', 'error');
                 },
                 complete: function () {
                     $btn.prop('disabled', false).html(originalHtml);

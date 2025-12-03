@@ -23,4 +23,5 @@ enum HistoryAction: string
     case OPTIMIZED = 'optimized';
     case OPTIMIZATION_STARTED = 'optimization_started';
     case OPTIMIZATION_COMPLETED = 'optimization_completed';
+    case RESIZED = 'resized';
 }
