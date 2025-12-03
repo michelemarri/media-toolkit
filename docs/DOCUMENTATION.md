@@ -596,11 +596,37 @@ add_action('media_toolkit_after_import', function($data) {
 
 ### Debug Logging
 
-Logs are stored in the database and viewable at **Media Toolkit → Logs**:
+Logs are stored in the database and viewable at **Media Toolkit → Logs**.
 
-- Filter by level (info, warning, error)
+#### Activity Logs Tab
+
+Real-time operation logs with:
+
+- Filter by level (info, warning, error, success)
 - Filter by operation type
-- Export to CSV
+- Auto-refresh for real-time monitoring
+- Export logs
+
+#### Optimization Status Tab
+
+View and manage optimization records:
+
+| Column | Description |
+|--------|-------------|
+| ID | Attachment ID |
+| File | Attachment filename |
+| Status | optimized, pending, failed, skipped |
+| Original | Original file size |
+| Optimized | Size after optimization |
+| Saved | Percentage of space saved |
+| Optimized At | Timestamp of optimization |
+
+**Features:**
+
+- Filter by status (optimized, pending, failed, skipped)
+- Paginated table for large datasets
+- Summary stats (optimized count, pending, failed, space saved)
+- Retry failed records with one click
 
 ---
 

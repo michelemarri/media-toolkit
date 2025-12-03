@@ -58,6 +58,16 @@
             $('#btn-export-history').on('click', this.exportHistory.bind(this));
             $('#btn-clear-history').on('click', this.clearHistory.bind(this));
 
+            // Logs page tabs (Activity Logs + Optimization Status)
+            $('.logs-tab-btn').on('click', this.switchLogsTab.bind(this));
+
+            // Optimization tab events
+            $('#btn-refresh-optimization').on('click', this.loadOptimizationRecords.bind(this));
+            $('#btn-reset-failed').on('click', this.resetFailedOptimization.bind(this));
+            $('#filter-opt-status').on('change', this.loadOptimizationRecords.bind(this));
+            $('#btn-opt-prev-page').on('click', () => this.changeOptimizationPage(-1));
+            $('#btn-opt-next-page').on('click', () => this.changeOptimizationPage(1));
+
             // Auto-refresh toggle
             $('#auto-refresh-logs').on('change', this.toggleAutoRefresh.bind(this));
 
@@ -81,7 +91,7 @@
             $('#btn-save-update-settings').on('click', this.saveUpdateSettings.bind(this));
             $('#btn-remove-token').on('click', this.removeGitHubToken.bind(this));
             $('#btn-check-updates').on('click', this.checkForUpdates.bind(this));
-            
+
             // Import/Export handlers
             $('#btn-export-settings').on('click', this.exportSettings.bind(this));
             $('#btn-import-settings').on('click', this.importSettings.bind(this));
@@ -92,7 +102,7 @@
             $('#resize-jpeg-quality').on('input', function () {
                 $('#resize-jpeg-quality-value').text($(this).val());
             });
-            
+
             // Resize presets
             $('.resize-preset').on('click', function () {
                 const width = $(this).data('width');
@@ -114,8 +124,14 @@
         },
 
         loadInitialData: function () {
-            // Check if on logs page
-            if ($('#logs-table').length && !$('#history-table').length) {
+            // Check if on logs page (with tabs)
+            if ($('#logs-table').length && $('#optimization-table').length) {
+                this.loadLogs();
+                this.toggleAutoRefresh();
+                // Don't load optimization yet - will load when tab is clicked
+            }
+            // Check if on logs page (legacy without optimization tab)
+            else if ($('#logs-table').length && !$('#history-table').length) {
                 this.loadLogs();
                 this.toggleAutoRefresh();
             }
@@ -126,7 +142,7 @@
             }
 
             // Check if on activity tab (both tables present)
-            if ($('#logs-table').length && $('#history-table').length) {
+            if ($('#logs-table').length && $('#history-table').length && !$('#optimization-table').length) {
                 this.loadLogs();
                 this.loadHistory();
                 this.toggleAutoRefresh();
@@ -960,7 +976,7 @@
                             const dateObj = new Date(item.timestamp);
                             const dateStr = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
                             const timeStr = dateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-                            
+
                             const actionClasses = {
                                 'uploaded': 'mt-badge-success',
                                 'migrated': 'mt-badge-info',
@@ -968,7 +984,7 @@
                                 'edited': 'mt-badge-warning'
                             };
                             const actionClass = actionClasses[item.action] || 'mt-badge-neutral';
-                            
+
                             const userName = item.user_name || 'System';
                             const userInitial = userName.charAt(0).toUpperCase();
 
@@ -1076,6 +1092,178 @@
                     this.loadLogs();
                 }, 10000);
             }
+        },
+
+        // Switch logs page tabs
+        switchLogsTab: function (e) {
+            const $btn = $(e.currentTarget);
+            const tabId = $btn.data('tab');
+
+            // Update tab buttons - remove active state from all
+            $('.logs-tab-btn')
+                .removeClass('bg-white shadow-sm text-gray-900')
+                .addClass('text-gray-500 hover:text-gray-700 hover:bg-white/50');
+
+            // Add active state to clicked button
+            $btn
+                .removeClass('text-gray-500 hover:text-gray-700 hover:bg-white/50')
+                .addClass('bg-white shadow-sm text-gray-900');
+
+            // Update tab content
+            $('.logs-tab-content').addClass('hidden');
+            $('#tab-' + tabId).removeClass('hidden');
+
+            // Load data for the selected tab
+            if (tabId === 'optimization-status' && !this.optimizationLoaded) {
+                this.loadOptimizationRecords();
+                this.optimizationLoaded = true;
+            }
+        },
+
+        // Optimization pagination state
+        optimizationPage: 1,
+        optimizationTotalPages: 1,
+        optimizationLoaded: false,
+
+        // Load optimization records
+        loadOptimizationRecords: function () {
+            const $tbody = $('#optimization-tbody');
+            const status = $('#filter-opt-status').val();
+
+            $tbody.html('<tr><td colspan="7" class="text-center py-8 text-gray-500">Loading optimization data...</td></tr>');
+
+            $.ajax({
+                url: mediaToolkit.ajaxUrl,
+                method: 'POST',
+                data: {
+                    action: 'media_toolkit_get_optimization_records',
+                    nonce: mediaToolkit.nonce,
+                    page: this.optimizationPage,
+                    per_page: 50,
+                    status: status
+                },
+                success: (response) => {
+                    if (response.success) {
+                        const records = response.data.records;
+                        this.optimizationTotalPages = response.data.total_pages;
+
+                        // Update stats
+                        const stats = response.data.stats;
+                        $('#opt-stat-optimized').text(stats.optimized_count.toLocaleString());
+                        $('#opt-stat-pending').text(stats.pending_count.toLocaleString());
+                        $('#opt-stat-failed').text(stats.failed_count.toLocaleString());
+                        $('#opt-stat-saved').text(stats.total_bytes_saved_formatted);
+
+                        // Update count and pagination
+                        $('#optimization-count').text(response.data.total);
+                        $('#opt-page-info').text(`Page ${response.data.page} of ${response.data.total_pages || 1}`);
+                        $('#btn-opt-prev-page').prop('disabled', response.data.page <= 1);
+                        $('#btn-opt-next-page').prop('disabled', response.data.page >= response.data.total_pages);
+
+                        if (records.length === 0) {
+                            $tbody.html(`<tr><td colspan="7" class="px-6 py-12 text-center">
+                                <span class="dashicons dashicons-images-alt2 w-14 h-14 text-5xl text-gray-300 m-auto mb-4 block"></span>
+                                <p class="text-gray-600 font-medium">No optimization records found</p>
+                                <span class="text-sm text-gray-400">Run optimization from the Optimize page to see records here</span>
+                            </td></tr>`);
+                            return;
+                        }
+
+                        let html = '';
+                        records.forEach((record) => {
+                            const statusClasses = {
+                                'optimized': 'mt-badge-success',
+                                'pending': 'mt-badge-warning',
+                                'failed': 'mt-badge-error',
+                                'skipped': 'mt-badge-neutral'
+                            };
+                            const statusClass = statusClasses[record.status] || 'mt-badge-neutral';
+
+                            let savedDisplay = '-';
+                            if (record.status === 'optimized' && record.percent_saved > 0) {
+                                savedDisplay = `<span class="text-green-600 font-medium">${record.percent_saved.toFixed(1)}%</span>`;
+                            }
+
+                            let optimizedAtDisplay = '-';
+                            if (record.optimized_at) {
+                                const dateObj = new Date(record.optimized_at);
+                                optimizedAtDisplay = `<span class="block text-sm text-gray-900">${dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                                    <span class="block text-xs text-gray-500">${dateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>`;
+                            }
+
+                            const errorTitle = record.error_message ? ` title="${MediaToolkit.escapeHtml(record.error_message)}"` : '';
+
+                            html += `
+                                <tr class="hover:bg-gray-50"${errorTitle}>
+                                    <td class="px-4 py-3 text-sm text-gray-500">${record.attachment_id}</td>
+                                    <td class="px-4 py-3"><span class="text-sm text-gray-900 font-medium truncate max-w-[250px] block" title="${MediaToolkit.escapeHtml(record.file_name)}">${MediaToolkit.escapeHtml(record.file_name)}</span></td>
+                                    <td class="px-4 py-3"><span class="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full ${statusClass}">${record.status}</span></td>
+                                    <td class="px-4 py-3 text-right text-sm text-gray-600 font-mono">${record.original_size_formatted}</td>
+                                    <td class="px-4 py-3 text-right text-sm text-gray-600 font-mono">${record.optimized_size_formatted}</td>
+                                    <td class="px-4 py-3 text-right text-sm">${savedDisplay}</td>
+                                    <td class="px-4 py-3">${optimizedAtDisplay}</td>
+                                </tr>
+                            `;
+                        });
+
+                        $tbody.html(html);
+                    } else {
+                        $tbody.html(`<tr><td colspan="7" class="px-6 py-12 text-center">
+                            <span class="dashicons dashicons-warning text-5xl text-red-300 mb-4 block"></span>
+                            <p class="text-gray-600 font-medium">Error loading data</p>
+                            <span class="text-sm text-gray-400">${response.data?.message || 'Unknown error'}</span>
+                        </td></tr>`);
+                    }
+                },
+                error: () => {
+                    $tbody.html(`<tr><td colspan="7" class="px-6 py-12 text-center">
+                        <span class="dashicons dashicons-warning text-5xl text-red-300 mb-4 block"></span>
+                        <p class="text-gray-600 font-medium">Connection error</p>
+                        <span class="text-sm text-gray-400">Please try again</span>
+                    </td></tr>`);
+                }
+            });
+        },
+
+        // Change optimization page
+        changeOptimizationPage: function (delta) {
+            this.optimizationPage = Math.max(1, Math.min(this.optimizationPage + delta, this.optimizationTotalPages));
+            this.loadOptimizationRecords();
+        },
+
+        // Reset failed optimization records
+        resetFailedOptimization: function () {
+            if (!confirm('Reset all failed optimization records to pending status? They will be retried on the next optimization run.')) {
+                return;
+            }
+
+            const $btn = $('#btn-reset-failed');
+            $btn.prop('disabled', true);
+            const originalHtml = $btn.html();
+            $btn.html('<span class="dashicons dashicons-update animate-spin"></span> Resetting...');
+
+            $.ajax({
+                url: mediaToolkit.ajaxUrl,
+                method: 'POST',
+                data: {
+                    action: 'media_toolkit_reset_failed_optimization',
+                    nonce: mediaToolkit.nonce
+                },
+                success: (response) => {
+                    if (response.success) {
+                        MediaToolkit.showNotice(response.data.message, 'success');
+                        this.loadOptimizationRecords();
+                    } else {
+                        MediaToolkit.showNotice(response.data?.message || 'Failed to reset records', 'error');
+                    }
+                },
+                error: () => {
+                    MediaToolkit.showNotice('An error occurred. Please try again.', 'error');
+                },
+                complete: () => {
+                    $btn.prop('disabled', false).html(originalHtml);
+                }
+            });
         },
 
         // Load Dashboard Stats
@@ -1378,7 +1566,7 @@
             const self = this;
             const $dropZone = $('#import-drop-zone');
             const $fileInput = $('#import-file-input');
-            
+
             if (!$dropZone.length) return;
 
             // Click to browse
@@ -1442,7 +1630,7 @@
             reader.onload = function (e) {
                 try {
                     const data = JSON.parse(e.target.result);
-                    
+
                     // Validate structure
                     if (!data.export_format || !data.options) {
                         throw new Error('Invalid export file format');
@@ -1563,7 +1751,7 @@
                                 <span>${response.data.message}</span>
                             </div>
                         `);
-                        
+
                         // Clear file and reload after 2 seconds
                         self.clearImportFile();
                         setTimeout(function () {
@@ -1620,7 +1808,7 @@
                     if (response.success) {
                         $status.text('✓ Saved').css('color', '#00a32a');
                         MediaToolkit.showNotice('Resize settings saved successfully!', 'success');
-                        
+
                         // Reload after a short delay to update stats
                         setTimeout(function () {
                             location.reload();

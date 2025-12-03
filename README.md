@@ -400,7 +400,7 @@ $skip = apply_filters('media_toolkit_skip_resize', false, $file_path, $mime_type
 | Settings | AWS credentials, CDN, and general settings |
 | Tools | Migration, Stats Sync, Cache Headers, Reconciliation |
 | Optimize | Image optimization with Dashboard, Optimize, and Resize tabs |
-| Logs | Operation logs with filtering |
+| Logs | Activity Logs (real-time logs) and Optimization Status tabs |
 | History | File operation history with export |
 
 ## Troubleshooting
@@ -456,6 +456,14 @@ $skip = apply_filters('media_toolkit_skip_resize', false, $file_path, $mime_type
 5. **Image Optimization**: Process during low-traffic periods
 
 ## Changelog
+
+### 1.3.0
+- **New**: Optimization Status tab in Logs page
+- **New**: View all optimization records with status, sizes, and savings
+- **New**: Filter optimization records by status (optimized, pending, failed, skipped)
+- **New**: Paginated optimization table with real-time stats
+- **New**: Retry failed optimization records with one click
+- **Improved**: Logs page now has tab navigation for better organization
 
 ### 1.2.2
 - **Compatibility**: Tested with WordPress 6.9

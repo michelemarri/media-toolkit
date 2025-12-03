@@ -19,6 +19,7 @@ use Metodo\MediaToolkit\CDN\CloudFront;
 use Metodo\MediaToolkit\History\History;
 use Metodo\MediaToolkit\History\HistoryAction;
 use Metodo\MediaToolkit\Stats\Stats;
+use Metodo\MediaToolkit\Database\OptimizationTable;
 
 use function Metodo\MediaToolkit\media_toolkit;
 
@@ -89,6 +90,10 @@ final class Admin_Settings
         // Import/Export handlers
         add_action('wp_ajax_media_toolkit_export_settings', [$this, 'ajax_export_settings']);
         add_action('wp_ajax_media_toolkit_import_settings', [$this, 'ajax_import_settings']);
+        
+        // Optimization table handlers
+        add_action('wp_ajax_media_toolkit_get_optimization_records', [$this, 'ajax_get_optimization_records']);
+        add_action('wp_ajax_media_toolkit_reset_failed_optimization', [$this, 'ajax_reset_failed_optimization']);
     }
 
     /**
@@ -1079,6 +1084,152 @@ final class Admin_Settings
             $this->logger->error('settings', 'Import failed: ' . $e->getMessage());
             wp_send_json_error(['message' => $e->getMessage()]);
         }
+    }
+
+    /**
+     * AJAX: Get optimization records
+     */
+    public function ajax_get_optimization_records(): void
+    {
+        check_ajax_referer('media_toolkit_nonce', 'nonce');
+        
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => 'Permission denied']);
+        }
+
+        if (!OptimizationTable::table_exists()) {
+            wp_send_json_error(['message' => 'Optimization table does not exist']);
+        }
+
+        global $wpdb;
+
+        $page = isset($_POST['page']) ? max(1, (int) $_POST['page']) : 1;
+        $per_page = isset($_POST['per_page']) ? min(100, max(10, (int) $_POST['per_page'])) : 50;
+        $status = isset($_POST['status']) ? sanitize_text_field($_POST['status']) : '';
+        
+        $table_name = OptimizationTable::get_table_name();
+        $offset = ($page - 1) * $per_page;
+
+        // Build query
+        $where = '';
+        $where_values = [];
+        
+        if (!empty($status) && in_array($status, ['pending', 'optimized', 'skipped', 'failed'], true)) {
+            $where = 'WHERE status = %s';
+            $where_values[] = $status;
+        }
+
+        // Get total count
+        if ($where) {
+            $total = (int) $wpdb->get_var($wpdb->prepare(
+                "SELECT COUNT(*) FROM {$table_name} {$where}",
+                ...$where_values
+            ));
+        } else {
+            $total = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$table_name}");
+        }
+
+        // Get records with attachment info
+        $query = "
+            SELECT o.*, p.post_title as file_name
+            FROM {$table_name} o
+            LEFT JOIN {$wpdb->posts} p ON o.attachment_id = p.ID
+            {$where}
+            ORDER BY o.id DESC
+            LIMIT %d OFFSET %d
+        ";
+
+        if ($where) {
+            $records = $wpdb->get_results($wpdb->prepare(
+                $query,
+                ...[...$where_values, $per_page, $offset]
+            ), ARRAY_A);
+        } else {
+            $records = $wpdb->get_results($wpdb->prepare(
+                $query,
+                $per_page,
+                $offset
+            ), ARRAY_A);
+        }
+
+        // Format records for display
+        $formatted_records = [];
+        foreach ($records as $record) {
+            $formatted_records[] = [
+                'id' => (int) $record['id'],
+                'attachment_id' => (int) $record['attachment_id'],
+                'file_name' => $record['file_name'] ?: __('(deleted)', 'media-toolkit'),
+                'status' => $record['status'],
+                'original_size' => (int) $record['original_size'],
+                'original_size_formatted' => $record['original_size'] > 0 ? size_format((int) $record['original_size']) : '-',
+                'optimized_size' => (int) $record['optimized_size'],
+                'optimized_size_formatted' => $record['optimized_size'] > 0 ? size_format((int) $record['optimized_size']) : '-',
+                'bytes_saved' => (int) $record['bytes_saved'],
+                'percent_saved' => (float) $record['percent_saved'],
+                'error_message' => $record['error_message'],
+                'optimized_at' => $record['optimized_at'],
+                'created_at' => $record['created_at'],
+            ];
+        }
+
+        // Get aggregate stats
+        $stats = OptimizationTable::get_aggregate_stats();
+
+        wp_send_json_success([
+            'records' => $formatted_records,
+            'total' => $total,
+            'page' => $page,
+            'per_page' => $per_page,
+            'total_pages' => (int) ceil($total / $per_page),
+            'stats' => [
+                'total_records' => $stats['total_records'],
+                'optimized_count' => $stats['optimized_count'],
+                'pending_count' => $stats['pending_count'],
+                'failed_count' => $stats['failed_count'],
+                'skipped_count' => $stats['skipped_count'],
+                'total_bytes_saved' => $stats['total_bytes_saved'],
+                'total_bytes_saved_formatted' => size_format($stats['total_bytes_saved']),
+                'average_savings_percent' => $stats['average_savings_percent'],
+            ],
+        ]);
+    }
+
+    /**
+     * AJAX: Reset failed optimization records to pending
+     */
+    public function ajax_reset_failed_optimization(): void
+    {
+        check_ajax_referer('media_toolkit_nonce', 'nonce');
+        
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => 'Permission denied']);
+        }
+
+        if (!OptimizationTable::table_exists()) {
+            wp_send_json_error(['message' => 'Optimization table does not exist']);
+        }
+
+        global $wpdb;
+        $table_name = OptimizationTable::get_table_name();
+
+        // Reset all failed records to pending
+        $updated = $wpdb->query(
+            "UPDATE {$table_name} SET status = 'pending', error_message = NULL WHERE status = 'failed'"
+        );
+
+        if ($updated === false) {
+            wp_send_json_error(['message' => 'Failed to reset records']);
+        }
+
+        $this->logger->info('optimization', sprintf('Reset %d failed optimization records to pending', $updated));
+
+        wp_send_json_success([
+            'message' => sprintf(
+                __('Reset %d failed records to pending status', 'media-toolkit'),
+                $updated
+            ),
+            'reset_count' => $updated,
+        ]);
     }
 }
 

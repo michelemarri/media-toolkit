@@ -2,7 +2,8 @@
 module.exports = {
   content: [
     './templates/**/*.php',
-    './assets/**/*.js',
+    './assets/*.js',        // JS files at assets root (settings.js, migration.js, etc.)
+    './assets/**/*.js',     // JS files in subdirectories
     './src/**/*.php'
   ],
   corePlugins: {
