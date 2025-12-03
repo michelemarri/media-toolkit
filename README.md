@@ -413,6 +413,16 @@ $settings = apply_filters('media_toolkit_optimize_settings', $settings, $attachm
 
 ## Changelog
 
+### 1.1.0
+- **New**: Import/Export tab in Settings page
+- **New**: Export settings to JSON file for backup or transfer to another site
+- **New**: Import settings from previously exported JSON file
+- **New**: Auto-discovery of all `media_toolkit_*` options for future-proof exports
+- **New**: Merge or replace option when importing settings
+- **Security**: AWS credentials, GitHub tokens, and API keys are automatically excluded from exports
+- **New**: Drag & drop file upload for importing
+- **New**: Pre-import validation with file info preview
+
 ### 1.0.1
 - Fixed: Migration tab scripts not loading after moving to Tools page
 - Changed: Migration page merged into Tools page as tab

@@ -6,7 +6,7 @@ declare(strict_types=1);
  * Plugin Name:       Media Toolkit
  * Plugin URI:        https://github.com/michelemarri/media-toolkit
  * Description:       Complete media management toolkit for WordPress. Offload media to Amazon S3, CDN integration (Cloudflare, CloudFront), image optimization, and advanced tools.
- * Version:           1.0.1
+ * Version:           1.1.0
  * Requires at least: 6.0
  * Tested up to:      6.8
  * Requires PHP:      8.2
@@ -28,7 +28,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Plugin constants
-define('MEDIA_TOOLKIT_VERSION', '1.0.1');
+define('MEDIA_TOOLKIT_VERSION', '1.1.0');
 define('MEDIA_TOOLKIT_PLUGIN_FILE', __FILE__);
 define('MEDIA_TOOLKIT_PATH', plugin_dir_path(__FILE__));
 define('MEDIA_TOOLKIT_URL', plugin_dir_url(__FILE__));

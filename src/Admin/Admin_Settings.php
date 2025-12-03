@@ -85,6 +85,10 @@ final class Admin_Settings
         add_action('wp_ajax_media_toolkit_save_update_settings', [$this, 'ajax_save_update_settings']);
         add_action('wp_ajax_media_toolkit_remove_github_token', [$this, 'ajax_remove_github_token']);
         add_action('wp_ajax_media_toolkit_check_updates', [$this, 'ajax_check_updates']);
+        
+        // Import/Export handlers
+        add_action('wp_ajax_media_toolkit_export_settings', [$this, 'ajax_export_settings']);
+        add_action('wp_ajax_media_toolkit_import_settings', [$this, 'ajax_import_settings']);
     }
 
     /**
@@ -985,6 +989,94 @@ final class Admin_Settings
                 ]);
             }
         } catch (\Exception $e) {
+            wp_send_json_error(['message' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * AJAX: Export settings
+     */
+    public function ajax_export_settings(): void
+    {
+        check_ajax_referer('media_toolkit_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => 'Permission denied']);
+        }
+
+        try {
+            $exporter = new \Metodo\MediaToolkit\Tools\Exporter($this->encryption);
+            $data = $exporter->export();
+
+            wp_send_json_success([
+                'data' => $data,
+                'filename' => 'media-toolkit-settings-' . date('Y-m-d-His') . '.json',
+            ]);
+        } catch (\Exception $e) {
+            $this->logger->error('settings', 'Export failed: ' . $e->getMessage());
+            wp_send_json_error(['message' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * AJAX: Import settings
+     */
+    public function ajax_import_settings(): void
+    {
+        check_ajax_referer('media_toolkit_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => 'Permission denied']);
+        }
+
+        $json_data = $_POST['import_data'] ?? '';
+        $merge = !empty($_POST['merge']);
+
+        if (empty($json_data)) {
+            wp_send_json_error(['message' => __('No import data provided.', 'media-toolkit')]);
+        }
+
+        // Decode JSON
+        $data = json_decode(stripslashes($json_data), true);
+
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            wp_send_json_error(['message' => __('Invalid JSON format.', 'media-toolkit')]);
+        }
+
+        try {
+            $importer = new \Metodo\MediaToolkit\Tools\Importer();
+
+            // Validate first
+            $validation = $importer->validate($data);
+            if (!$validation['valid']) {
+                wp_send_json_error([
+                    'message' => implode(' ', $validation['errors']),
+                    'validation' => $validation,
+                ]);
+            }
+
+            // Perform import
+            $result = $importer->import($data, $merge);
+
+            if (!$result) {
+                wp_send_json_error(['message' => __('Import failed. Please try again.', 'media-toolkit')]);
+            }
+
+            $this->logger->info('settings', sprintf(
+                'Settings imported successfully (version: %s, options: %d)',
+                $validation['plugin_version'],
+                $validation['options_count']
+            ));
+
+            wp_send_json_success([
+                'message' => sprintf(
+                    __('Successfully imported %d settings.', 'media-toolkit'),
+                    $validation['options_count']
+                ),
+                'validation' => $validation,
+            ]);
+        } catch (\Exception $e) {
+            $this->logger->error('settings', 'Import failed: ' . $e->getMessage());
             wp_send_json_error(['message' => $e->getMessage()]);
         }
     }

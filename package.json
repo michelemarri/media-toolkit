@@ -1,6 +1,6 @@
 {
   "name": "media-toolkit",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "WordPress plugin for complete media management - S3 offloading, CDN integration, image optimization",
   "private": true,
   "scripts": {

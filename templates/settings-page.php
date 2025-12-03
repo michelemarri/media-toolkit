@@ -72,6 +72,10 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'environ
                 <span class="dashicons dashicons-update"></span>
                 <?php esc_html_e('Update', 'media-toolkit'); ?>
             </a>
+            <a href="?page=media-toolkit-settings&tab=import-export" class="flex items-center gap-2 px-5 py-3 text-sm font-medium rounded-lg transition-all whitespace-nowrap <?php echo $active_tab === 'import-export' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'; ?>">
+                <span class="dashicons dashicons-database-export"></span>
+                <?php esc_html_e('Import/Export', 'media-toolkit'); ?>
+            </a>
         </nav>
 
     <!-- Tab Content -->
@@ -716,6 +720,152 @@ $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'environ
                         <span class="dashicons dashicons-saved"></span>
                         <?php esc_html_e('Save Settings', 'media-toolkit'); ?>
                     </button>
+                </div>
+            </div>
+
+        <?php elseif ($active_tab === 'import-export'): ?>
+            <!-- ==================== IMPORT/EXPORT TAB ==================== -->
+            <div class="space-y-6">
+                <!-- Info Notice -->
+                <div class="flex gap-3 p-4 rounded-xl bg-blue-50 text-blue-800">
+                    <span class="dashicons dashicons-info text-blue-600 flex-shrink-0 mt-0.5"></span>
+                    <div>
+                        <strong class="block text-sm font-semibold mb-1"><?php esc_html_e('About Import/Export', 'media-toolkit'); ?></strong>
+                        <p class="text-sm opacity-90 m-0">
+                            <?php esc_html_e('Export your settings to transfer them to another site or create a backup. Sensitive data (AWS credentials, API tokens) are excluded for security reasons.', 'media-toolkit'); ?>
+                        </p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Export Settings Card -->
+                    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                        <div class="flex flex-col gap-1 px-6 py-4 border-b border-gray-200">
+                            <div class="flex flex-row items-center gap-2">
+                                <span class="dashicons dashicons-download text-gray-700"></span>
+                                <h3 class="text-lg font-semibold text-gray-900 m-0"><?php esc_html_e('Export Settings', 'media-toolkit'); ?></h3>
+                            </div>
+                            <p class="text-sm text-gray-600 m-0">
+                                <?php esc_html_e('Download all plugin settings as a JSON file.', 'media-toolkit'); ?>
+                            </p>
+                        </div>
+                        <div class="p-6">
+                            <div class="space-y-4">
+                                <div class="p-4 bg-gray-50 rounded-xl">
+                                    <h4 class="flex items-center gap-2 text-sm font-semibold text-gray-900 m-0 mb-3">
+                                        <span class="dashicons dashicons-yes-alt text-green-500"></span>
+                                        <?php esc_html_e('What will be exported', 'media-toolkit'); ?>
+                                    </h4>
+                                    <ul class="text-sm text-gray-600 space-y-1.5 m-0">
+                                        <li class="flex items-center gap-2">
+                                            <span class="dashicons dashicons-yes text-green-500 text-xs"></span>
+                                            <?php esc_html_e('Active environment', 'media-toolkit'); ?>
+                                        </li>
+                                        <li class="flex items-center gap-2">
+                                            <span class="dashicons dashicons-yes text-green-500 text-xs"></span>
+                                            <?php esc_html_e('Cache-Control settings', 'media-toolkit'); ?>
+                                        </li>
+                                        <li class="flex items-center gap-2">
+                                            <span class="dashicons dashicons-yes text-green-500 text-xs"></span>
+                                            <?php esc_html_e('Content-Disposition settings', 'media-toolkit'); ?>
+                                        </li>
+                                        <li class="flex items-center gap-2">
+                                            <span class="dashicons dashicons-yes text-green-500 text-xs"></span>
+                                            <?php esc_html_e('General options', 'media-toolkit'); ?>
+                                        </li>
+                                        <li class="flex items-center gap-2">
+                                            <span class="dashicons dashicons-yes text-green-500 text-xs"></span>
+                                            <?php esc_html_e('Update preferences', 'media-toolkit'); ?>
+                                        </li>
+                                    </ul>
+                                </div>
+
+                                <div class="p-4 bg-amber-50 rounded-xl">
+                                    <h4 class="flex items-center gap-2 text-sm font-semibold text-amber-900 m-0 mb-3">
+                                        <span class="dashicons dashicons-lock text-amber-500"></span>
+                                        <?php esc_html_e('Excluded for security', 'media-toolkit'); ?>
+                                    </h4>
+                                    <ul class="text-sm text-amber-800 space-y-1.5 m-0">
+                                        <li class="flex items-center gap-2">
+                                            <span class="dashicons dashicons-no text-amber-500 text-xs"></span>
+                                            <?php esc_html_e('AWS credentials', 'media-toolkit'); ?>
+                                        </li>
+                                        <li class="flex items-center gap-2">
+                                            <span class="dashicons dashicons-no text-amber-500 text-xs"></span>
+                                            <?php esc_html_e('GitHub tokens', 'media-toolkit'); ?>
+                                        </li>
+                                        <li class="flex items-center gap-2">
+                                            <span class="dashicons dashicons-no text-amber-500 text-xs"></span>
+                                            <?php esc_html_e('CDN API tokens', 'media-toolkit'); ?>
+                                        </li>
+                                    </ul>
+                                </div>
+
+                                <button type="button" class="w-full inline-flex items-center justify-center gap-2 px-5 py-3 text-sm font-medium text-white bg-gray-800 hover:bg-gray-900 rounded-lg transition-all" id="btn-export-settings">
+                                    <span class="dashicons dashicons-download"></span>
+                                    <?php esc_html_e('Export Settings', 'media-toolkit'); ?>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Import Settings Card -->
+                    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                        <div class="flex flex-col gap-1 px-6 py-4 border-b border-gray-200">
+                            <div class="flex flex-row items-center gap-2">
+                                <span class="dashicons dashicons-upload text-gray-700"></span>
+                                <h3 class="text-lg font-semibold text-gray-900 m-0"><?php esc_html_e('Import Settings', 'media-toolkit'); ?></h3>
+                            </div>
+                            <p class="text-sm text-gray-600 m-0">
+                                <?php esc_html_e('Restore settings from a previously exported JSON file.', 'media-toolkit'); ?>
+                            </p>
+                        </div>
+                        <div class="p-6">
+                            <div class="space-y-4">
+                                <div class="p-4 border-2 border-dashed border-gray-300 rounded-xl hover:border-gray-400 transition-colors" id="import-drop-zone">
+                                    <div class="text-center">
+                                        <span class="dashicons dashicons-upload text-3xl text-gray-400 mb-2"></span>
+                                        <p class="text-sm font-medium text-gray-900 mb-1"><?php esc_html_e('Drop your file here or click to browse', 'media-toolkit'); ?></p>
+                                        <p class="text-xs text-gray-500"><?php esc_html_e('Accepts .json files only', 'media-toolkit'); ?></p>
+                                        <input type="file" id="import-file-input" accept=".json" class="hidden">
+                                    </div>
+                                </div>
+
+                                <div id="import-file-preview" class="hidden p-4 bg-gray-50 rounded-xl">
+                                    <div class="flex items-center justify-between gap-4">
+                                        <div class="flex items-center gap-3 min-w-0">
+                                            <span class="dashicons dashicons-media-code text-gray-500"></span>
+                                            <div class="min-w-0">
+                                                <p class="text-sm font-medium text-gray-900 truncate m-0" id="import-file-name"></p>
+                                                <p class="text-xs text-gray-500 m-0" id="import-file-info"></p>
+                                            </div>
+                                        </div>
+                                        <button type="button" class="flex-shrink-0 text-gray-400 hover:text-gray-600" id="btn-remove-import-file">
+                                            <span class="dashicons dashicons-no-alt"></span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="space-y-3">
+                                    <label class="mt-toggle inline-flex items-center gap-3 cursor-pointer">
+                                        <input type="checkbox" name="import_merge" id="import_merge" value="1">
+                                        <span class="mt-toggle-slider"></span>
+                                        <div>
+                                            <span class="block text-sm font-medium text-gray-900"><?php esc_html_e('Merge with existing settings', 'media-toolkit'); ?></span>
+                                            <span class="block text-xs text-gray-500"><?php esc_html_e('If unchecked, imported settings will completely replace existing ones.', 'media-toolkit'); ?></span>
+                                        </div>
+                                    </label>
+                                </div>
+
+                                <div id="import-result" class="hidden p-4 rounded-xl"></div>
+
+                                <button type="button" class="w-full inline-flex items-center justify-center gap-2 px-5 py-3 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 border border-gray-300 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed" id="btn-import-settings" disabled>
+                                    <span class="dashicons dashicons-upload"></span>
+                                    <?php esc_html_e('Import Settings', 'media-toolkit'); ?>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 

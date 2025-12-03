@@ -81,6 +81,11 @@
             $('#btn-save-update-settings').on('click', this.saveUpdateSettings.bind(this));
             $('#btn-remove-token').on('click', this.removeGitHubToken.bind(this));
             $('#btn-check-updates').on('click', this.checkForUpdates.bind(this));
+            
+            // Import/Export handlers
+            $('#btn-export-settings').on('click', this.exportSettings.bind(this));
+            $('#btn-import-settings').on('click', this.importSettings.bind(this));
+            this.setupImportDropZone();
         },
 
         loadInitialData: function () {
@@ -1333,6 +1338,228 @@
                             <p class="text-sm text-red-600">Please try again later.</p>
                         </div>
                     `).show();
+                },
+                complete: function () {
+                    $btn.prop('disabled', false).html(originalHtml);
+                }
+            });
+        },
+
+        // Import file storage
+        importFileData: null,
+
+        // Setup Import Drop Zone
+        setupImportDropZone: function () {
+            const self = this;
+            const $dropZone = $('#import-drop-zone');
+            const $fileInput = $('#import-file-input');
+            
+            if (!$dropZone.length) return;
+
+            // Click to browse
+            $dropZone.on('click', function () {
+                $fileInput.trigger('click');
+            });
+
+            // File input change
+            $fileInput.on('change', function () {
+                if (this.files && this.files[0]) {
+                    self.handleImportFile(this.files[0]);
+                }
+            });
+
+            // Drag events
+            $dropZone.on('dragover dragenter', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                $(this).addClass('border-gray-500 bg-gray-50');
+            });
+
+            $dropZone.on('dragleave drop', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                $(this).removeClass('border-gray-500 bg-gray-50');
+            });
+
+            $dropZone.on('drop', function (e) {
+                const files = e.originalEvent.dataTransfer.files;
+                if (files && files[0]) {
+                    self.handleImportFile(files[0]);
+                }
+            });
+
+            // Remove file button
+            $('#btn-remove-import-file').on('click', function (e) {
+                e.stopPropagation();
+                self.clearImportFile();
+            });
+        },
+
+        // Handle Import File
+        handleImportFile: function (file) {
+            const self = this;
+            const $preview = $('#import-file-preview');
+            const $result = $('#import-result');
+
+            // Validate file type
+            if (!file.name.endsWith('.json')) {
+                $result.removeClass('hidden').html(`
+                    <div class="flex gap-3 text-red-700 bg-red-50">
+                        <span class="dashicons dashicons-warning"></span>
+                        <span>Invalid file type. Please select a .json file.</span>
+                    </div>
+                `);
+                return;
+            }
+
+            // Read file
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    
+                    // Validate structure
+                    if (!data.export_format || !data.options) {
+                        throw new Error('Invalid export file format');
+                    }
+
+                    // Store data
+                    self.importFileData = data;
+
+                    // Show preview
+                    $('#import-file-name').text(file.name);
+                    $('#import-file-info').text(`v${data.plugin_version || 'unknown'} • ${new Date(data.exported_at).toLocaleDateString()} • ${Object.keys(data.options).length} settings`);
+                    $preview.removeClass('hidden');
+                    $('#import-drop-zone').addClass('hidden');
+                    $('#btn-import-settings').prop('disabled', false);
+                    $result.addClass('hidden');
+
+                } catch (err) {
+                    $result.removeClass('hidden').html(`
+                        <div class="flex gap-3 text-red-700 bg-red-50">
+                            <span class="dashicons dashicons-warning"></span>
+                            <span>Invalid JSON file: ${err.message}</span>
+                        </div>
+                    `);
+                    self.clearImportFile();
+                }
+            };
+            reader.readAsText(file);
+        },
+
+        // Clear Import File
+        clearImportFile: function () {
+            this.importFileData = null;
+            $('#import-file-preview').addClass('hidden');
+            $('#import-drop-zone').removeClass('hidden');
+            $('#import-file-input').val('');
+            $('#btn-import-settings').prop('disabled', true);
+            $('#import-result').addClass('hidden');
+        },
+
+        // Export Settings
+        exportSettings: function () {
+            const $btn = $('#btn-export-settings');
+
+            $btn.prop('disabled', true);
+            const originalHtml = $btn.html();
+            $btn.html('<span class="dashicons dashicons-update animate-spin"></span> Exporting...');
+
+            $.ajax({
+                url: mediaToolkit.ajaxUrl,
+                method: 'POST',
+                data: {
+                    action: 'media_toolkit_export_settings',
+                    nonce: mediaToolkit.nonce
+                },
+                success: function (response) {
+                    if (response.success) {
+                        // Create download
+                        const blob = new Blob([JSON.stringify(response.data.data, null, 2)], { type: 'application/json' });
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = response.data.filename;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        window.URL.revokeObjectURL(url);
+
+                        MediaToolkit.showNotice('Settings exported successfully!', 'success');
+                    } else {
+                        MediaToolkit.showNotice(response.data?.message || 'Export failed', 'error');
+                    }
+                },
+                error: function () {
+                    MediaToolkit.showNotice('An error occurred. Please try again.', 'error');
+                },
+                complete: function () {
+                    $btn.prop('disabled', false).html(originalHtml);
+                }
+            });
+        },
+
+        // Import Settings
+        importSettings: function () {
+            const self = this;
+            const $btn = $('#btn-import-settings');
+            const $result = $('#import-result');
+
+            if (!this.importFileData) {
+                $result.removeClass('hidden').html(`
+                    <div class="flex gap-3 text-red-700 bg-red-50">
+                        <span class="dashicons dashicons-warning"></span>
+                        <span>Please select a file to import.</span>
+                    </div>
+                `);
+                return;
+            }
+
+            const merge = $('#import_merge').is(':checked');
+
+            $btn.prop('disabled', true);
+            const originalHtml = $btn.html();
+            $btn.html('<span class="dashicons dashicons-update animate-spin"></span> Importing...');
+
+            $.ajax({
+                url: mediaToolkit.ajaxUrl,
+                method: 'POST',
+                data: {
+                    action: 'media_toolkit_import_settings',
+                    nonce: mediaToolkit.nonce,
+                    import_data: JSON.stringify(this.importFileData),
+                    merge: merge ? '1' : ''
+                },
+                success: function (response) {
+                    if (response.success) {
+                        $result.removeClass('hidden').html(`
+                            <div class="flex gap-3 text-green-700 bg-green-50">
+                                <span class="dashicons dashicons-yes-alt"></span>
+                                <span>${response.data.message}</span>
+                            </div>
+                        `);
+                        
+                        // Clear file and reload after 2 seconds
+                        self.clearImportFile();
+                        setTimeout(function () {
+                            location.reload();
+                        }, 2000);
+                    } else {
+                        $result.removeClass('hidden').html(`
+                            <div class="flex gap-3 text-red-700 bg-red-50">
+                                <span class="dashicons dashicons-warning"></span>
+                                <span>${response.data?.message || 'Import failed'}</span>
+                            </div>
+                        `);
+                    }
+                },
+                error: function () {
+                    $result.removeClass('hidden').html(`
+                        <div class="flex gap-3 text-red-700 bg-red-50">
+                            <span class="dashicons dashicons-warning"></span>
+                            <span>An error occurred. Please try again.</span>
+                        </div>
+                    `);
                 },
                 complete: function () {
                     $btn.prop('disabled', false).html(originalHtml);

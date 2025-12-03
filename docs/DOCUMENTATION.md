@@ -12,7 +12,8 @@ Complete documentation for the Media Toolkit WordPress plugin.
 6. [Migration](#migration)
 7. [Reconciliation](#reconciliation)
 8. [Caching & Headers](#caching--headers)
-9. [Troubleshooting](#troubleshooting)
+9. [Import/Export](#importexport)
+10. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -306,6 +307,139 @@ Update Cache-Control headers on existing S3 files:
 2. Set desired max-age value
 3. Click **Start Update**
 4. Files are processed in batches
+
+---
+
+## Import/Export
+
+The Import/Export feature allows you to backup settings or transfer configuration between sites.
+
+### Accessing Import/Export
+
+Navigate to **Media Toolkit → Settings → Import/Export** tab.
+
+### Export Settings
+
+1. Review what will be exported (listed in the green box)
+2. Click **Export Settings**
+3. A JSON file will be downloaded
+
+#### What's Included
+
+All settings with `media_toolkit_` prefix are automatically included:
+
+- Active environment
+- Cache-Control settings
+- Content-Disposition settings (by file type)
+- General options (remove local files, etc.)
+- Update settings (auto-update preference)
+
+#### What's Excluded (Security)
+
+For security, the following are **never** exported:
+
+- **AWS Credentials**: Access Key, Secret Key, Region, Bucket
+- **GitHub Token**: Update authentication token
+- **CDN API Tokens**: Cloudflare API token, CloudFront credentials
+- **S3 Statistics Cache**: Runtime data that should be regenerated
+
+> **Important:** Credentials must be configured manually on each site. This is intentional for security.
+
+### Import Settings
+
+1. Drag & drop a JSON file or click to browse
+2. Review file info (version, export date, settings count)
+3. Select **Merge with existing settings** if you want to combine with current settings
+4. Click **Import Settings**
+5. Page will reload with imported settings
+
+#### Import Options
+
+| Option | Description |
+|--------|-------------|
+| **Replace** (default) | Imported settings completely replace existing ones |
+| **Merge** | Imported settings are combined with existing ones |
+
+### Export Format
+
+```json
+{
+    "export_format": "2.0",
+    "plugin_version": "1.1.0",
+    "exported_at": "2024-01-15T12:00:00+00:00",
+    "site_url": "https://example.com/",
+    "options": {
+        "media_toolkit_active_env": "production",
+        "media_toolkit_cache_control": 31536000,
+        "media_toolkit_content_disposition": {
+            "image": "inline",
+            "pdf": "inline",
+            "video": "inline",
+            "archive": "attachment"
+        },
+        "media_toolkit_remove_local": false,
+        "media_toolkit_remove_on_uninstall": false,
+        ...
+    }
+}
+```
+
+### Future-Proof Design
+
+The export system uses auto-discovery. When new settings are added to the plugin:
+
+- They are **automatically included** in exports
+- They are **automatically imported** without any code changes
+- Backward compatibility is maintained with older exports
+
+### Programmatic Export/Import
+
+```php
+use Metodo\MediaToolkit\Tools\Exporter;
+use Metodo\MediaToolkit\Tools\Importer;
+use Metodo\MediaToolkit\Core\Encryption;
+
+// Export
+$encryption = new Encryption();
+$exporter = new Exporter($encryption);
+$data = $exporter->export();
+
+// Get list of exportable options
+$options = $exporter->getExportableOptions();
+
+// Get info about what's excluded
+$excluded = $exporter->getExcludedInfo();
+
+// Validate before import
+$importer = new Importer();
+$validation = $importer->validate($data);
+
+if ($validation['valid']) {
+    $importer->import($data, mergeExisting: false);
+}
+```
+
+### Hooks
+
+```php
+// Filter export data before download
+add_filter('media_toolkit_export_data', function($data) {
+    // Add custom data
+    $data['custom_key'] = 'custom_value';
+    return $data;
+});
+
+// Filter import data before processing
+add_filter('media_toolkit_import_data', function($data) {
+    // Modify data before import
+    return $data;
+});
+
+// Action after import completes
+add_action('media_toolkit_after_import', function($data) {
+    // Clear caches, etc.
+});
+```
 
 ---
 
