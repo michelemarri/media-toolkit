@@ -45,6 +45,7 @@ A powerful WordPress plugin for complete media management. Offload media files t
 ### 🖼️ Image Optimization
 Compress and optimize your media library images to save storage and bandwidth:
 
+- **Optimize on Upload**: Automatically compress images when uploaded (after resize, before cloud upload)
 - **JPEG Compression**: Configurable quality (60-100%)
 - **PNG Compression**: Lossless compression levels (0-9)
 - **GIF Support**: Automatic handling (animated GIFs are preserved)
@@ -338,6 +339,7 @@ Go to **Media Toolkit → History** to see:
 
 | Setting | Description | Default |
 |---------|-------------|---------|
+| Optimize on Upload | Auto-compress images when uploaded | Disabled |
 | JPEG Quality | Compression quality for JPEG images | 82% |
 | PNG Compression | Compression level for PNG images (0-9) | 6 |
 | Strip Metadata | Remove EXIF/camera data from images | Enabled |
@@ -462,6 +464,15 @@ $skip = apply_filters('media_toolkit_skip_resize', false, $file_path, $mime_type
 5. **Image Optimization**: Process during low-traffic periods
 
 ## Changelog
+
+### 2.3.0
+- **New**: Optimize on Upload - Automatically compress images when uploaded
+- **New**: Thumbnail optimization - All generated thumbnail sizes are also optimized on upload
+- **New**: Upload processing flow:
+  - Main file: Resize → Optimize → Cloud Upload
+  - Thumbnails: Generate → Optimize → Cloud Upload
+- **New**: Toggle to enable/disable automatic optimization on upload
+- **Improved**: Both main images and thumbnails are optimized before cloud upload, maximizing storage and bandwidth savings
 
 ### 2.2.2
 - **Fix**: CDN URL not applied to media URLs - URLs were using saved S3 direct URLs instead of computing them dynamically from current CDN settings

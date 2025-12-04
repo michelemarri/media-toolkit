@@ -51,6 +51,233 @@ final class Image_Optimizer extends Batch_Processor
         
         // Invalidate total images cache when new images are uploaded
         add_action('add_attachment', [$this, 'on_attachment_added'], 10, 1);
+        
+        // Hook into upload - optimize images automatically (priority 7: after resize, before S3 upload)
+        add_filter('wp_handle_upload', [$this, 'handle_upload'], 7, 2);
+        add_filter('wp_handle_sideload', [$this, 'handle_upload'], 7, 2);
+        
+        // Hook into attachment metadata generation to optimize thumbnails (priority 5: before S3 upload at priority 10)
+        add_filter('wp_generate_attachment_metadata', [$this, 'handle_attachment_metadata'], 5, 3);
+    }
+
+    /**
+     * Handle uploaded file - optimize if enabled
+     *
+     * This runs at priority 7, after Image_Resizer (priority 5) and before Upload_Handler (priority 10).
+     * Flow: Resize → Optimize → Upload to cloud
+     *
+     * @param array<string, mixed> $upload Upload data from WordPress
+     * @param string $context Upload context
+     * @return array<string, mixed> Modified upload data
+     */
+    public function handle_upload(array $upload, string $context = 'upload'): array
+    {
+        // Skip if there was an error
+        if (isset($upload['error'])) {
+            return $upload;
+        }
+
+        // Skip if no file
+        if (empty($upload['file'])) {
+            return $upload;
+        }
+
+        // Get settings
+        $settings = $this->get_optimization_settings();
+
+        // Skip if optimize on upload is disabled
+        if (!($settings['optimize_on_upload'] ?? false)) {
+            return $upload;
+        }
+
+        $file_path = $upload['file'];
+        $mime_type = $upload['type'] ?? '';
+
+        // Skip if not a supported image type
+        $supported_types = $this->get_supported_mime_types();
+        if (!in_array($mime_type, $supported_types, true)) {
+            return $upload;
+        }
+
+        // Check max file size
+        $original_size = filesize($file_path);
+        if ($original_size === false) {
+            return $upload;
+        }
+
+        $max_size = ($settings['max_file_size_mb'] ?? 10) * 1024 * 1024;
+        if ($original_size > $max_size) {
+            $this->logger->info(
+                'optimization',
+                'Skipped optimization on upload: file too large',
+                null,
+                basename($file_path),
+                ['size' => size_format($original_size)]
+            );
+            return $upload;
+        }
+
+        // Optimize based on mime type
+        $result = match ($mime_type) {
+            'image/jpeg', 'image/jpg' => $this->optimize_jpeg($file_path, $settings),
+            'image/png' => $this->optimize_png($file_path, $settings),
+            'image/gif' => $this->optimize_gif($file_path, $settings),
+            'image/webp' => $this->optimize_webp($file_path, $settings),
+            default => ['success' => false, 'error' => 'Unsupported image type'],
+        };
+
+        if (!$result['success']) {
+            $this->logger->warning(
+                'optimization',
+                'Optimization on upload failed: ' . ($result['error'] ?? 'Unknown error'),
+                null,
+                basename($file_path)
+            );
+            return $upload;
+        }
+
+        // Calculate savings
+        clearstatcache(true, $file_path);
+        $new_size = filesize($file_path);
+        
+        if ($new_size !== false) {
+            $bytes_saved = $original_size - $new_size;
+            $percent_saved = $original_size > 0 ? round(($bytes_saved / $original_size) * 100, 1) : 0;
+
+            if ($bytes_saved > 0) {
+                $this->logger->success(
+                    'optimization',
+                    sprintf(
+                        'Image optimized on upload: saved %s (%s%%)',
+                        size_format($bytes_saved),
+                        $percent_saved
+                    ),
+                    null,
+                    basename($file_path)
+                );
+
+                // Record in history
+                $this->history->record(
+                    HistoryAction::OPTIMIZED,
+                    null,
+                    $file_path,
+                    null,
+                    $bytes_saved,
+                    [
+                        'original_size' => $original_size,
+                        'optimized_size' => $new_size,
+                        'percent_saved' => $percent_saved,
+                        'on_upload' => true,
+                    ]
+                );
+            }
+        }
+
+        return $upload;
+    }
+
+    /**
+     * Handle attachment metadata generation - optimize thumbnails
+     *
+     * This runs at priority 5, before Upload_Handler (priority 10) uploads thumbnails to S3.
+     * Flow: WordPress generates thumbnails → Optimize thumbnails → Upload to cloud
+     *
+     * @param array<string, mixed> $metadata Attachment metadata
+     * @param int $attachment_id Attachment ID
+     * @param string $context Context (create, update)
+     * @return array<string, mixed> Modified metadata
+     */
+    public function handle_attachment_metadata(array $metadata, int $attachment_id, string $context = 'create'): array
+    {
+        // Only optimize on create, not update
+        if ($context !== 'create') {
+            return $metadata;
+        }
+
+        // Get settings
+        $settings = $this->get_optimization_settings();
+
+        // Skip if optimize on upload is disabled
+        if (!($settings['optimize_on_upload'] ?? false)) {
+            return $metadata;
+        }
+
+        // Skip if no sizes (no thumbnails)
+        if (empty($metadata['sizes']) || empty($metadata['file'])) {
+            return $metadata;
+        }
+
+        // Get the upload directory and file directory
+        $upload_dir = wp_upload_dir();
+        $base_dir = $upload_dir['basedir'];
+        $file_dir = dirname($base_dir . '/' . $metadata['file']);
+
+        $total_bytes_saved = 0;
+        $optimized_count = 0;
+
+        // Optimize each thumbnail
+        foreach ($metadata['sizes'] as $size_name => $size_data) {
+            $thumb_file = $file_dir . '/' . $size_data['file'];
+
+            if (!file_exists($thumb_file)) {
+                continue;
+            }
+
+            $mime_type = $size_data['mime-type'] ?? '';
+
+            // Skip if not a supported image type
+            $supported_types = $this->get_supported_mime_types();
+            if (!in_array($mime_type, $supported_types, true)) {
+                continue;
+            }
+
+            $original_size = filesize($thumb_file);
+            if ($original_size === false) {
+                continue;
+            }
+
+            // Optimize based on mime type
+            try {
+                $result = match ($mime_type) {
+                    'image/jpeg', 'image/jpg' => $this->optimize_jpeg($thumb_file, $settings),
+                    'image/png' => $this->optimize_png($thumb_file, $settings),
+                    'image/gif' => $this->optimize_gif($thumb_file, $settings),
+                    'image/webp' => $this->optimize_webp($thumb_file, $settings),
+                    default => ['success' => false],
+                };
+            } catch (\Throwable $e) {
+                continue; // Skip this thumbnail on error
+            }
+
+            if (!$result['success']) {
+                continue;
+            }
+
+            // Calculate savings
+            clearstatcache(true, $thumb_file);
+            $new_size = filesize($thumb_file);
+
+            if ($new_size !== false && $new_size < $original_size) {
+                $bytes_saved = $original_size - $new_size;
+                $total_bytes_saved += $bytes_saved;
+                $optimized_count++;
+            }
+        }
+
+        if ($optimized_count > 0) {
+            $this->logger->success(
+                'optimization',
+                sprintf(
+                    'Optimized %d thumbnails on upload, saved %s total',
+                    $optimized_count,
+                    size_format($total_bytes_saved)
+                ),
+                $attachment_id,
+                basename($metadata['file'])
+            );
+        }
+
+        return $metadata;
     }
 
     /**
@@ -118,6 +345,7 @@ final class Image_Optimizer extends Batch_Processor
     public function get_optimization_settings(): array
     {
         $defaults = [
+            'optimize_on_upload' => false,
             'jpeg_quality' => 82,
             'png_compression' => 6,
             'strip_metadata' => true,
@@ -139,6 +367,7 @@ final class Image_Optimizer extends Batch_Processor
     public function save_optimization_settings(array $settings): bool
     {
         $sanitized = [
+            'optimize_on_upload' => (bool) ($settings['optimize_on_upload'] ?? false),
             'jpeg_quality' => max(1, min(100, (int) ($settings['jpeg_quality'] ?? 82))),
             'png_compression' => max(0, min(9, (int) ($settings['png_compression'] ?? 6))),
             'strip_metadata' => (bool) ($settings['strip_metadata'] ?? true),
@@ -1310,6 +1539,7 @@ final class Image_Optimizer extends Batch_Processor
         }
 
         $settings = [
+            'optimize_on_upload' => isset($_POST['optimize_on_upload']) && $_POST['optimize_on_upload'] === 'true',
             'jpeg_quality' => isset($_POST['jpeg_quality']) ? (int) $_POST['jpeg_quality'] : 82,
             'png_compression' => isset($_POST['png_compression']) ? (int) $_POST['png_compression'] : 6,
             'strip_metadata' => isset($_POST['strip_metadata']) && $_POST['strip_metadata'] === 'true',

@@ -277,13 +277,33 @@ Navigate to **Media Toolkit → Optimize → Optimize tab**:
 
 | Setting | Description | Default |
 |---------|-------------|---------|
+| Optimize on Upload | Auto-compress images when uploaded | Disabled |
 | JPEG Quality | Compression quality | 82% |
 | PNG Compression | Compression level | 6 |
 | Strip Metadata | Remove EXIF data | Enabled |
 | Min Savings | Minimum % to keep | 5% |
 | Max File Size | Skip larger files | 10 MB |
 
+#### Optimize on Upload
+
+When enabled, images are automatically compressed during the upload process:
+
+**Main file optimization:**
+1. User uploads an image
+2. **Resize** (priority 5): Image is resized if it exceeds max dimensions
+3. **Optimize** (priority 7): Main image is compressed using configured settings
+4. **Cloud Upload** (priority 10): Optimized image is uploaded to storage provider
+
+**Thumbnail optimization:**
+5. WordPress generates all thumbnail sizes
+6. **Optimize Thumbnails** (priority 5): All thumbnails are compressed
+7. **Cloud Upload** (priority 10): Optimized thumbnails are uploaded to storage provider
+
+This ensures that both the main image and all thumbnails are optimized before being stored in the cloud, maximizing storage and bandwidth savings.
+
 #### Batch Optimization
+
+For existing images that were uploaded before enabling "Optimize on Upload":
 
 1. Go to **Media Toolkit → Optimize → Optimize**
 2. Configure settings

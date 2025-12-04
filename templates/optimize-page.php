@@ -381,6 +381,18 @@ $hasBanner = file_exists($bannerPath);
                         <h3 class="text-base font-semibold text-gray-900"><?php esc_html_e('Compression Settings', 'media-toolkit'); ?></h3>
                     </div>
                     <div class="p-6 space-y-5">
+                        <!-- Enable Optimize on Upload Toggle -->
+                        <div class="pb-4 border-b border-gray-200">
+                            <label class="mt-toggle inline-flex items-center gap-3 cursor-pointer">
+                                <input type="checkbox" id="optimize-on-upload" <?php checked($opt_settings['optimize_on_upload'] ?? false); ?>>
+                                <span class="mt-toggle-slider"></span>
+                                <div>
+                                    <span class="block text-sm font-semibold text-gray-900"><?php esc_html_e('Optimize on Upload', 'media-toolkit'); ?></span>
+                                    <span class="block text-xs text-gray-500"><?php esc_html_e('Automatically compress images when uploaded (after resize, before cloud upload)', 'media-toolkit'); ?></span>
+                                </div>
+                            </label>
+                        </div>
+
                         <div>
                             <label for="jpeg-quality" class="block text-sm font-semibold text-gray-900 mb-2"><?php esc_html_e('JPEG Quality', 'media-toolkit'); ?></label>
                             <div class="flex items-center gap-3">

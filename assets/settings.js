@@ -1900,12 +1900,13 @@
 
         // Save Optimization Settings (Optimize page)
         saveOptimizationSettings: function () {
-            const $btn = $('#btn-save-settings');
+            const $btn = $('#btn-save-optimize-settings');
             const $status = $('#settings-status');
 
             const data = {
                 action: 'media_toolkit_save_optimize_settings',
                 nonce: mediaToolkit.nonce,
+                optimize_on_upload: $('#optimize-on-upload').is(':checked') ? 'true' : 'false',
                 jpeg_quality: $('#jpeg-quality').val(),
                 png_compression: $('#png-compression').val(),
                 max_file_size_mb: $('#max-file-size').val(),
