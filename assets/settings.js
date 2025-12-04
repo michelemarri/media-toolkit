@@ -536,6 +536,22 @@
         syncStorageStats: function () {
             const $btn = $('#btn-sync-stats');
             const $status = $('#sync-status');
+            const $statOriginalFiles = $('#stat-sync-original-files');
+            const $statTotalFiles = $('#stat-sync-total-files');
+            const $statStorageUsed = $('#stat-sync-storage-used');
+
+            // Store original values
+            const originalValues = {
+                originalFiles: $statOriginalFiles.text(),
+                totalFiles: $statTotalFiles.text(),
+                storageUsed: $statStorageUsed.text()
+            };
+
+            // Show spinner in stat cards
+            const spinnerHtml = '<span class="dashicons dashicons-update animate-spin"></span>';
+            $statOriginalFiles.html(spinnerHtml);
+            $statTotalFiles.html(spinnerHtml);
+            $statStorageUsed.html(spinnerHtml);
 
             $btn.prop('disabled', true);
             $status.text('Syncing...').css('color', '#666');
@@ -550,6 +566,12 @@
                 success: function (response) {
                     if (response.success) {
                         const stats = response.data.stats_formatted;
+                        
+                        // Update stat cards with new values
+                        $statOriginalFiles.text(stats.original_files);
+                        $statTotalFiles.text(stats.files);
+                        $statStorageUsed.text(stats.size);
+                        
                         $status.html(`✓ Synced: ${stats.original_files} files (${stats.files} total with thumbnails), ${stats.size}`).css('color', '#00a32a');
 
                         // Reload page after 2 seconds to refresh all stats
@@ -557,10 +579,20 @@
                             location.reload();
                         }, 2000);
                     } else {
+                        // Restore original values on error
+                        $statOriginalFiles.text(originalValues.originalFiles);
+                        $statTotalFiles.text(originalValues.totalFiles);
+                        $statStorageUsed.text(originalValues.storageUsed);
+                        
                         $status.text('✗ ' + (response.data?.message || 'Sync failed')).css('color', '#d63638');
                     }
                 },
                 error: function () {
+                    // Restore original values on error
+                    $statOriginalFiles.text(originalValues.originalFiles);
+                    $statTotalFiles.text(originalValues.totalFiles);
+                    $statStorageUsed.text(originalValues.storageUsed);
+                    
                     $status.text('✗ Connection error').css('color', '#d63638');
                 },
                 complete: function () {

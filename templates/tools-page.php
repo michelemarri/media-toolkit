@@ -281,7 +281,7 @@ $hasBanner = file_exists($bannerPath);
                             </div>
                             <span class="text-sm text-gray-500"><?php esc_html_e('Files on Cloud', 'media-toolkit'); ?></span>
                         </div>
-                        <span class="block text-3xl font-bold text-gray-900"><?php echo number_format($dashboard_stats['original_files'] ?? 0); ?></span>
+                        <span class="block text-3xl font-bold text-gray-900" id="stat-sync-original-files"><?php echo number_format($dashboard_stats['original_files'] ?? 0); ?></span>
                     </div>
                     
                     <div class="p-5 bg-gray-50 border border-gray-200 rounded-2xl">
@@ -291,7 +291,7 @@ $hasBanner = file_exists($bannerPath);
                             </div>
                             <span class="text-sm text-gray-500"><?php esc_html_e('Total (with thumbnails)', 'media-toolkit'); ?></span>
                         </div>
-                        <span class="block text-3xl font-bold text-gray-900"><?php echo number_format($dashboard_stats['total_files'] ?? 0); ?></span>
+                        <span class="block text-3xl font-bold text-gray-900" id="stat-sync-total-files"><?php echo number_format($dashboard_stats['total_files'] ?? 0); ?></span>
                     </div>
                     
                     <div class="p-5 bg-gray-50 border border-gray-200 rounded-2xl">
@@ -301,7 +301,7 @@ $hasBanner = file_exists($bannerPath);
                             </div>
                             <span class="text-sm text-gray-500"><?php esc_html_e('Storage Used', 'media-toolkit'); ?></span>
                         </div>
-                        <span class="block text-3xl font-bold text-gray-900"><?php echo esc_html($dashboard_stats['total_storage_formatted'] ?? '0 B'); ?></span>
+                        <span class="block text-3xl font-bold text-gray-900" id="stat-sync-storage-used"><?php echo esc_html($dashboard_stats['total_storage_formatted'] ?? '0 B'); ?></span>
                     </div>
                 </div>
 
@@ -414,7 +414,7 @@ $hasBanner = file_exists($bannerPath);
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <!-- Options -->
                     <div class="p-5 bg-gray-50 border border-gray-200 rounded-xl">
-                        <h4 class="flex items-center gap-2 text-sm font-semibold text-gray-900 mb-3">
+                        <h4 class="flex items-center gap-2 text-sm font-semibold text-gray-900 m-0 mb-3">
                             <span class="dashicons dashicons-admin-settings text-gray-600"></span>
                             <?php esc_html_e('Cache-Control Settings', 'media-toolkit'); ?>
                         </h4>
@@ -434,8 +434,8 @@ $hasBanner = file_exists($bannerPath);
                     </div>
 
                     <!-- Controls -->
-                    <div class="p-5 bg-gray-50 border border-gray-200 rounded-xl">
-                        <h4 class="flex items-center gap-2 text-sm font-semibold text-gray-900 mb-4">
+                    <div class="flex flex-col justify-between p-5 bg-gray-50 border border-gray-200 rounded-xl">
+                        <h4 class="flex items-center gap-2 text-sm font-semibold text-gray-900 m-0 mb-4">
                             <span class="dashicons dashicons-controls-play text-gray-600"></span>
                             <?php esc_html_e('Controls', 'media-toolkit'); ?>
                         </h4>
@@ -576,7 +576,7 @@ $hasBanner = file_exists($bannerPath);
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <!-- Scan Preview -->
                     <div class="p-5 bg-gray-50 border border-gray-200 rounded-xl">
-                        <h4 class="flex items-center gap-2 text-sm font-semibold text-gray-900 mb-3">
+                        <h4 class="flex items-center gap-2 text-sm font-semibold text-gray-900 m-0 mb-3">
                             <span class="dashicons dashicons-search text-gray-600"></span>
                             <?php esc_html_e('Scan Preview', 'media-toolkit'); ?>
                         </h4>
@@ -613,7 +613,7 @@ $hasBanner = file_exists($bannerPath);
 
                     <!-- Controls -->
                     <div class="p-5 bg-gray-50 border border-gray-200 rounded-xl">
-                        <h4 class="flex items-center gap-2 text-sm font-semibold text-gray-900 mb-4">
+                        <h4 class="flex items-center gap-2 text-sm font-semibold text-gray-900 m-0 mb-4">
                             <span class="dashicons dashicons-controls-play text-gray-600"></span>
                             <?php esc_html_e('Controls', 'media-toolkit'); ?>
                         </h4>

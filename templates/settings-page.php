@@ -309,7 +309,7 @@ $hasBanner = file_exists($bannerPath);
                                 <label for="cloudflare_zone_id" class="block text-sm font-medium text-gray-700 mb-2"><?php esc_html_e('Zone ID', 'media-toolkit'); ?></label>
                                 <input type="text" name="cloudflare_zone_id" id="cloudflare_zone_id" 
                                        value="<?php echo esc_attr($credentials['cloudflare_zone_id'] ?? ''); ?>"
-                                       class="mt-select w-full px-4 py-2.5 text-sm bg-white border border-gray-300 rounded-lg outline-none transition-all"
+                                       class="mt-input w-full px-4 py-2.5 text-sm bg-white border border-gray-300 rounded-lg outline-none transition-all"
                                        placeholder="abc123def456...">
                                 <p class="mt-1 text-sm text-gray-500"><?php esc_html_e('Found in Cloudflare Dashboard → Your site → Overview', 'media-toolkit'); ?></p>
                             </div>

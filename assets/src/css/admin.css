@@ -336,6 +336,20 @@
   }
 }
 
+/* Animate spin utility (fallback for Tailwind) */
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Stat card spinner */
+#stat-sync-original-files .dashicons,
+#stat-sync-total-files .dashicons,
+#stat-sync-storage-used .dashicons {
+  @apply text-3xl text-gray-400;
+  width: 1em;
+  height: 1em;
+}
+
 /* Test card animations */
 .mt-test-card {
   @apply opacity-0;
