@@ -463,6 +463,9 @@ $skip = apply_filters('media_toolkit_skip_resize', false, $file_path, $mime_type
 
 ## Changelog
 
+### 2.2.1
+- **Improved**: Cache Headers update now shows progress in the log every 100 files processed
+
 ### 2.2.0
 - **Fix**: Added missing `update_objects_metadata_batch()` method for Cache Headers tool
 - **Fix**: Corrected `generate_s3_key()` method call in Image_Editor (was `generate_key()`)

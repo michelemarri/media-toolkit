@@ -566,12 +566,12 @@
                 success: function (response) {
                     if (response.success) {
                         const stats = response.data.stats_formatted;
-                        
+
                         // Update stat cards with new values
                         $statOriginalFiles.text(stats.original_files);
                         $statTotalFiles.text(stats.files);
                         $statStorageUsed.text(stats.size);
-                        
+
                         $status.html(`✓ Synced: ${stats.original_files} files (${stats.files} total with thumbnails), ${stats.size}`).css('color', '#00a32a');
 
                         // Reload page after 2 seconds to refresh all stats
@@ -583,7 +583,7 @@
                         $statOriginalFiles.text(originalValues.originalFiles);
                         $statTotalFiles.text(originalValues.totalFiles);
                         $statStorageUsed.text(originalValues.storageUsed);
-                        
+
                         $status.text('✗ ' + (response.data?.message || 'Sync failed')).css('color', '#d63638');
                     }
                 },
@@ -592,7 +592,7 @@
                     $statOriginalFiles.text(originalValues.originalFiles);
                     $statTotalFiles.text(originalValues.totalFiles);
                     $statStorageUsed.text(originalValues.storageUsed);
-                    
+
                     $status.text('✗ Connection error').css('color', '#d63638');
                 },
                 complete: function () {
@@ -704,6 +704,9 @@
                     if (response.success) {
                         const data = response.data;
 
+                        // Track previous processed count for milestone logging
+                        const previousProcessed = state.totalProcessed;
+
                         // Update state
                         state.totalProcessed += data.processed;
                         state.totalSuccess += data.success;
@@ -721,6 +724,15 @@
                         $('#cache-current-count').text(state.totalProcessed.toLocaleString());
                         $('#cache-progress-bar').css('width', percentage + '%');
                         $('#cache-progress-percentage').text(percentage + '%');
+
+                        // Log progress every 500 files
+                        const logInterval = 100;
+                        const previousMilestone = Math.floor(previousProcessed / logInterval);
+                        const currentMilestone = Math.floor(state.totalProcessed / logInterval);
+                        if (currentMilestone > previousMilestone) {
+                            const failedText = state.totalFailed > 0 ? `, ${state.totalFailed} failed` : '';
+                            self.addCacheSyncLog(`Processed ${state.totalProcessed.toLocaleString()} / ${state.totalFiles.toLocaleString()} files (${percentage}%${failedText})`, 'info');
+                        }
 
                         if (data.has_more) {
                             // Continue with next batch
