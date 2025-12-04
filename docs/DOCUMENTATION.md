@@ -210,7 +210,48 @@ Overview of optimization status:
 - Optimized vs pending images
 - Space saved from optimization
 - Resize statistics
-- Server capabilities (GD, ImageMagick, WebP support)
+- Comprehensive server capabilities check
+
+#### Server Capabilities
+
+The dashboard includes a detailed server capabilities panel that verifies your server can perform image optimization:
+
+**Status Indicator**
+- ✅ **Optimization Ready**: All requirements met, functional test passed
+- ⚠️ **Issues Detected**: Problems found that may prevent optimization
+
+**Image Libraries**
+| Library | Description |
+|---------|-------------|
+| GD Library | PHP's built-in image processing library (with version number) |
+| ImageMagick | More powerful library for advanced image processing (with version) |
+| WP Image Editor | Shows which library WordPress is actually using |
+
+**Supported Formats**
+Visual indicators for each format:
+- JPEG - Core format, always required
+- PNG - Lossless compression support
+- GIF - Including animated GIF handling
+- WebP - Modern web format
+- AVIF - Next-gen format (if available)
+
+**Server Limits**
+- Memory Limit - PHP memory available for processing
+- Max Execution Time - Maximum script runtime
+- Upload Max Size - Maximum file upload size
+
+**Functional Test**
+The plugin performs a real test to verify optimization works:
+1. Creates a small test image
+2. Processes it through WordPress image editor
+3. Verifies the output file is valid
+4. Reports success or detailed error message
+
+This catches issues like:
+- Missing library dependencies
+- File permission problems
+- Corrupted PHP extensions
+- WordPress configuration issues
 
 ### Optimize Tab
 

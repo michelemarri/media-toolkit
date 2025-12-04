@@ -627,7 +627,7 @@ $hasBanner = file_exists($bannerPath);
                         </div>
                         
                         <div class="flex flex-col gap-3">
-                            <button type="button" class="w-full inline-flex items-center justify-center gap-2 px-5 py-3.5 text-base font-medium text-white bg-gray-800 hover:bg-gray-900 rounded-lg shadow-sm transition-all" id="btn-start-reconciliation">
+                            <button type="button" class="w-full inline-flex items-center justify-center gap-2 px-5 py-3.5 text-base font-medium text-white bg-gray-800 hover:bg-gray-900 rounded-lg shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-gray-800" id="btn-start-reconciliation">
                                 <span class="dashicons dashicons-randomize"></span>
                                 <?php esc_html_e('Start Reconciliation', 'media-toolkit'); ?>
                             </button>

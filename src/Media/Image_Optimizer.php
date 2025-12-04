@@ -613,6 +613,17 @@ final class Image_Optimizer extends Batch_Processor
         $settings = array_merge($this->get_optimization_settings(), $options);
         $mime_type = get_post_mime_type($attachment_id);
         $original_size = filesize($file);
+        
+        // Verify file is readable
+        if ($original_size === false) {
+            OptimizationTable::mark_failed($attachment_id, 'Cannot read file size');
+            $this->invalidate_stats_cache();
+            
+            return [
+                'success' => false,
+                'error' => 'Cannot read file size - file may be corrupted or inaccessible',
+            ];
+        }
 
         // Validate image file is readable
         $image_info = @getimagesize($file);
@@ -655,6 +666,18 @@ final class Image_Optimizer extends Batch_Processor
 
         clearstatcache(true, $file);
         $new_size = filesize($file);
+        
+        // Verify file is still readable after optimization
+        if ($new_size === false) {
+            OptimizationTable::mark_failed($attachment_id, 'File became unreadable after optimization');
+            $this->invalidate_stats_cache();
+            
+            return [
+                'success' => false,
+                'error' => 'File became unreadable after optimization',
+            ];
+        }
+        
         $bytes_saved = $original_size - $new_size;
         $percent_saved = $original_size > 0 ? round(($bytes_saved / $original_size) * 100, 1) : 0;
 
@@ -1019,33 +1042,241 @@ final class Image_Optimizer extends Batch_Processor
     }
 
     /**
-     * Check server capabilities
+     * Check server capabilities with comprehensive testing
+     * 
+     * Returns detailed information about:
+     * - Available image libraries (GD, ImageMagick)
+     * - Library versions
+     * - Supported formats (JPEG, PNG, GIF, WebP, AVIF)
+     * - WordPress image editor in use
+     * - Server limits
+     * - Functional test results
      */
     public function get_server_capabilities(): array
     {
         $capabilities = [
+            // Libraries
             'gd' => extension_loaded('gd'),
+            'gd_version' => null,
             'imagick' => extension_loaded('imagick'),
+            'imagick_version' => null,
+            
+            // WordPress editor
+            'wp_editor' => null,
+            'wp_editor_class' => null,
+            
+            // Format support
+            'jpeg_support' => false,
+            'png_support' => false,
+            'gif_support' => false,
             'webp_support' => false,
             'avif_support' => false,
+            
+            // Server limits
             'max_memory' => ini_get('memory_limit'),
             'max_execution_time' => ini_get('max_execution_time'),
+            'upload_max_filesize' => ini_get('upload_max_filesize'),
+            
+            // Functional test
+            'functional_test' => false,
+            'functional_test_error' => null,
+            
+            // Overall status
+            'optimization_available' => false,
         ];
 
-        // Check WebP support
-        if ($capabilities['gd'] && function_exists('imagewebp')) {
-            $capabilities['webp_support'] = true;
-        } elseif ($capabilities['imagick']) {
-            $imagick = new \Imagick();
-            $capabilities['webp_support'] = in_array('WEBP', $imagick->queryFormats('WEBP'));
+        // Get GD version
+        if ($capabilities['gd']) {
+            $gd_info = function_exists('gd_info') ? gd_info() : [];
+            $capabilities['gd_version'] = $gd_info['GD Version'] ?? 'Unknown';
         }
 
-        // Check AVIF support
-        if ($capabilities['gd'] && function_exists('imageavif')) {
-            $capabilities['avif_support'] = true;
-        } elseif ($capabilities['imagick']) {
-            $imagick = new \Imagick();
-            $capabilities['avif_support'] = in_array('AVIF', $imagick->queryFormats('AVIF'));
+        // Get ImageMagick version (with try-catch for safety)
+        if ($capabilities['imagick']) {
+            try {
+                if (class_exists('\Imagick')) {
+                    $imagick = new \Imagick();
+                    $version = $imagick->getVersion();
+                    $capabilities['imagick_version'] = $version['versionString'] ?? 'Unknown';
+                }
+            } catch (\Throwable $e) {
+                $capabilities['imagick'] = false;
+                $capabilities['imagick_version'] = 'Error: ' . $e->getMessage();
+            }
+        }
+
+        // Determine WordPress image editor
+        $capabilities = $this->detect_wp_image_editor($capabilities);
+
+        // Check format support using WordPress API
+        $capabilities = $this->check_format_support($capabilities);
+
+        // Run functional test
+        $capabilities = $this->run_functional_test($capabilities);
+
+        // Determine if optimization is available
+        $capabilities['optimization_available'] = (
+            ($capabilities['gd'] || $capabilities['imagick']) &&
+            $capabilities['jpeg_support'] &&
+            $capabilities['functional_test']
+        );
+
+        return $capabilities;
+    }
+
+    /**
+     * Detect which WordPress image editor will be used
+     */
+    private function detect_wp_image_editor(array $capabilities): array
+    {
+        // Use _wp_image_editor_choose() to determine which editor WordPress will use
+        // This is the same function WordPress uses internally, no file needed
+        if (function_exists('_wp_image_editor_choose')) {
+            $editor_class = _wp_image_editor_choose();
+            
+            if ($editor_class === false) {
+                $capabilities['wp_editor'] = 'none';
+                $capabilities['wp_editor_class'] = null;
+            } else {
+                $capabilities['wp_editor_class'] = $editor_class;
+                
+                if (strpos($editor_class, 'Imagick') !== false) {
+                    $capabilities['wp_editor'] = 'imagick';
+                } elseif (strpos($editor_class, 'GD') !== false) {
+                    $capabilities['wp_editor'] = 'gd';
+                } else {
+                    $capabilities['wp_editor'] = 'other';
+                }
+            }
+        } else {
+            // Fallback: determine based on loaded extensions and WordPress priority
+            // WordPress prefers Imagick over GD when both are available
+            if ($capabilities['imagick'] && class_exists('\Imagick')) {
+                $capabilities['wp_editor'] = 'imagick';
+                $capabilities['wp_editor_class'] = 'WP_Image_Editor_Imagick';
+            } elseif ($capabilities['gd']) {
+                $capabilities['wp_editor'] = 'gd';
+                $capabilities['wp_editor_class'] = 'WP_Image_Editor_GD';
+            } else {
+                $capabilities['wp_editor'] = 'none';
+                $capabilities['wp_editor_class'] = null;
+            }
+        }
+
+        return $capabilities;
+    }
+
+    /**
+     * Check format support using WordPress image editor API
+     */
+    private function check_format_support(array $capabilities): array
+    {
+        // Use WordPress wp_image_editor_supports() for accurate detection
+        $capabilities['jpeg_support'] = wp_image_editor_supports(['mime_type' => 'image/jpeg']);
+        $capabilities['png_support'] = wp_image_editor_supports(['mime_type' => 'image/png']);
+        $capabilities['gif_support'] = wp_image_editor_supports(['mime_type' => 'image/gif']);
+        $capabilities['webp_support'] = wp_image_editor_supports(['mime_type' => 'image/webp']);
+        $capabilities['avif_support'] = wp_image_editor_supports(['mime_type' => 'image/avif']);
+
+        return $capabilities;
+    }
+
+    /**
+     * Run a functional test to verify optimization actually works
+     * 
+     * Creates a small test image, optimizes it, and verifies the result.
+     * This catches issues like missing libraries, permission problems, etc.
+     */
+    private function run_functional_test(array $capabilities): array
+    {
+        // Skip if no library available
+        if (!$capabilities['gd'] && !$capabilities['imagick']) {
+            $capabilities['functional_test'] = false;
+            $capabilities['functional_test_error'] = __('No image library available (GD or ImageMagick required)', 'media-toolkit');
+            return $capabilities;
+        }
+
+        $upload_dir = wp_upload_dir();
+        $test_file = $upload_dir['basedir'] . '/media-toolkit-test-' . uniqid() . '.jpg';
+
+        try {
+            // Create a small test JPEG image
+            if ($capabilities['gd'] && function_exists('imagecreatetruecolor')) {
+                $image = imagecreatetruecolor(100, 100);
+                if ($image === false) {
+                    throw new \Exception(__('Failed to create test image with GD', 'media-toolkit'));
+                }
+                
+                // Fill with a color
+                $color = imagecolorallocate($image, 255, 128, 64);
+                imagefill($image, 0, 0, $color);
+                
+                // Save as JPEG
+                $saved = imagejpeg($image, $test_file, 90);
+                imagedestroy($image);
+                
+                if (!$saved) {
+                    throw new \Exception(__('Failed to save test image', 'media-toolkit'));
+                }
+            } elseif ($capabilities['imagick']) {
+                try {
+                    $imagick = new \Imagick();
+                    $imagick->newImage(100, 100, new \ImagickPixel('#ff8040'));
+                    $imagick->setImageFormat('jpeg');
+                    $imagick->setImageCompressionQuality(90);
+                    $imagick->writeImage($test_file);
+                    $imagick->destroy();
+                } catch (\Throwable $e) {
+                    throw new \Exception(__('Failed to create test image with ImageMagick: ', 'media-toolkit') . $e->getMessage());
+                }
+            } else {
+                throw new \Exception(__('No image creation function available', 'media-toolkit'));
+            }
+
+            // Verify file was created
+            if (!file_exists($test_file)) {
+                throw new \Exception(__('Test file was not created', 'media-toolkit'));
+            }
+
+            $original_size = filesize($test_file);
+            if ($original_size === false || $original_size === 0) {
+                throw new \Exception(__('Test file is empty or unreadable', 'media-toolkit'));
+            }
+
+            // Test WordPress image editor
+            $editor = wp_get_image_editor($test_file);
+            if (is_wp_error($editor)) {
+                throw new \Exception(__('WordPress image editor failed: ', 'media-toolkit') . $editor->get_error_message());
+            }
+
+            // Try to set quality and save (simulates optimization)
+            $editor->set_quality(75);
+            $result = $editor->save($test_file, 'image/jpeg');
+            
+            if (is_wp_error($result)) {
+                throw new \Exception(__('Image save failed: ', 'media-toolkit') . $result->get_error_message());
+            }
+
+            // Verify the optimized file
+            clearstatcache(true, $test_file);
+            $new_size = filesize($test_file);
+            
+            if ($new_size === false || $new_size === 0) {
+                throw new \Exception(__('Optimized file is empty or unreadable', 'media-toolkit'));
+            }
+
+            // Test passed!
+            $capabilities['functional_test'] = true;
+            $capabilities['functional_test_error'] = null;
+
+        } catch (\Throwable $e) {
+            $capabilities['functional_test'] = false;
+            $capabilities['functional_test_error'] = $e->getMessage();
+        } finally {
+            // Clean up test file
+            if (file_exists($test_file)) {
+                @unlink($test_file);
+            }
         }
 
         return $capabilities;

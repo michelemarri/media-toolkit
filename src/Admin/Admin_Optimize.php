@@ -112,11 +112,22 @@ final class Admin_Optimize
         if ($this->optimizer === null) {
             return [
                 'gd' => extension_loaded('gd'),
+                'gd_version' => null,
                 'imagick' => extension_loaded('imagick'),
+                'imagick_version' => null,
+                'wp_editor' => null,
+                'wp_editor_class' => null,
+                'jpeg_support' => false,
+                'png_support' => false,
+                'gif_support' => false,
                 'webp_support' => false,
                 'avif_support' => false,
                 'max_memory' => ini_get('memory_limit'),
                 'max_execution_time' => ini_get('max_execution_time'),
+                'upload_max_filesize' => ini_get('upload_max_filesize'),
+                'functional_test' => false,
+                'functional_test_error' => __('Optimizer not initialized', 'media-toolkit'),
+                'optimization_available' => false,
             ];
         }
 

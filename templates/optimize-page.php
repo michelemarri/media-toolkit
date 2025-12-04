@@ -206,49 +206,163 @@ $hasBanner = file_exists($bannerPath);
 
             <!-- Server Capabilities -->
             <div class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-                <div class="flex items-center gap-3 px-6 py-4 bg-gradient-to-b from-gray-50 to-gray-100 border-b border-gray-200">
-                    <span class="dashicons dashicons-desktop text-gray-700"></span>
-                    <h3 class="text-base font-semibold text-gray-900"><?php esc_html_e('Server Capabilities', 'media-toolkit'); ?></h3>
+                <div class="flex items-center justify-between px-6 py-4 bg-gradient-to-b from-gray-50 to-gray-100 border-b border-gray-200">
+                    <div class="flex items-center gap-3">
+                        <span class="dashicons dashicons-desktop text-gray-700"></span>
+                        <h3 class="text-base font-semibold text-gray-900"><?php esc_html_e('Server Capabilities', 'media-toolkit'); ?></h3>
+                    </div>
+                    <?php if ($capabilities['optimization_available'] ?? false): ?>
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1 text-sm font-medium text-green-700 bg-green-100 rounded-full">
+                            <span class="dashicons dashicons-yes-alt text-sm"></span>
+                            <?php esc_html_e('Optimization Ready', 'media-toolkit'); ?>
+                        </span>
+                    <?php else: ?>
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1 text-sm font-medium text-red-700 bg-red-100 rounded-full">
+                            <span class="dashicons dashicons-warning text-sm"></span>
+                            <?php esc_html_e('Issues Detected', 'media-toolkit'); ?>
+                        </span>
+                    <?php endif; ?>
                 </div>
-                <div class="p-6">
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                        <div class="flex items-center gap-4 p-5 bg-white border rounded-lg <?php echo $capabilities['gd'] ? 'border-green-200 bg-gradient-to-br from-white to-green-50' : 'border-gray-200'; ?>">
-                            <div class="flex items-center justify-center w-11 h-11 rounded-lg <?php echo $capabilities['gd'] ? 'mt-stat-icon-success' : 'mt-stat-icon-error'; ?>">
-                                <span class="dashicons <?php echo $capabilities['gd'] ? 'dashicons-yes-alt' : 'dashicons-dismiss'; ?>"></span>
+                <div class="p-6 space-y-6">
+                    <!-- Functional Test Status -->
+                    <?php if (!($capabilities['functional_test'] ?? false)): ?>
+                    <div class="flex gap-3 p-4 rounded-xl bg-red-50 text-red-800 border border-red-200">
+                        <span class="dashicons dashicons-warning text-red-600 flex-shrink-0 mt-0.5"></span>
+                        <div>
+                            <strong class="block text-sm font-semibold mb-1"><?php esc_html_e('Functional Test Failed', 'media-toolkit'); ?></strong>
+                            <p class="text-sm opacity-90 m-0">
+                                <?php echo esc_html($capabilities['functional_test_error'] ?? __('Unknown error', 'media-toolkit')); ?>
+                            </p>
+                        </div>
+                    </div>
+                    <?php else: ?>
+                    <div class="flex gap-3 p-4 rounded-xl bg-green-50 text-green-800 border border-green-200">
+                        <span class="dashicons dashicons-yes-alt text-green-600 flex-shrink-0 mt-0.5"></span>
+                        <div>
+                            <strong class="block text-sm font-semibold mb-1"><?php esc_html_e('Functional Test Passed', 'media-toolkit'); ?></strong>
+                            <p class="text-sm opacity-90 m-0">
+                                <?php esc_html_e('Image optimization is working correctly on this server.', 'media-toolkit'); ?>
+                            </p>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+
+                    <!-- Image Libraries -->
+                    <div>
+                        <h4 class="text-sm font-semibold text-gray-700 mb-3"><?php esc_html_e('Image Libraries', 'media-toolkit'); ?></h4>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <!-- GD Library -->
+                            <div class="flex items-center gap-4 p-4 bg-white border rounded-lg <?php echo $capabilities['gd'] ? 'border-green-200 bg-gradient-to-br from-white to-green-50' : 'border-red-200 bg-gradient-to-br from-white to-red-50'; ?>">
+                                <div class="flex items-center justify-center w-10 h-10 rounded-lg <?php echo $capabilities['gd'] ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'; ?>">
+                                    <span class="dashicons <?php echo $capabilities['gd'] ? 'dashicons-yes-alt' : 'dashicons-dismiss'; ?>"></span>
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <span class="block text-sm font-semibold text-gray-900 truncate"><?php esc_html_e('GD Library', 'media-toolkit'); ?></span>
+                                    <span class="block text-xs text-gray-500 truncate">
+                                        <?php echo $capabilities['gd'] 
+                                            ? esc_html($capabilities['gd_version'] ?? __('Available', 'media-toolkit'))
+                                            : esc_html__('Not available', 'media-toolkit'); ?>
+                                    </span>
+                                </div>
                             </div>
-                            <div>
-                                <span class="block text-lg font-semibold text-gray-900"><?php echo $capabilities['gd'] ? __('Available', 'media-toolkit') : __('Not available', 'media-toolkit'); ?></span>
-                                <span class="text-sm text-gray-500"><?php esc_html_e('GD Library', 'media-toolkit'); ?></span>
+
+                            <!-- ImageMagick -->
+                            <div class="flex items-center gap-4 p-4 bg-white border rounded-lg <?php echo $capabilities['imagick'] ? 'border-green-200 bg-gradient-to-br from-white to-green-50' : 'border-gray-200'; ?>">
+                                <div class="flex items-center justify-center w-10 h-10 rounded-lg <?php echo $capabilities['imagick'] ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'; ?>">
+                                    <span class="dashicons <?php echo $capabilities['imagick'] ? 'dashicons-yes-alt' : 'dashicons-minus'; ?>"></span>
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <span class="block text-sm font-semibold text-gray-900 truncate"><?php esc_html_e('ImageMagick', 'media-toolkit'); ?></span>
+                                    <span class="block text-xs text-gray-500 truncate" title="<?php echo esc_attr($capabilities['imagick_version'] ?? ''); ?>">
+                                        <?php 
+                                        if ($capabilities['imagick'] && !empty($capabilities['imagick_version'])) {
+                                            // Extract just the version number for display
+                                            if (preg_match('/ImageMagick\s+([\d.]+)/', $capabilities['imagick_version'], $matches)) {
+                                                echo esc_html('v' . $matches[1]);
+                                            } else {
+                                                echo esc_html__('Available', 'media-toolkit');
+                                            }
+                                        } else {
+                                            echo esc_html__('Not available', 'media-toolkit');
+                                        }
+                                        ?>
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- WordPress Editor -->
+                            <div class="flex items-center gap-4 p-4 bg-white border border-blue-200 rounded-lg bg-gradient-to-br from-white to-blue-50">
+                                <div class="flex items-center justify-center w-10 h-10 rounded-lg bg-blue-100 text-blue-600">
+                                    <span class="dashicons dashicons-wordpress"></span>
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <span class="block text-sm font-semibold text-gray-900 truncate"><?php esc_html_e('WP Image Editor', 'media-toolkit'); ?></span>
+                                    <span class="block text-xs text-gray-500 truncate">
+                                        <?php 
+                                        $editor = $capabilities['wp_editor'] ?? 'unknown';
+                                        if ($editor === 'imagick') {
+                                            esc_html_e('Using ImageMagick', 'media-toolkit');
+                                        } elseif ($editor === 'gd') {
+                                            esc_html_e('Using GD Library', 'media-toolkit');
+                                        } elseif ($editor === 'none') {
+                                            esc_html_e('No editor available', 'media-toolkit');
+                                        } else {
+                                            esc_html_e('Unknown', 'media-toolkit');
+                                        }
+                                        ?>
+                                    </span>
+                                </div>
                             </div>
                         </div>
+                    </div>
 
-                        <div class="flex items-center gap-4 p-5 bg-white border border-gray-200 rounded-lg">
-                            <div class="flex items-center justify-center w-11 h-11 rounded-lg <?php echo $capabilities['imagick'] ? 'mt-stat-icon-success' : 'mt-stat-icon-warning'; ?>">
-                                <span class="dashicons <?php echo $capabilities['imagick'] ? 'dashicons-yes-alt' : 'dashicons-info'; ?>"></span>
-                            </div>
-                            <div>
-                                <span class="block text-lg font-semibold text-gray-900"><?php echo $capabilities['imagick'] ? __('Available', 'media-toolkit') : __('Not available', 'media-toolkit'); ?></span>
-                                <span class="text-sm text-gray-500"><?php esc_html_e('ImageMagick', 'media-toolkit'); ?></span>
-                            </div>
+                    <!-- Supported Formats -->
+                    <div>
+                        <h4 class="text-sm font-semibold text-gray-700 mb-3"><?php esc_html_e('Supported Formats', 'media-toolkit'); ?></h4>
+                        <div class="flex flex-wrap gap-2">
+                            <?php
+                            $formats = [
+                                'jpeg_support' => 'JPEG',
+                                'png_support' => 'PNG',
+                                'gif_support' => 'GIF',
+                                'webp_support' => 'WebP',
+                                'avif_support' => 'AVIF',
+                            ];
+                            foreach ($formats as $key => $label):
+                                $supported = $capabilities[$key] ?? false;
+                            ?>
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg <?php echo $supported ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'; ?>">
+                                <span class="dashicons <?php echo $supported ? 'dashicons-yes' : 'dashicons-no'; ?> text-sm"></span>
+                                <?php echo esc_html($label); ?>
+                            </span>
+                            <?php endforeach; ?>
                         </div>
+                    </div>
 
-                        <div class="flex items-center gap-4 p-5 bg-white border border-gray-200 rounded-lg">
-                            <div class="flex items-center justify-center w-11 h-11 rounded-lg <?php echo $capabilities['webp_support'] ? 'mt-stat-icon-success' : 'mt-stat-icon-warning'; ?>">
-                                <span class="dashicons <?php echo $capabilities['webp_support'] ? 'dashicons-yes-alt' : 'dashicons-info'; ?>"></span>
+                    <!-- Server Limits -->
+                    <div>
+                        <h4 class="text-sm font-semibold text-gray-700 mb-3"><?php esc_html_e('Server Limits', 'media-toolkit'); ?></h4>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                                <span class="dashicons dashicons-database text-gray-500"></span>
+                                <div>
+                                    <span class="block text-xs text-gray-500"><?php esc_html_e('Memory Limit', 'media-toolkit'); ?></span>
+                                    <span class="block text-sm font-semibold text-gray-900"><?php echo esc_html($capabilities['max_memory'] ?: '-'); ?></span>
+                                </div>
                             </div>
-                            <div>
-                                <span class="block text-lg font-semibold text-gray-900"><?php echo $capabilities['webp_support'] ? __('Available', 'media-toolkit') : __('Not available', 'media-toolkit'); ?></span>
-                                <span class="text-sm text-gray-500"><?php esc_html_e('WebP Support', 'media-toolkit'); ?></span>
+                            <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                                <span class="dashicons dashicons-clock text-gray-500"></span>
+                                <div>
+                                    <span class="block text-xs text-gray-500"><?php esc_html_e('Max Execution', 'media-toolkit'); ?></span>
+                                    <span class="block text-sm font-semibold text-gray-900"><?php echo esc_html(($capabilities['max_execution_time'] ?: '0') . 's'); ?></span>
+                                </div>
                             </div>
-                        </div>
-
-                        <div class="flex items-center gap-4 p-5 bg-white border border-gray-200 rounded-lg">
-                            <div class="flex items-center justify-center w-11 h-11 rounded-lg mt-stat-icon-info">
-                                <span class="dashicons dashicons-info"></span>
-                            </div>
-                            <div>
-                                <span class="block text-lg font-semibold text-gray-900"><?php echo esc_html($capabilities['max_memory']); ?></span>
-                                <span class="text-sm text-gray-500"><?php esc_html_e('Memory Limit', 'media-toolkit'); ?></span>
+                            <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                                <span class="dashicons dashicons-upload text-gray-500"></span>
+                                <div>
+                                    <span class="block text-xs text-gray-500"><?php esc_html_e('Upload Max Size', 'media-toolkit'); ?></span>
+                                    <span class="block text-sm font-semibold text-gray-900"><?php echo esc_html($capabilities['upload_max_filesize'] ?: '-'); ?></span>
+                                </div>
                             </div>
                         </div>
                     </div>
