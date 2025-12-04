@@ -353,7 +353,14 @@ final class Upload_Handler
      */
     public function get_storage_url(int $attachment_id): string
     {
-        return get_post_meta($attachment_id, '_media_toolkit_url', true) ?: '';
+        // Build URL dynamically using current CDN/storage settings
+        $s3_key = get_post_meta($attachment_id, '_media_toolkit_key', true);
+        
+        if (empty($s3_key)) {
+            return '';
+        }
+        
+        return $this->settings->get_file_url($s3_key);
     }
 
     /**

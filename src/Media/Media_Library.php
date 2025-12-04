@@ -61,11 +61,12 @@ final class Media_Library
      */
     public function filter_attachment_url(string $url, int $attachment_id): string
     {
-        // Check if migrated to S3
-        $s3_url = get_post_meta($attachment_id, '_media_toolkit_url', true);
+        // Check if migrated to S3 - use key to build URL dynamically
+        $s3_key = get_post_meta($attachment_id, '_media_toolkit_key', true);
         
-        if (!empty($s3_url)) {
-            return $s3_url;
+        if (!empty($s3_key)) {
+            // Build URL dynamically using current CDN/storage settings
+            return $this->get_base_url() . '/' . ltrim($s3_key, '/');
         }
 
         // Not migrated yet, return original
@@ -187,10 +188,10 @@ final class Media_Library
     {
         $attachment_id = $attachment->ID;
         
-        // Update main URL
-        $s3_url = get_post_meta($attachment_id, '_media_toolkit_url', true);
-        if (!empty($s3_url)) {
-            $response['url'] = $s3_url;
+        // Update main URL - build dynamically using current CDN/storage settings
+        $s3_key = get_post_meta($attachment_id, '_media_toolkit_key', true);
+        if (!empty($s3_key)) {
+            $response['url'] = $this->get_base_url() . '/' . ltrim($s3_key, '/');
         }
 
         // Update sizes URLs
@@ -226,7 +227,8 @@ final class Media_Library
         }
 
         $s3_key = get_post_meta($attachment_id, '_media_toolkit_key', true);
-        $s3_url = get_post_meta($attachment_id, '_media_toolkit_url', true);
+        // Build URL dynamically using current CDN/storage settings
+        $s3_url = $this->get_base_url() . '/' . ltrim($s3_key, '/');
 
         $form_fields['media_toolkit_info'] = [
             'label' => 'Cloud Storage',
@@ -252,12 +254,15 @@ final class Media_Library
      */
     private function get_size_url(int $attachment_id, string|array $size): string
     {
-        // Get main S3 URL
-        $main_url = get_post_meta($attachment_id, '_media_toolkit_url', true);
+        // Get main S3 key - build URL dynamically using current CDN/storage settings
+        $main_key = get_post_meta($attachment_id, '_media_toolkit_key', true);
         
-        if (empty($main_url)) {
+        if (empty($main_key)) {
             return '';
         }
+
+        $base_url = $this->get_base_url();
+        $main_url = $base_url . '/' . ltrim($main_key, '/');
 
         // If requesting full size
         if ($size === 'full' || (is_array($size) && empty($size))) {
@@ -268,7 +273,7 @@ final class Media_Library
         $thumb_keys = get_post_meta($attachment_id, '_media_toolkit_thumb_keys', true);
         
         if (is_array($thumb_keys) && is_string($size) && isset($thumb_keys[$size])) {
-            return $this->get_base_url() . '/' . $thumb_keys[$size];
+            return $base_url . '/' . $thumb_keys[$size];
         }
 
         return $main_url;

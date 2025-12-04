@@ -463,6 +463,10 @@ $skip = apply_filters('media_toolkit_skip_resize', false, $file_path, $mime_type
 
 ## Changelog
 
+### 2.2.2
+- **Fix**: CDN URL not applied to media URLs - URLs were using saved S3 direct URLs instead of computing them dynamically from current CDN settings
+- **Improved**: URL generation now always uses current CDN/storage configuration, allowing CDN URL changes to take effect immediately without re-migration
+
 ### 2.2.1
 - **Improved**: Cache Headers update now shows progress in the log every 100 files processed
 

@@ -110,7 +110,7 @@ final class Media_Library_UI
 
         $is_migrated = !empty(get_post_meta($post_id, '_media_toolkit_migrated', true));
         $is_optimized = !empty(get_post_meta($post_id, '_media_toolkit_optimized', true));
-        $s3_url = get_post_meta($post_id, '_media_toolkit_url', true);
+        $s3_url = $this->get_dynamic_url($post_id);
         $bytes_saved = (int) get_post_meta($post_id, '_media_toolkit_bytes_saved', true);
 
         if ($is_migrated) {
@@ -403,7 +403,7 @@ final class Media_Library_UI
             'migrated' => $is_migrated,
             'optimized' => $is_optimized,
             's3Key' => get_post_meta($attachment_id, '_media_toolkit_key', true) ?: null,
-            's3Url' => get_post_meta($attachment_id, '_media_toolkit_url', true) ?: null,
+            's3Url' => $this->get_dynamic_url($attachment_id),
             'originalSize' => (int) get_post_meta($attachment_id, '_media_toolkit_original_size', true),
             'optimizedSize' => (int) get_post_meta($attachment_id, '_media_toolkit_optimized_size', true),
             'bytesSaved' => (int) get_post_meta($attachment_id, '_media_toolkit_bytes_saved', true),
@@ -614,12 +614,26 @@ final class Media_Library_UI
             'migrated' => $is_migrated,
             'optimized' => $is_optimized,
             's3Key' => get_post_meta($attachment_id, '_media_toolkit_key', true) ?: null,
-            's3Url' => get_post_meta($attachment_id, '_media_toolkit_url', true) ?: null,
+            's3Url' => $this->get_dynamic_url($attachment_id),
             'originalSize' => (int) get_post_meta($attachment_id, '_media_toolkit_original_size', true),
             'optimizedSize' => (int) get_post_meta($attachment_id, '_media_toolkit_optimized_size', true),
             'bytesSaved' => (int) get_post_meta($attachment_id, '_media_toolkit_bytes_saved', true),
             'localExists' => file_exists(get_attached_file($attachment_id)),
         ]);
+    }
+
+    /**
+     * Get dynamic URL for attachment using current CDN/storage settings
+     */
+    private function get_dynamic_url(int $attachment_id): ?string
+    {
+        $s3_key = get_post_meta($attachment_id, '_media_toolkit_key', true);
+        
+        if (empty($s3_key)) {
+            return null;
+        }
+        
+        return $this->settings->get_file_url($s3_key);
     }
 }
 
