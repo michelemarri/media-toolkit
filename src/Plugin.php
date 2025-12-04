@@ -94,7 +94,7 @@ final class Plugin
         add_action('media_toolkit_cleanup_logs', [$this, 'cleanup_logs']);
         add_action('media_toolkit_retry_failed', [$this, 'retry_failed_operations']);
         add_action('media_toolkit_batch_invalidation', [$this, 'process_batch_invalidation']);
-        add_action('media_toolkit_sync_s3_stats', [$this, 'sync_storage_stats']);
+        add_action('media_toolkit_sync_storage_stats', [$this, 'sync_storage_stats']);
         
         // Add custom cron intervals (must be registered before scheduling)
         add_filter('cron_schedules', function (array $schedules): array {
@@ -134,15 +134,15 @@ final class Plugin
      */
     public function schedule_storage_sync(): void
     {
-        $hook = 'media_toolkit_sync_s3_stats';
-        $interval = $this->settings?->get_s3_sync_interval() ?? 24;
-        
+        $hook = 'media_toolkit_sync_storage_stats';
+        $interval = $this->settings?->get_storage_sync_interval() ?? 24;
+
         // Clear existing schedule
         $timestamp = wp_next_scheduled($hook);
         if ($timestamp) {
             wp_unschedule_event($timestamp, $hook);
         }
-        
+
         // Schedule new if interval > 0
         if ($interval > 0 && $this->settings?->is_configured()) {
             $recurrence = $interval <= 1 ? 'hourly' : ($interval <= 12 ? 'twicedaily' : 'daily');
@@ -335,7 +335,7 @@ final class Plugin
         wp_clear_scheduled_hook('media_toolkit_cleanup_logs');
         wp_clear_scheduled_hook('media_toolkit_retry_failed');
         wp_clear_scheduled_hook('media_toolkit_batch_invalidation');
-        wp_clear_scheduled_hook('media_toolkit_sync_s3_stats');
+        wp_clear_scheduled_hook('media_toolkit_sync_storage_stats');
     }
 
     private static function create_tables(): void
@@ -676,24 +676,16 @@ final class Plugin
         }
 
         $stats = $this->storage->get_bucket_stats();
-        
+
         if ($stats !== null) {
-            $this->settings->save_s3_stats($stats);
+            $this->settings->save_storage_stats($stats);
             $this->logger?->info('sync', 'Storage stats synced: ' . $stats['files'] . ' files, ' . size_format($stats['size']));
-            
+
             // Clear stats cache to refresh dashboard
             $this->stats?->clear_cache();
         } else {
             $this->logger?->warning('sync', 'Failed to sync storage stats');
         }
-    }
-
-    /**
-     * @deprecated Use sync_storage_stats() instead
-     */
-    public function sync_s3_stats(): void
-    {
-        $this->sync_storage_stats();
     }
 
     // Getters for components

@@ -24,8 +24,8 @@ $migration_stats = $stats->get_migration_stats();
 $dashboard_stats = $stats->get_dashboard_stats();
 
 $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'migration';
-$s3_stats = $settings ? $settings->get_cached_s3_stats() : null;
-$sync_interval = $settings ? $settings->get_s3_sync_interval() : 24;
+$storage_stats = $settings ? $settings->get_cached_storage_stats() : null;
+$sync_interval = $settings ? $settings->get_storage_sync_interval() : 24;
 $cache_control = $settings ? $settings->get_cache_control_max_age() : 31536000;
 
 $bannerPath = MEDIA_TOOLKIT_PATH . 'assets/images/banner-1544x500.png';
@@ -313,30 +313,30 @@ $hasBanner = file_exists($bannerPath);
                     </h4>
                     <p class="text-sm text-gray-600 mb-5"><?php esc_html_e('Sync statistics from cloud storage to get accurate file count and storage usage for the current environment.', 'media-toolkit'); ?></p>
                     
-                    <?php if ($s3_stats): ?>
+                    <?php if ($storage_stats): ?>
                     <div class="space-y-2 mb-5">
                         <div class="flex items-center justify-between p-3 bg-white rounded-lg">
                             <span class="text-sm text-gray-500"><?php esc_html_e('Last sync', 'media-toolkit'); ?></span>
-                            <span class="text-sm font-semibold text-gray-900"><?php echo esc_html($s3_stats['synced_at'] ?? 'Never'); ?></span>
+                            <span class="text-sm font-semibold text-gray-900"><?php echo esc_html($storage_stats['synced_at'] ?? 'Never'); ?></span>
                         </div>
                         <div class="flex items-center justify-between p-3 bg-white rounded-lg">
                             <span class="text-sm text-gray-500"><?php esc_html_e('Original files', 'media-toolkit'); ?></span>
-                            <span class="text-sm font-semibold text-gray-900"><?php echo number_format($s3_stats['original_files'] ?? $s3_stats['files'] ?? 0); ?></span>
+                            <span class="text-sm font-semibold text-gray-900"><?php echo number_format($storage_stats['original_files'] ?? $storage_stats['files'] ?? 0); ?></span>
                         </div>
                         <div class="flex items-center justify-between p-3 bg-white rounded-lg">
                             <span class="text-sm text-gray-500"><?php esc_html_e('Total files', 'media-toolkit'); ?></span>
-                            <span class="text-sm font-semibold text-gray-900"><?php echo number_format($s3_stats['files'] ?? 0); ?></span>
+                            <span class="text-sm font-semibold text-gray-900"><?php echo number_format($storage_stats['files'] ?? 0); ?></span>
                         </div>
                         <div class="flex items-center justify-between p-3 bg-white rounded-lg">
                             <span class="text-sm text-gray-500"><?php esc_html_e('Storage', 'media-toolkit'); ?></span>
-                            <span class="text-sm font-semibold text-gray-900"><?php echo size_format($s3_stats['size'] ?? 0); ?></span>
+                            <span class="text-sm font-semibold text-gray-900"><?php echo size_format($storage_stats['size'] ?? 0); ?></span>
                         </div>
                     </div>
                     <?php endif; ?>
                     
                     <div class="mb-5 max-w-xs">
-                        <label for="s3_sync_interval" class="block text-sm font-medium text-gray-700 mb-2"><?php esc_html_e('Auto Sync Interval', 'media-toolkit'); ?></label>
-                        <select name="s3_sync_interval" id="s3_sync_interval" class="mt-select w-full px-4 py-2.5 text-sm bg-white border border-gray-300 rounded-lg outline-none transition-all">
+                        <label for="storage_sync_interval" class="block text-sm font-medium text-gray-700 mb-2"><?php esc_html_e('Auto Sync Interval', 'media-toolkit'); ?></label>
+                        <select name="storage_sync_interval" id="storage_sync_interval" class="mt-select w-full px-4 py-2.5 text-sm bg-white border border-gray-300 rounded-lg outline-none transition-all">
                             <option value="0" <?php selected($sync_interval, 0); ?>><?php esc_html_e('Disabled', 'media-toolkit'); ?></option>
                             <option value="1" <?php selected($sync_interval, 1); ?>><?php esc_html_e('Every hour', 'media-toolkit'); ?></option>
                             <option value="6" <?php selected($sync_interval, 6); ?>><?php esc_html_e('Every 6 hours', 'media-toolkit'); ?></option>

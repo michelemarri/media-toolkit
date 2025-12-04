@@ -295,7 +295,7 @@ abstract class AbstractObjectStorage implements StorageInterface
             $relative_path = basename($file_path);
         }
 
-        $base_path = $this->settings->get_s3_base_path();
+        $base_path = $this->settings->get_storage_base_path();
 
         return rtrim($base_path, '/') . '/' . ltrim($relative_path, '/');
     }
@@ -385,7 +385,7 @@ abstract class AbstractObjectStorage implements StorageInterface
             return null;
         }
 
-        $base_path = $this->settings->get_s3_base_path();
+        $base_path = $this->settings->get_storage_base_path();
 
         try {
             $params = [
@@ -417,6 +417,60 @@ abstract class AbstractObjectStorage implements StorageInterface
             $this->logger->error(
                 'list_objects',
                 'Failed to list objects: ' . $e->getMessage(),
+                null,
+                null,
+                ['error_code' => $e->getAwsErrorCode(), 'batch_size' => $batch_size]
+            );
+            return null;
+        }
+    }
+
+    /**
+     * List objects with full metadata (key + size) for reconciliation
+     */
+    public function list_objects_with_metadata(int $batch_size = 100, ?string $continuation_token = null): ?array
+    {
+        $client = $this->get_client();
+
+        if ($client === null) {
+            return null;
+        }
+
+        $base_path = $this->settings->get_storage_base_path();
+
+        try {
+            $params = [
+                'Bucket' => $this->config->bucket,
+                'Prefix' => $base_path,
+                'MaxKeys' => $batch_size,
+            ];
+
+            if ($continuation_token !== null) {
+                $params['ContinuationToken'] = $continuation_token;
+            }
+
+            $result = $client->listObjectsV2($params);
+
+            $objects = [];
+            if (isset($result['Contents'])) {
+                foreach ($result['Contents'] as $object) {
+                    $objects[] = [
+                        'key' => $object['Key'],
+                        'size' => (int) ($object['Size'] ?? 0),
+                    ];
+                }
+            }
+
+            return [
+                'objects' => $objects,
+                'next_token' => $result['NextContinuationToken'] ?? null,
+                'is_truncated' => $result['IsTruncated'] ?? false,
+            ];
+
+        } catch (AwsException $e) {
+            $this->logger->error(
+                'list_objects_metadata',
+                'Failed to list objects with metadata: ' . $e->getMessage(),
                 null,
                 null,
                 ['error_code' => $e->getAwsErrorCode(), 'batch_size' => $batch_size]
@@ -478,6 +532,25 @@ abstract class AbstractObjectStorage implements StorageInterface
     }
 
     /**
+     * Update metadata for multiple objects in batch
+     */
+    public function update_objects_metadata_batch(array $keys, int $cache_max_age): array
+    {
+        $success = 0;
+        $failed = 0;
+
+        foreach ($keys as $key) {
+            if ($this->update_object_metadata($key, $cache_max_age)) {
+                $success++;
+            } else {
+                $failed++;
+            }
+        }
+
+        return ['success' => $success, 'failed' => $failed];
+    }
+
+    /**
      * Get storage statistics
      */
     public function get_bucket_stats(): ?array
@@ -488,7 +561,7 @@ abstract class AbstractObjectStorage implements StorageInterface
             return null;
         }
 
-        $base_path = $this->settings->get_s3_base_path();
+        $base_path = $this->settings->get_storage_base_path();
         $total_files = 0;
         $original_files = 0;
         $total_size = 0;

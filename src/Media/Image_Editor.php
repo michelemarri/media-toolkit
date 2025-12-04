@@ -335,13 +335,13 @@ final class Image_Editor
         }
 
         $base_path = dirname($metadata['file']);
-        $s3_base = rtrim($this->storage->generate_s3_key($upload_dir['basedir'] . '/' . $base_path), '/');
+        $storage_base = rtrim($this->storage->generate_key($upload_dir['basedir'] . '/' . $base_path), '/');
 
         $keys_to_delete = [];
         
         foreach ($backup_sizes as $size_name => $size_data) {
             if (isset($size_data['file'])) {
-                $keys_to_delete[] = $s3_base . '/' . $size_data['file'];
+                $keys_to_delete[] = $storage_base . '/' . $size_data['file'];
             }
         }
 

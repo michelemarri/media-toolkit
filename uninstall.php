@@ -41,7 +41,7 @@ delete_option('media_toolkit_remove_on_uninstall');
 delete_option('media_toolkit_cache_control');
 delete_option('media_toolkit_content_disposition');
 delete_option('media_toolkit_sync_interval');
-delete_option('media_toolkit_s3_stats');
+delete_option('media_toolkit_storage_stats');
 delete_option('media_toolkit_optimization_stats');
 delete_option('media_toolkit_optimization_db_version');
 
@@ -72,5 +72,5 @@ $wpdb->query(
 wp_clear_scheduled_hook('media_toolkit_cleanup_logs');
 wp_clear_scheduled_hook('media_toolkit_retry_failed');
 wp_clear_scheduled_hook('media_toolkit_batch_invalidation');
-wp_clear_scheduled_hook('media_toolkit_sync_s3_stats');
+wp_clear_scheduled_hook('media_toolkit_sync_storage_stats');
 

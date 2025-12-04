@@ -24,7 +24,7 @@ final class Importer
      */
     private const BLOCKED_OPTIONS = [
         'media_toolkit_settings', // Contains encrypted credentials
-        'media_toolkit_s3_stats', // Runtime cache data
+        'media_toolkit_storage_stats', // Runtime cache data
     ];
 
     /**

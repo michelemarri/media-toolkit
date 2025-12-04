@@ -76,9 +76,9 @@ final class Admin_Settings
         add_action('wp_ajax_media_toolkit_export_history', [$this, 'ajax_export_history']);
         add_action('wp_ajax_media_toolkit_clear_history', [$this, 'ajax_clear_history']);
         add_action('wp_ajax_media_toolkit_get_dashboard_stats', [$this, 'ajax_get_dashboard_stats']);
-        add_action('wp_ajax_media_toolkit_sync_s3_stats', [$this, 'ajax_sync_s3_stats']);
+        add_action('wp_ajax_media_toolkit_sync_storage_stats', [$this, 'ajax_sync_storage_stats']);
         add_action('wp_ajax_media_toolkit_apply_cache_headers', [$this, 'ajax_apply_cache_headers']);
-        add_action('wp_ajax_media_toolkit_count_s3_files', [$this, 'ajax_count_s3_files']);
+        add_action('wp_ajax_media_toolkit_count_storage_files', [$this, 'ajax_count_storage_files']);
         
         // Update settings handlers
         add_action('wp_ajax_media_toolkit_save_update_settings', [$this, 'ajax_save_update_settings']);
@@ -107,8 +107,8 @@ final class Admin_Settings
             'remove_local' => $this->settings->should_remove_local_files(),
             'remove_on_uninstall' => $this->settings->should_remove_on_uninstall(),
             'cache_control' => $this->settings->get_cache_control_max_age(),
-            's3_sync_interval' => $this->settings->get_s3_sync_interval(),
-            'base_path' => $this->settings->get_s3_base_path(),
+            'storage_sync_interval' => $this->settings->get_storage_sync_interval(),
+            'base_path' => $this->settings->get_storage_base_path(),
             'is_configured' => $this->settings->is_configured(),
         ];
     }
@@ -354,15 +354,15 @@ final class Admin_Settings
             wp_send_json_error(['message' => 'Permission denied']);
         }
 
-        if (!isset($_POST['s3_sync_interval'])) {
+        if (!isset($_POST['storage_sync_interval'])) {
             wp_send_json_error(['message' => 'Missing sync interval']);
         }
 
-        $interval = (int) $_POST['s3_sync_interval'];
-        $this->settings->set_s3_sync_interval($interval);
-        
+        $interval = (int) $_POST['storage_sync_interval'];
+        $this->settings->set_storage_sync_interval($interval);
+
         // Reschedule cron job with new interval
-        media_toolkit()->schedule_s3_sync();
+        media_toolkit()->schedule_storage_sync();
 
         $this->logger->info('settings', "Sync interval updated to {$interval} hours");
 
@@ -704,12 +704,12 @@ final class Admin_Settings
     }
 
     /**
-     * AJAX: Sync S3 stats manually
+     * AJAX: Sync storage stats manually
      */
-    public function ajax_sync_s3_stats(): void
+    public function ajax_sync_storage_stats(): void
     {
         check_ajax_referer('media_toolkit_nonce', 'nonce');
-        
+
         if (!current_user_can('manage_options')) {
             wp_send_json_error(['message' => 'Permission denied']);
         }
@@ -719,12 +719,12 @@ final class Admin_Settings
         }
 
         $stats = $this->storage->get_bucket_stats();
-        
+
         if ($stats === null) {
             wp_send_json_error(['message' => 'Failed to retrieve storage statistics']);
         }
 
-        $this->settings->save_s3_stats($stats);
+        $this->settings->save_storage_stats($stats);
         $this->stats->clear_cache();
 
         wp_send_json_success([
@@ -790,12 +790,12 @@ final class Admin_Settings
     }
 
     /**
-     * AJAX: Count total S3 files (for progress calculation)
+     * AJAX: Count total storage files (for progress calculation)
      */
-    public function ajax_count_s3_files(): void
+    public function ajax_count_storage_files(): void
     {
         check_ajax_referer('media_toolkit_nonce', 'nonce');
-        
+
         if (!current_user_can('manage_options')) {
             wp_send_json_error(['message' => 'Permission denied']);
         }
@@ -805,8 +805,8 @@ final class Admin_Settings
         }
 
         // Get cached stats if available
-        $cached_stats = $this->settings->get_cached_s3_stats();
-        
+        $cached_stats = $this->settings->get_cached_storage_stats();
+
         if ($cached_stats !== null && !empty($cached_stats['files'])) {
             wp_send_json_success([
                 'total_files' => $cached_stats['files'],
@@ -815,15 +815,15 @@ final class Admin_Settings
             return;
         }
 
-        // Otherwise count from S3
+        // Otherwise count from storage
         $stats = $this->storage->get_bucket_stats();
-        
+
         if ($stats === null) {
             wp_send_json_error(['message' => 'Failed to count storage files']);
         }
 
         // Save stats
-        $this->settings->save_s3_stats($stats);
+        $this->settings->save_storage_stats($stats);
 
         wp_send_json_success([
             'total_files' => $stats['files'],

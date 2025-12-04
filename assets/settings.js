@@ -52,7 +52,7 @@
             $('#btn-cancel-cache-sync').on('click', this.cancelCacheSync.bind(this));
 
             // Sync interval change (Tools page)
-            $('#s3_sync_interval').on('change', this.saveSyncInterval.bind(this));
+            $('#storage_sync_interval').on('change', this.saveSyncInterval.bind(this));
 
             // Activity tab
             $('#btn-refresh-logs').on('click', this.loadLogs.bind(this));
@@ -544,7 +544,7 @@
                 url: mediaToolkit.ajaxUrl,
                 method: 'POST',
                 data: {
-                    action: 'media_toolkit_sync_s3_stats',
+                    action: 'media_toolkit_sync_storage_stats',
                     nonce: mediaToolkit.nonce
                 },
                 success: function (response) {
@@ -613,7 +613,7 @@
                 url: mediaToolkit.ajaxUrl,
                 method: 'POST',
                 data: {
-                    action: 'media_toolkit_count_s3_files',
+                    action: 'media_toolkit_count_storage_files',
                     nonce: mediaToolkit.nonce
                 },
                 success: function (response) {
@@ -769,7 +769,7 @@
 
         // Save sync interval from Tools page
         saveSyncInterval: function () {
-            const interval = $('#s3_sync_interval').val();
+            const interval = $('#storage_sync_interval').val();
 
             $.ajax({
                 url: mediaToolkit.ajaxUrl,
@@ -777,7 +777,7 @@
                 data: {
                     action: 'media_toolkit_save_sync_interval',
                     nonce: mediaToolkit.nonce,
-                    s3_sync_interval: interval
+                    storage_sync_interval: interval
                 },
                 success: function (response) {
                     if (response.success) {

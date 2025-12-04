@@ -68,88 +68,88 @@ final class Stats
             )
         );
 
-        // Check if we have real S3 stats
-        $s3_stats = $this->settings?->get_cached_s3_stats();
-        $s3_synced_at = null;
-        
-        // S3 bucket stats
-        if ($s3_stats !== null) {
-            $s3_total_files = $s3_stats['files'] ?? 0;
-            $s3_original_files = $s3_stats['original_files'] ?? $s3_total_files;
-            $total_storage = $s3_stats['size'] ?? 0;
-            $original_storage = $s3_stats['original_size'] ?? $total_storage;
-            $s3_synced_at = $s3_stats['synced_at'] ?? null;
+        // Check if we have real storage stats
+        $storage_stats = $this->settings?->get_cached_storage_stats();
+        $storage_synced_at = null;
+
+        // Storage bucket stats
+        if ($storage_stats !== null) {
+            $storage_total_files = $storage_stats['files'] ?? 0;
+            $storage_original_files = $storage_stats['original_files'] ?? $storage_total_files;
+            $total_storage = $storage_stats['size'] ?? 0;
+            $original_storage = $storage_stats['original_size'] ?? $total_storage;
+            $storage_synced_at = $storage_stats['synced_at'] ?? null;
         } else {
-            $s3_total_files = 0;
-            $s3_original_files = 0;
+            $storage_total_files = 0;
+            $storage_original_files = 0;
             $total_storage = 0;
             $original_storage = 0;
         }
 
-        // HYBRID LOGIC: Determine the best estimate of files on S3
+        // HYBRID LOGIC: Determine the best estimate of files in storage
         $sync_source = 'unknown';
-        $estimated_on_s3 = 0;
+        $estimated_in_storage = 0;
         $needs_reconciliation = false;
-        
+
         if ($migrated_via_plugin > 0) {
             // Plugin has been actively used - trust WordPress metadata
             $sync_source = 'wordpress_meta';
-            $estimated_on_s3 = $migrated_via_plugin;
-            
-            // Check if S3 has significantly more files (might need reconciliation)
-            if ($s3_original_files > 0 && $s3_original_files > $migrated_via_plugin * 1.2) {
+            $estimated_in_storage = $migrated_via_plugin;
+
+            // Check if storage has significantly more files (might need reconciliation)
+            if ($storage_original_files > 0 && $storage_original_files > $migrated_via_plugin * 1.2) {
                 $needs_reconciliation = true;
             }
-        } elseif ($s3_original_files > 0) {
-            // No plugin metadata, but S3 has files - estimate from S3
-            $sync_source = 's3_estimated';
-            
-            // S3 original files should roughly match WP attachments if synced
+        } elseif ($storage_original_files > 0) {
+            // No plugin metadata, but storage has files - estimate from storage
+            $sync_source = 'storage_estimated';
+
+            // Storage original files should roughly match WP attachments if synced
             // Cap at wp_attachments to avoid >100%
-            $estimated_on_s3 = min($s3_original_files, $wp_attachments);
+            $estimated_in_storage = min($storage_original_files, $wp_attachments);
             $needs_reconciliation = true; // Definitely needs reconciliation
         } else {
             // No data from either source
             $sync_source = 'none';
-            $estimated_on_s3 = 0;
+            $estimated_in_storage = 0;
         }
 
         // Calculate sync percentage
-        $sync_percentage = $wp_attachments > 0 
-            ? min(100, round(($estimated_on_s3 / $wp_attachments) * 100, 1))
+        $sync_percentage = $wp_attachments > 0
+            ? min(100, round(($estimated_in_storage / $wp_attachments) * 100, 1))
             : 0;
 
         // Calculate pending
-        $pending_attachments = max(0, $wp_attachments - $estimated_on_s3);
+        $pending_attachments = max(0, $wp_attachments - $estimated_in_storage);
 
         $stats = [
             // WordPress stats
             'wp_attachments' => $wp_attachments,
-            
+
             // Sync status (hybrid calculation)
-            'estimated_on_s3' => $estimated_on_s3,
+            'estimated_in_storage' => $estimated_in_storage,
             'pending_attachments' => $pending_attachments,
             'sync_percentage' => $sync_percentage,
             'sync_source' => $sync_source,
             'needs_reconciliation' => $needs_reconciliation,
-            
+
             // WordPress metadata (what plugin knows)
             'migrated_via_plugin' => $migrated_via_plugin,
-            
-            // S3 bucket raw stats
-            's3_total_files' => $s3_total_files,
-            's3_original_files' => $s3_original_files,
-            's3_total_storage' => $total_storage,
-            's3_original_storage' => $original_storage,
+
+            // Storage bucket raw stats
+            'storage_total_files' => $storage_total_files,
+            'storage_original_files' => $storage_original_files,
+            'storage_total_size' => $total_storage,
+            'storage_original_size' => $original_storage,
             'total_storage_formatted' => $this->format_bytes($total_storage),
             'original_storage_formatted' => $this->format_bytes($original_storage),
-            
+
             // For backwards compatibility
-            'original_files' => $estimated_on_s3,
-            'total_files' => $s3_total_files,
+            'original_files' => $estimated_in_storage,
+            'total_files' => $storage_total_files,
             'total_storage' => $total_storage,
-            'migrated_attachments' => $estimated_on_s3,
-            
+            'migrated_attachments' => $estimated_in_storage,
+
             // Activity stats
             'files_today' => $this->history->get_files_uploaded_today(),
             'files_migrated' => $this->history->get_migrated_count(),
@@ -158,9 +158,9 @@ final class Stats
             'last_upload_formatted' => $this->format_relative_time($this->history->get_last_upload()),
             'uploads_per_day' => $this->history->get_uploads_per_day(7),
             'connection_status' => $this->get_connection_status(),
-            's3_synced_at' => $s3_synced_at,
-            's3_synced_at_formatted' => $s3_synced_at ? $this->format_relative_time($s3_synced_at) : null,
-            'using_real_s3_stats' => $s3_stats !== null,
+            'storage_synced_at' => $storage_synced_at,
+            'storage_synced_at_formatted' => $storage_synced_at ? $this->format_relative_time($storage_synced_at) : null,
+            'using_real_storage_stats' => $storage_stats !== null,
         ];
 
         // Cache for 5 minutes

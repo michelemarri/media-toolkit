@@ -463,6 +463,17 @@ $skip = apply_filters('media_toolkit_skip_resize', false, $file_path, $mime_type
 
 ## Changelog
 
+### 2.2.0
+- **Fix**: Added missing `update_objects_metadata_batch()` method for Cache Headers tool
+- **Fix**: Corrected `generate_s3_key()` method call in Image_Editor (was `generate_key()`)
+- **Improved**: Reconciliation now uses StorageInterface methods instead of direct client access
+- **Improved**: Added `list_objects_with_metadata()` method to StorageInterface for better abstraction
+- **Refactor**: Renamed all `_s3_` naming to `_storage_` for provider-agnostic consistency
+  - Methods: `get_storage_base_path()`, `get_storage_sync_interval()`, `save_storage_stats()`, etc.
+  - Database options: `media_toolkit_storage_stats`
+  - Cron hooks: `media_toolkit_sync_storage_stats`
+- **Removed**: Deprecated `sync_s3_stats()` method and legacy aliases
+
 ### 2.0.0
 - **Major**: Multi-provider storage architecture
 - **New**: Support for Amazon S3, Cloudflare R2, DigitalOcean Spaces, Backblaze B2, and Wasabi

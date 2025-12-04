@@ -113,6 +113,15 @@ interface StorageInterface
     public function list_objects_batch(int $batch_size = 100, ?string $continuation_token = null): ?array;
 
     /**
+     * List objects with full metadata (key + size) for reconciliation
+     *
+     * @param int $batch_size Number of objects to return
+     * @param string|null $continuation_token Token for pagination
+     * @return array{objects: array<array{key: string, size: int}>, next_token: string|null, is_truncated: bool}|null
+     */
+    public function list_objects_with_metadata(int $batch_size = 100, ?string $continuation_token = null): ?array;
+
+    /**
      * Update object metadata (e.g., Cache-Control)
      *
      * @param string $key Storage key
@@ -120,6 +129,15 @@ interface StorageInterface
      * @return bool
      */
     public function update_object_metadata(string $key, int $cache_max_age): bool;
+
+    /**
+     * Update metadata for multiple objects in batch
+     *
+     * @param array<string> $keys Storage keys
+     * @param int $cache_max_age Cache-Control max-age in seconds
+     * @return array{success: int, failed: int}
+     */
+    public function update_objects_metadata_batch(array $keys, int $cache_max_age): array;
 
     /**
      * Get the storage provider type

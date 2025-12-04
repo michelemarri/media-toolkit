@@ -143,13 +143,13 @@ final class Media_Library
 
             // If not found in thumb_keys, construct URL
             if (str_contains($source['url'], '/wp-content/uploads/')) {
-                // Extract relative path and construct S3 URL
+                // Extract relative path and construct storage URL
                 $upload_dir = wp_upload_dir();
                 $base_dir = $upload_dir['basedir'];
                 $relative_url = str_replace($upload_dir['baseurl'], '', $source['url']);
-                
-                $s3_path = $this->settings->get_s3_base_path() . $relative_url;
-                $source['url'] = $base_url . '/' . ltrim($s3_path, '/');
+
+                $storage_path = $this->settings->get_storage_base_path() . $relative_url;
+                $source['url'] = $base_url . '/' . ltrim($storage_path, '/');
             }
         }
 

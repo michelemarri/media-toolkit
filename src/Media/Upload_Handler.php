@@ -349,27 +349,27 @@ final class Upload_Handler
     }
 
     /**
-     * Get S3 URL for an attachment
+     * Get storage URL for an attachment
      */
-    public function get_s3_url(int $attachment_id): string
+    public function get_storage_url(int $attachment_id): string
     {
         return get_post_meta($attachment_id, '_media_toolkit_url', true) ?: '';
     }
 
     /**
-     * Get S3 key for an attachment
+     * Get storage key for an attachment
      */
-    public function get_s3_key(int $attachment_id): string
+    public function get_storage_key(int $attachment_id): string
     {
         return get_post_meta($attachment_id, '_media_toolkit_key', true) ?: '';
     }
 
     /**
-     * Manually upload an existing attachment to S3
-     * 
+     * Manually upload an existing attachment to storage
+     *
      * @param int $attachment_id The attachment ID
-     * @param bool $force Re-upload even if already on S3
-     * @return array{success: bool, message: string, s3_key?: string, s3_url?: string}
+     * @param bool $force Re-upload even if already in storage
+     * @return array{success: bool, message: string, storage_key?: string, storage_url?: string}
      */
     public function upload_attachment(int $attachment_id, bool $force = false): array
     {
@@ -378,8 +378,8 @@ final class Upload_Handler
             return [
                 'success' => true,
                 'message' => 'Already on cloud',
-                's3_key' => $this->get_s3_key($attachment_id),
-                's3_url' => $this->get_s3_url($attachment_id),
+                'storage_key' => $this->get_storage_key($attachment_id),
+                'storage_url' => $this->get_storage_url($attachment_id),
             ];
         }
 

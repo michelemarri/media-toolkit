@@ -15,8 +15,6 @@ use Metodo\MediaToolkit\Core\Logger;
 use Metodo\MediaToolkit\History\History;
 use Metodo\MediaToolkit\History\HistoryAction;
 
-use Aws\Exception\AwsException;
-
 /**
  * Handles reconciliation between storage bucket and WordPress metadata
  * 
@@ -83,53 +81,40 @@ final class Reconciliation extends Batch_Processor
             )
         );
 
-        // S3 stats from cache
-        $s3_stats = $this->settings->get_cached_s3_stats();
-        $s3_original_files = $s3_stats['original_files'] ?? 0;
-        $s3_total_files = $s3_stats['files'] ?? 0;
+        // Storage stats from cache
+        $storage_stats = $this->settings->get_cached_storage_stats();
+        $storage_original_files = $storage_stats['original_files'] ?? 0;
+        $storage_total_files = $storage_stats['files'] ?? 0;
 
         // Discrepancy
-        $discrepancy = abs($s3_original_files - $marked_migrated);
-        $has_discrepancy = $discrepancy > 0 && $s3_original_files > 0;
+        $discrepancy = abs($storage_original_files - $marked_migrated);
+        $has_discrepancy = $discrepancy > 0 && $storage_original_files > 0;
 
         return [
             'total_attachments' => $total_attachments,
             'marked_migrated' => $marked_migrated,
             'not_marked' => $total_attachments - $marked_migrated,
-            's3_original_files' => $s3_original_files,
-            's3_total_files' => $s3_total_files,
+            'storage_original_files' => $storage_original_files,
+            'storage_total_files' => $storage_total_files,
             'discrepancy' => $discrepancy,
             'has_discrepancy' => $has_discrepancy,
-            'progress_percentage' => $total_attachments > 0 
-                ? round(($marked_migrated / $total_attachments) * 100, 1) 
+            'progress_percentage' => $total_attachments > 0
+                ? round(($marked_migrated / $total_attachments) * 100, 1)
                 : 0,
         ];
     }
 
     /**
-     * Scan S3 and build a map of files
-     * Returns array of S3 keys indexed by relative path
+     * Scan storage and build a map of files
+     * Returns array of storage keys indexed by relative path
      */
-    public function scan_s3_files(): array
+    public function scan_storage_files(): array
     {
-        $this->logger->info('reconciliation', 'scan_s3_files() started');
-        
-        $client = $this->storage->get_client();
-        $config = $this->settings->get_storage_config();
+        $this->logger->info('reconciliation', 'scan_storage_files() started');
 
-        if ($client === null) {
-            $this->logger->error('reconciliation', 'Storage client is null');
-            return [];
-        }
-        
-        if ($config === null) {
-            $this->logger->error('reconciliation', 'Storage config is null');
-            return [];
-        }
-
-        $base_path = $this->settings->get_s3_base_path();
+        $base_path = $this->settings->get_storage_base_path();
         $this->logger->info('reconciliation', 'Scanning storage with base_path: ' . $base_path);
-        
+
         $files = [];
         $continuation_token = null;
 
@@ -138,54 +123,43 @@ final class Reconciliation extends Batch_Processor
 
         try {
             do {
-                $params = [
-                    'Bucket' => $config->bucket,
-                    'Prefix' => $base_path,
-                    'MaxKeys' => 1000,
-                ];
+                $result = $this->storage->list_objects_with_metadata(1000, $continuation_token);
 
-                if ($continuation_token !== null) {
-                    $params['ContinuationToken'] = $continuation_token;
+                if ($result === null) {
+                    $this->logger->error('reconciliation', 'Failed to list storage objects');
+                    return [];
                 }
 
-                $result = $client->listObjectsV2($params);
+                foreach ($result['objects'] as $object) {
+                    $key = $object['key'];
+                    $size = $object['size'];
 
-                if (isset($result['Contents'])) {
-                    foreach ($result['Contents'] as $object) {
-                        $key = $object['Key'] ?? '';
-                        $size = $object['Size'] ?? 0;
-                        
-                        // Skip thumbnails - only track originals
-                        if (preg_match($thumbnail_pattern, $key)) {
-                            continue;
-                        }
+                    // Skip thumbnails - only track originals
+                    if (preg_match($thumbnail_pattern, $key)) {
+                        continue;
+                    }
 
-                        // Extract relative path from S3 key
-                        // S3 key format: media/{env}/wp-content/uploads/2024/01/image.jpg
-                        // We want: 2024/01/image.jpg
-                        $relative_path = $this->extract_relative_path($key, $base_path);
-                        
-                        if ($relative_path) {
-                            $files[$relative_path] = [
-                                's3_key' => $key,
-                                'size' => $size,
-                            ];
-                        }
+                    // Extract relative path from storage key
+                    // Key format: media/{env}/wp-content/uploads/2024/01/image.jpg
+                    // We want: 2024/01/image.jpg
+                    $relative_path = $this->extract_relative_path($key, $base_path);
+
+                    if ($relative_path) {
+                        $files[$relative_path] = [
+                            'storage_key' => $key,
+                            'size' => $size,
+                        ];
                     }
                 }
 
-                $continuation_token = $result['NextContinuationToken'] ?? null;
-                
-            } while ($result['IsTruncated'] ?? false);
-            
+                $continuation_token = $result['next_token'];
+
+            } while ($result['is_truncated'] && $continuation_token !== null);
+
             $this->logger->info('reconciliation', 'Storage scan completed: ' . count($files) . ' files found');
 
-        } catch (AwsException $e) {
-            $this->logger->error('reconciliation', 'AWS Exception in scan_s3_files(): ' . $e->getMessage());
-            $this->logger->error('reconciliation', 'AWS Error code: ' . $e->getAwsErrorCode());
-            return [];
         } catch (\Throwable $e) {
-            $this->logger->error('reconciliation', 'Exception in scan_s3_files(): ' . $e->getMessage());
+            $this->logger->error('reconciliation', 'Exception in scan_storage_files(): ' . $e->getMessage());
             $this->logger->error('reconciliation', 'Stack trace: ' . $e->getTraceAsString());
             return [];
         }
@@ -194,19 +168,19 @@ final class Reconciliation extends Batch_Processor
     }
 
     /**
-     * Extract relative upload path from S3 key
+     * Extract relative upload path from storage key
      */
-    private function extract_relative_path(string $s3_key, string $base_path): ?string
+    private function extract_relative_path(string $storage_key, string $base_path): ?string
     {
         // Remove base path prefix
         $base_path = rtrim($base_path, '/') . '/';
-        
-        if (strpos($s3_key, $base_path) === 0) {
-            return substr($s3_key, strlen($base_path));
+
+        if (strpos($storage_key, $base_path) === 0) {
+            return substr($storage_key, strlen($base_path));
         }
 
         // Try to extract from wp-content/uploads
-        if (preg_match('#wp-content/uploads/(.+)$#', $s3_key, $matches)) {
+        if (preg_match('#wp-content/uploads/(.+)$#', $storage_key, $matches)) {
             return $matches[1];
         }
 
@@ -305,40 +279,40 @@ final class Reconciliation extends Batch_Processor
             ];
         }
 
-        // Get S3 files from internal cache (populated in process_batch)
-        $s3_files = $this->storage_files_cache;
-        
-        // Check if file exists in S3
-        $found_on_s3 = isset($s3_files[$file_path]);
-        
-        if ($found_on_s3) {
-            $s3_data = $s3_files[$file_path];
-            
+        // Get storage files from internal cache (populated in process_batch)
+        $storage_files = $this->storage_files_cache;
+
+        // Check if file exists in storage
+        $found_in_storage = isset($storage_files[$file_path]);
+
+        if ($found_in_storage) {
+            $storage_data = $storage_files[$file_path];
+
             // Update metadata
             update_post_meta($attachment_id, '_media_toolkit_migrated', '1');
-            update_post_meta($attachment_id, '_media_toolkit_key', $s3_data['s3_key']);
-            
+            update_post_meta($attachment_id, '_media_toolkit_key', $storage_data['storage_key']);
+
             // Generate URL
-            $url = $this->settings->get_file_url($s3_data['s3_key']);
+            $url = $this->settings->get_file_url($storage_data['storage_key']);
             update_post_meta($attachment_id, '_media_toolkit_url', $url);
-            
+
             // Record in history (cast size to int)
             $this->history->record(
                 HistoryAction::MIGRATED,
                 $attachment_id,
                 $file_path,
-                $s3_data['s3_key'],
-                (int) $s3_data['size'],
+                $storage_data['storage_key'],
+                (int) $storage_data['size'],
                 ['source' => 'reconciliation']
             );
 
             return [
                 'success' => true,
                 'found' => true,
-                's3_key' => $s3_data['s3_key'],
+                'storage_key' => $storage_data['storage_key'],
             ];
         } else {
-            // File not found on S3
+            // File not found in storage
             // In "mark_found" mode, we mark as NOT migrated
             if ($options['mode'] ?? '' === 'mark_found') {
                 delete_post_meta($attachment_id, '_media_toolkit_migrated');
@@ -360,27 +334,27 @@ final class Reconciliation extends Batch_Processor
     public function start(array $options = []): array
     {
         try {
-            // First, scan S3 for all files
+            // First, scan storage for all files
             $this->logger->info('reconciliation', 'Scanning storage bucket for files...');
-            
-            $s3_files = $this->scan_s3_files();
-            $s3_count = count($s3_files);
-            
-            $this->logger->info('reconciliation', "Found {$s3_count} original files on storage");
 
-            // Store S3 files in a separate transient (not in state, too large)
-            $transient_saved = set_transient(self::STORAGE_FILES_CACHE_KEY, $s3_files, HOUR_IN_SECONDS);
-            
+            $storage_files = $this->scan_storage_files();
+            $storage_count = count($storage_files);
+
+            $this->logger->info('reconciliation', "Found {$storage_count} original files on storage");
+
+            // Store storage files in a separate transient (not in state, too large)
+            $transient_saved = set_transient(self::STORAGE_FILES_CACHE_KEY, $storage_files, HOUR_IN_SECONDS);
+
             if (!$transient_saved) {
                 $this->logger->error('reconciliation', 'Failed to save storage files transient - data might be too large');
             }
-            
+
             // Only store count in options (lightweight)
-            $options['s3_count'] = $s3_count;
+            $options['storage_count'] = $storage_count;
 
             // Call parent start
             return parent::start($options);
-            
+
         } catch (\Throwable $e) {
             $this->logger->error('reconciliation', 'Exception in start(): ' . $e->getMessage());
             $this->logger->error('reconciliation', 'Stack trace: ' . $e->getTraceAsString());
@@ -389,32 +363,32 @@ final class Reconciliation extends Batch_Processor
     }
 
     /**
-     * Override process_batch to load s3_files from separate cache
+     * Override process_batch to load storage_files from separate cache
      */
     public function process_batch(): array
     {
         try {
             $this->logger->info('reconciliation', 'process_batch() called');
-            
-            // Get S3 files from separate transient cache (not from state)
-            $s3_files = get_transient(self::STORAGE_FILES_CACHE_KEY);
-            
-            if ($s3_files === false) {
+
+            // Get storage files from separate transient cache (not from state)
+            $storage_files = get_transient(self::STORAGE_FILES_CACHE_KEY);
+
+            if ($storage_files === false) {
                 // Need to re-scan if cache expired (might happen on resume)
                 $this->logger->info('reconciliation', 'Storage cache expired or not found, re-scanning...');
-                $s3_files = $this->scan_s3_files();
-                
-                if (empty($s3_files)) {
+                $storage_files = $this->scan_storage_files();
+
+                if (empty($storage_files)) {
                     $this->logger->error('reconciliation', 'Storage scan returned empty array');
                 }
-                
-                set_transient(self::STORAGE_FILES_CACHE_KEY, $s3_files, HOUR_IN_SECONDS);
+
+                set_transient(self::STORAGE_FILES_CACHE_KEY, $storage_files, HOUR_IN_SECONDS);
             }
-            
-            $this->logger->info('reconciliation', 'Storage files loaded: ' . count($s3_files) . ' files');
-            
+
+            $this->logger->info('reconciliation', 'Storage files loaded: ' . count($storage_files) . ' files');
+
             // Store in memory for process_item() to use
-            $this->storage_files_cache = $s3_files;
+            $this->storage_files_cache = $storage_files;
 
             return parent::process_batch();
             
@@ -449,24 +423,24 @@ final class Reconciliation extends Batch_Processor
     }
 
     /**
-     * AJAX: Scan S3 and return preview
+     * AJAX: Scan storage and return preview
      */
-    public function ajax_scan_s3(): void
+    public function ajax_scan_storage(): void
     {
         check_ajax_referer('media_toolkit_nonce', 'nonce');
-        
+
         if (!current_user_can('manage_options')) {
             wp_send_json_error(['message' => 'Permission denied']);
         }
 
         $this->logger->info('reconciliation', 'Starting storage scan for preview...');
-        
-        $s3_files = $this->scan_s3_files();
-        $s3_count = count($s3_files);
+
+        $storage_files = $this->scan_storage_files();
+        $storage_count = count($storage_files);
 
         // Count how many WordPress attachments match
         global $wpdb;
-        
+
         $total_attachments = (int) $wpdb->get_var(
             "SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = 'attachment'"
         );
@@ -483,9 +457,9 @@ final class Reconciliation extends Batch_Processor
         $matches = 0;
         $not_found = 0;
         $matched_ids = [];
-        
+
         foreach ($attachment_files as $id => $data) {
-            if (isset($s3_files[$data->file_path])) {
+            if (isset($storage_files[$data->file_path])) {
                 $matches++;
                 $matched_ids[] = $id;
             } else {
@@ -508,14 +482,14 @@ final class Reconciliation extends Batch_Processor
         $would_be_marked = count(array_diff($matched_ids, $this->get_already_marked_ids()));
 
         wp_send_json_success([
-            's3_original_files' => $s3_count,
+            'storage_original_files' => $storage_count,
             'wp_attachments' => $total_attachments,
             'matches' => $matches,
-            'not_found_on_s3' => $not_found,
+            'not_found_in_storage' => $not_found,
             'currently_marked' => $currently_marked,
             'would_be_marked' => $would_be_marked,
-            'match_percentage' => $total_attachments > 0 
-                ? round(($matches / $total_attachments) * 100, 1) 
+            'match_percentage' => $total_attachments > 0
+                ? round(($matches / $total_attachments) * 100, 1)
                 : 0,
         ]);
     }
@@ -560,7 +534,7 @@ final class Reconciliation extends Batch_Processor
     public function reconcile_single(int $attachment_id): array
     {
         $file_path = get_post_meta($attachment_id, '_wp_attached_file', true);
-        
+
         if (empty($file_path)) {
             return [
                 'success' => false,
@@ -568,21 +542,21 @@ final class Reconciliation extends Batch_Processor
             ];
         }
 
-        // Check if file exists on S3
-        $s3_key = $this->settings->get_s3_base_path() . '/' . $file_path;
-        $exists = $this->storage->file_exists($s3_key);
+        // Check if file exists in storage
+        $storage_key = $this->settings->get_storage_base_path() . '/' . $file_path;
+        $exists = $this->storage->file_exists($storage_key);
 
         if ($exists) {
             update_post_meta($attachment_id, '_media_toolkit_migrated', '1');
-            update_post_meta($attachment_id, '_media_toolkit_key', $s3_key);
-            
-            $url = $this->settings->get_file_url($s3_key);
+            update_post_meta($attachment_id, '_media_toolkit_key', $storage_key);
+
+            $url = $this->settings->get_file_url($storage_key);
             update_post_meta($attachment_id, '_media_toolkit_url', $url);
 
             return [
                 'success' => true,
                 'found' => true,
-                's3_key' => $s3_key,
+                'storage_key' => $storage_key,
             ];
         }
 
@@ -642,17 +616,17 @@ final class Reconciliation extends Batch_Processor
     public function ajax_get_discrepancies(): void
     {
         check_ajax_referer('media_toolkit_nonce', 'nonce');
-        
+
         if (!current_user_can('manage_options')) {
             wp_send_json_error(['message' => 'Permission denied']);
         }
 
         try {
             global $wpdb;
-            
-            // Scan S3 files
-            $s3_files = $this->scan_s3_files();
-            
+
+            // Scan storage files
+            $storage_files = $this->scan_storage_files();
+
             // Get all attachments with their file paths
             $attachments = $wpdb->get_results(
                 "SELECT p.ID, p.post_title, pm.meta_value as file_path, pm2.meta_value as is_migrated
@@ -662,68 +636,68 @@ final class Reconciliation extends Batch_Processor
                  WHERE p.post_type = 'attachment'",
                 OBJECT
             );
-            
-            $not_on_s3 = [];
+
+            $not_in_storage = [];
             $not_marked = [];
-            $s3_files_matched = [];
-            
+            $storage_files_matched = [];
+
             foreach ($attachments as $attachment) {
                 $is_migrated = $attachment->is_migrated === '1';
-                $on_s3 = isset($s3_files[$attachment->file_path]);
-                
-                if ($on_s3) {
-                    $s3_files_matched[$attachment->file_path] = true;
+                $in_storage = isset($storage_files[$attachment->file_path]);
+
+                if ($in_storage) {
+                    $storage_files_matched[$attachment->file_path] = true;
                 }
-                
-                // Marked as migrated but NOT on S3
-                if ($is_migrated && !$on_s3) {
-                    $not_on_s3[] = [
+
+                // Marked as migrated but NOT in storage
+                if ($is_migrated && !$in_storage) {
+                    $not_in_storage[] = [
                         'id' => (int) $attachment->ID,
                         'title' => $attachment->post_title,
                         'file' => $attachment->file_path,
                         'edit_url' => get_edit_post_link($attachment->ID, 'raw'),
                     ];
                 }
-                
-                // On S3 but NOT marked as migrated
-                if (!$is_migrated && $on_s3) {
+
+                // In storage but NOT marked as migrated
+                if (!$is_migrated && $in_storage) {
                     $not_marked[] = [
                         'id' => (int) $attachment->ID,
                         'title' => $attachment->post_title,
                         'file' => $attachment->file_path,
-                        's3_key' => $s3_files[$attachment->file_path]['s3_key'] ?? '',
+                        'storage_key' => $storage_files[$attachment->file_path]['storage_key'] ?? '',
                         'edit_url' => get_edit_post_link($attachment->ID, 'raw'),
                     ];
                 }
             }
-            
-            // Find orphan files on S3 (no corresponding WP attachment)
+
+            // Find orphan files in storage (no corresponding WP attachment)
             $orphans = [];
-            foreach ($s3_files as $file_path => $s3_data) {
-                if (!isset($s3_files_matched[$file_path])) {
+            foreach ($storage_files as $file_path => $storage_data) {
+                if (!isset($storage_files_matched[$file_path])) {
                     $orphans[] = [
                         'file' => $file_path,
-                        's3_key' => $s3_data['s3_key'],
-                        'size' => size_format((int) $s3_data['size']),
-                        'url' => $this->settings->get_file_url($s3_data['s3_key']),
+                        'storage_key' => $storage_data['storage_key'],
+                        'size' => size_format((int) $storage_data['size']),
+                        'url' => $this->settings->get_file_url($storage_data['storage_key']),
                     ];
                 }
             }
-            
+
             // Count totals before slicing
-            $not_on_s3_total = count($not_on_s3);
+            $not_in_storage_total = count($not_in_storage);
             $not_marked_total = count($not_marked);
             $orphans_total = count($orphans);
-            
+
             // Limit to first 50 for performance
-            $not_on_s3 = array_slice($not_on_s3, 0, 50);
+            $not_in_storage = array_slice($not_in_storage, 0, 50);
             $not_marked = array_slice($not_marked, 0, 50);
             $orphans = array_slice($orphans, 0, 50);
-            
+
             // Get cached stats for comparison
-            $cached_stats = $this->settings->get_cached_s3_stats();
-            $cached_s3_files = $cached_stats['original_files'] ?? $cached_stats['files'] ?? 0;
-            
+            $cached_stats = $this->settings->get_cached_storage_stats();
+            $cached_storage_files = $cached_stats['original_files'] ?? $cached_stats['files'] ?? 0;
+
             // Count marked as migrated
             $marked_migrated = (int) $wpdb->get_var(
                 $wpdb->prepare(
@@ -734,11 +708,11 @@ final class Reconciliation extends Batch_Processor
                     '1'
                 )
             );
-            
+
             wp_send_json_success([
-                'not_on_s3' => $not_on_s3,
-                'not_on_s3_count' => count($not_on_s3),
-                'not_on_s3_total' => $not_on_s3_total,
+                'not_in_storage' => $not_in_storage,
+                'not_in_storage_count' => count($not_in_storage),
+                'not_in_storage_total' => $not_in_storage_total,
                 'not_marked' => $not_marked,
                 'not_marked_count' => count($not_marked),
                 'not_marked_total' => $not_marked_total,
@@ -746,14 +720,14 @@ final class Reconciliation extends Batch_Processor
                 'orphans_count' => count($orphans),
                 'orphans_total' => $orphans_total,
                 'summary' => [
-                    's3_files_scanned' => count($s3_files),
-                    's3_files_cached' => $cached_s3_files,
+                    'storage_files_scanned' => count($storage_files),
+                    'storage_files_cached' => $cached_storage_files,
                     'wp_attachments' => count($attachments),
                     'wp_marked_migrated' => $marked_migrated,
-                    'matched' => count($s3_files_matched),
+                    'matched' => count($storage_files_matched),
                 ],
             ]);
-            
+
         } catch (\Throwable $e) {
             $this->logger->error('reconciliation', 'Error getting discrepancies: ' . $e->getMessage());
             wp_send_json_error([

@@ -187,7 +187,7 @@ final class Settings
      * Get storage base path including environment folder
      * Structure: media/{environment}/wp-content/uploads
      */
-    public function get_s3_base_path(): string
+    public function get_storage_base_path(): string
     {
         $env = $this->get_active_environment();
         return 'media/' . $env->value . '/wp-content/uploads';
@@ -205,21 +205,6 @@ final class Settings
         }
 
         return $config->getPublicUrl($key);
-    }
-
-    /**
-     * Get direct storage URL for file
-     * @deprecated Use get_file_url() with StorageConfig
-     */
-    public function get_s3_url(string $s3_key): string
-    {
-        $config = $this->get_storage_config();
-        
-        if ($config === null) {
-            return '';
-        }
-
-        return $config->getDirectUrl($s3_key);
     }
 
     /**
@@ -404,7 +389,7 @@ final class Settings
     /**
      * Get storage stats sync interval in hours (0 = disabled)
      */
-    public function get_s3_sync_interval(): int
+    public function get_storage_sync_interval(): int
     {
         return (int) get_option('media_toolkit_sync_interval', 24);
     }
@@ -412,7 +397,7 @@ final class Settings
     /**
      * Set storage stats sync interval
      */
-    public function set_s3_sync_interval(int $hours): bool
+    public function set_storage_sync_interval(int $hours): bool
     {
         return update_option('media_toolkit_sync_interval', max(0, $hours));
     }
@@ -420,18 +405,18 @@ final class Settings
     /**
      * Get cached storage bucket stats
      */
-    public function get_cached_s3_stats(): ?array
+    public function get_cached_storage_stats(): ?array
     {
-        $stats = get_option('media_toolkit_s3_stats');
+        $stats = get_option('media_toolkit_storage_stats');
         return is_array($stats) ? $stats : null;
     }
 
     /**
      * Save storage bucket stats
      */
-    public function save_s3_stats(array $stats): bool
+    public function save_storage_stats(array $stats): bool
     {
-        return update_option('media_toolkit_s3_stats', $stats);
+        return update_option('media_toolkit_storage_stats', $stats);
     }
 
     /**
@@ -446,7 +431,7 @@ final class Settings
         delete_option('media_toolkit_cache_control');
         delete_option('media_toolkit_content_disposition');
         delete_option('media_toolkit_sync_interval');
-        delete_option('media_toolkit_s3_stats');
+        delete_option('media_toolkit_storage_stats');
     }
 
     /**
