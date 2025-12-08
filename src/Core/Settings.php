@@ -413,10 +413,16 @@ final class Settings
 
     /**
      * Save storage bucket stats
+     * Also invalidates dashboard stats cache to ensure fresh data is shown
      */
     public function save_storage_stats(array $stats): bool
     {
-        return update_option('media_toolkit_storage_stats', $stats);
+        $result = update_option('media_toolkit_storage_stats', $stats);
+        
+        // Always invalidate dashboard stats cache when storage stats change
+        delete_transient('media_toolkit_stats_cache');
+        
+        return $result;
     }
 
     /**

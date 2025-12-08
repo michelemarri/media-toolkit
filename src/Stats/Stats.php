@@ -87,27 +87,25 @@ final class Stats
         }
 
         // HYBRID LOGIC: Determine the best estimate of files in storage
+        // Priority: 1) Storage sync data (if available), 2) WordPress metadata (fallback)
         $sync_source = 'unknown';
         $estimated_in_storage = 0;
         $needs_reconciliation = false;
 
-        if ($migrated_via_plugin > 0) {
-            // Plugin has been actively used - trust WordPress metadata
-            $sync_source = 'wordpress_meta';
-            $estimated_in_storage = $migrated_via_plugin;
+        if ($storage_stats !== null) {
+            // We have real storage sync data - use it as the source of truth
+            $sync_source = 'storage_sync';
+            $estimated_in_storage = $storage_original_files;
 
-            // Check if storage has significantly more files (might need reconciliation)
-            if ($storage_original_files > 0 && $storage_original_files > $migrated_via_plugin * 1.2) {
+            // Check if WordPress metadata differs significantly (might need reconciliation)
+            if ($migrated_via_plugin > 0 && abs($migrated_via_plugin - $storage_original_files) > max(10, $storage_original_files * 0.1)) {
                 $needs_reconciliation = true;
             }
-        } elseif ($storage_original_files > 0) {
-            // No plugin metadata, but storage has files - estimate from storage
-            $sync_source = 'storage_estimated';
-
-            // Storage original files should roughly match WP attachments if synced
-            // Cap at wp_attachments to avoid >100%
-            $estimated_in_storage = min($storage_original_files, $wp_attachments);
-            $needs_reconciliation = true; // Definitely needs reconciliation
+        } elseif ($migrated_via_plugin > 0) {
+            // No storage sync data, but plugin has been actively used - use WordPress metadata as fallback
+            $sync_source = 'wordpress_meta';
+            $estimated_in_storage = $migrated_via_plugin;
+            $needs_reconciliation = true; // Recommend doing a storage sync
         } else {
             // No data from either source
             $sync_source = 'none';

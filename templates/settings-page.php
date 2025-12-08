@@ -20,6 +20,9 @@ $plugin = \Metodo\MediaToolkit\media_toolkit();
 $settings = $plugin->get_settings();
 $ai_manager = $plugin->get_ai_manager();
 
+// AI providers info - needed globally for JavaScript
+$ai_providers_info = $ai_manager ? $ai_manager->getProvidersInfo(true) : [];
+
 $is_configured = false;
 $credentials = [];
 $active_environment = 'production';
@@ -934,8 +937,6 @@ $hasBanner = file_exists($bannerPath);
             <!-- ==================== AI PROVIDERS TAB ==================== -->
             <?php
             $ai_settings = $ai_manager ? $ai_manager->getSettings() : [];
-            // Fetch dynamic models if provider is configured (cached for 24h)
-            $ai_providers_info = $ai_manager ? $ai_manager->getProvidersInfo(true) : [];
             $ai_languages = $ai_manager ? $ai_manager->getSupportedLanguages() : [];
             $ai_provider_order = $ai_settings['provider_order'] ?? ['openai', 'claude', 'gemini'];
             ?>

@@ -488,6 +488,7 @@ final class Reconciliation extends Batch_Processor
         }
 
         // Update cached storage stats so the dashboard cards show correct values
+        // Note: save_storage_stats() automatically invalidates dashboard stats cache
         $this->settings->save_storage_stats([
             'files' => $storage_count,           // Total files (originals only, thumbnails excluded)
             'original_files' => $storage_count,  // Same as files (we only count originals)

@@ -519,6 +519,21 @@ $skip = apply_filters('media_toolkit_skip_resize', false, $file_path, $mime_type
 
 ## Changelog
 
+### 2.8.3
+- **Fixed**: Dashboard stats showing wrong values after storage sync
+  - Changed hybrid logic to prioritize storage sync data over WordPress metadata
+  - Previously, metadata count (migrated files) was shown even when storage sync returned 0
+  - Now uses storage sync as source of truth when available, with WP metadata as fallback
+
+### 2.8.2
+- **Fixed**: PHP warnings for undefined `$ai_providers_info` variable on settings page
+  - Variable was only defined in AI Providers tab but used globally in JavaScript
+
+### 2.8.1
+- **Fixed**: Dashboard stats showing old values after storage sync
+  - Storage stats cache was not invalidating dashboard stats transient
+  - Now `save_storage_stats()` automatically clears the dashboard cache
+
 ### 2.8.0
 - **New**: Background Processing for AI Metadata Generation
   - New toggle option to enable background processing via WP Cron

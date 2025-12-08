@@ -238,9 +238,25 @@
                             self.addLog('Processed ' + data.batch_processed + ' images (Total: ' + state.processed + '/' + state.total_files + ')', 'info');
                         }
 
+                        // Log batch errors
+                        if (data.batch_failed > 0) {
+                            self.addLog('⚠️ ' + data.batch_failed + ' failed in this batch', 'warning');
+                        }
+                        
+                        // Log detailed errors
+                        if (data.batch_errors && data.batch_errors.length > 0) {
+                            data.batch_errors.forEach(function(err) {
+                                self.addLog('❌ #' + err.item_id + ': ' + (err.error || 'Unknown error'), 'error');
+                            });
+                        }
+
                         // Check if complete
                         if (state.status === 'completed') {
-                            self.addLog('✓ Generation complete! ' + state.processed + ' images processed.', 'success');
+                            let completeMsg = '✓ Generation complete! ' + state.processed + ' images processed.';
+                            if (state.failed > 0) {
+                                completeMsg += ' (' + state.failed + ' failed)';
+                            }
+                            self.addLog(completeMsg, 'success');
                             self.state.isRunning = false;
                             self.updateButtonStates();
                             return;
@@ -300,6 +316,7 @@
                     if (response.success) {
                         const state = response.data.state || response.data;
                         const prevProcessed = parseInt($('#ai-processed-count').text(), 10) || 0;
+                        const prevFailed = parseInt($('#ai-failed-count').text(), 10) || 0;
                         
                         self.updateProgress(state);
 
@@ -307,10 +324,20 @@
                         if (state.processed > prevProcessed) {
                             self.addLog('Background progress: ' + state.processed + '/' + state.total_files + ' images', 'info');
                         }
+                        
+                        // Log new failures
+                        if (state.failed > prevFailed) {
+                            const newFailed = state.failed - prevFailed;
+                            self.addLog('⚠️ ' + newFailed + ' new failure(s) - Total failed: ' + state.failed, 'warning');
+                        }
 
                         // Check if complete
                         if (state.status === 'completed') {
-                            self.addLog('✓ Background generation complete! ' + state.processed + ' images processed.', 'success');
+                            let completeMsg = '✓ Background generation complete! ' + state.processed + ' images processed.';
+                            if (state.failed > 0) {
+                                completeMsg += ' (' + state.failed + ' failed)';
+                            }
+                            self.addLog(completeMsg, 'success');
                             self.state.isRunning = false;
                             self.updateButtonStates();
                             return;

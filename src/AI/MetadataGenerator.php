@@ -158,7 +158,17 @@ final class MetadataGenerator extends Batch_Processor
     public function estimate_cost(bool $only_empty = true): array
     {
         $count = $this->count_pending_items(['only_empty_fields' => $only_empty]);
-        return $this->ai_manager->estimateCost($count);
+        $estimate = $this->ai_manager->estimateCost($count);
+        $estimate['images_count'] = $count;
+        return $estimate;
+    }
+
+    /**
+     * Get SQL WHERE clause for supported MIME types
+     */
+    private function get_supported_mime_clause(): string
+    {
+        return "p.post_mime_type IN ('image/jpeg', 'image/png', 'image/gif', 'image/webp')";
     }
 
     protected function count_pending_items(array $options = []): int
@@ -166,14 +176,15 @@ final class MetadataGenerator extends Batch_Processor
         global $wpdb;
 
         $only_empty = $options['only_empty_fields'] ?? true;
+        $mime_clause = $this->get_supported_mime_clause();
 
         if ($only_empty) {
-            // Count images missing at least one field
+            // Count images missing at least one field (only supported formats)
             return (int) $wpdb->get_var(
                 "SELECT COUNT(*) FROM {$wpdb->posts} p
                  LEFT JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id AND pm.meta_key = '_wp_attachment_image_alt'
                  WHERE p.post_type = 'attachment' 
-                 AND p.post_mime_type LIKE 'image/%'
+                 AND {$mime_clause}
                  AND (
                      pm.meta_value IS NULL 
                      OR pm.meta_value = ''
@@ -183,11 +194,11 @@ final class MetadataGenerator extends Batch_Processor
             );
         }
 
-        // Count all images
+        // Count all images (only supported formats)
         return (int) $wpdb->get_var(
-            "SELECT COUNT(*) FROM {$wpdb->posts} 
-             WHERE post_type = 'attachment' 
-             AND post_mime_type LIKE 'image/%'"
+            "SELECT COUNT(*) FROM {$wpdb->posts} p
+             WHERE p.post_type = 'attachment' 
+             AND {$mime_clause}"
         );
     }
 
@@ -196,6 +207,7 @@ final class MetadataGenerator extends Batch_Processor
         global $wpdb;
 
         $only_empty = $options['only_empty_fields'] ?? true;
+        $mime_clause = $this->get_supported_mime_clause();
 
         if ($only_empty) {
             return $wpdb->get_results($wpdb->prepare(
@@ -203,7 +215,7 @@ final class MetadataGenerator extends Batch_Processor
                  FROM {$wpdb->posts} p
                  LEFT JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id AND pm.meta_key = '_wp_attachment_image_alt'
                  WHERE p.post_type = 'attachment' 
-                 AND p.post_mime_type LIKE %s
+                 AND {$mime_clause}
                  AND p.ID > %d
                  AND (
                      pm.meta_value IS NULL 
@@ -213,7 +225,6 @@ final class MetadataGenerator extends Batch_Processor
                  )
                  ORDER BY p.ID ASC
                  LIMIT %d",
-                'image/%',
                 $after_id,
                 $limit
             ), ARRAY_A);
@@ -224,15 +235,22 @@ final class MetadataGenerator extends Batch_Processor
              FROM {$wpdb->posts} p
              LEFT JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id AND pm.meta_key = '_wp_attachment_image_alt'
              WHERE p.post_type = 'attachment' 
-             AND p.post_mime_type LIKE %s
+             AND {$mime_clause}
              AND p.ID > %d
              ORDER BY p.ID ASC
              LIMIT %d",
-            'image/%',
             $after_id,
             $limit
         ), ARRAY_A);
     }
+
+    /** @var array Supported image MIME types for AI analysis */
+    private const SUPPORTED_MIME_TYPES = [
+        'image/jpeg',
+        'image/png',
+        'image/gif',
+        'image/webp',
+    ];
 
     protected function process_item($item, array $options = []): array
     {
@@ -240,6 +258,20 @@ final class MetadataGenerator extends Batch_Processor
         $overwrite = $options['overwrite'] ?? false;
 
         try {
+            // Check if image format is supported by AI providers
+            $mime_type = get_post_mime_type($attachment_id);
+            if (!in_array($mime_type, self::SUPPORTED_MIME_TYPES, true)) {
+                $this->logger->info(
+                    'ai_metadata',
+                    sprintf('Skipping #%d: unsupported format %s (supported: JPEG, PNG, GIF, WebP)', $attachment_id, $mime_type)
+                );
+                return [
+                    'success' => true,
+                    'skipped' => true,
+                    'reason' => sprintf('Unsupported format: %s', $mime_type),
+                ];
+            }
+
             // Get image URL
             $image_url = $this->get_image_url($attachment_id);
             
