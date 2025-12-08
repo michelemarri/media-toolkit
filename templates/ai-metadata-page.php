@@ -338,6 +338,7 @@ $hasBanner = file_exists($bannerPath);
                             <div>
                                 <label for="ai-batch-size" class="block text-sm font-semibold text-gray-900 mb-2"><?php esc_html_e('Batch Size', 'media-toolkit'); ?></label>
                                 <select id="ai-batch-size" class="mt-select w-full">
+                                    <option value="1"><?php esc_html_e('1 image per batch', 'media-toolkit'); ?></option>
                                     <option value="5"><?php esc_html_e('5 images per batch', 'media-toolkit'); ?></option>
                                     <option value="10" selected><?php esc_html_e('10 images per batch', 'media-toolkit'); ?></option>
                                     <option value="25"><?php esc_html_e('25 images per batch', 'media-toolkit'); ?></option>

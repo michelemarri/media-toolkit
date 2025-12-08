@@ -23,6 +23,9 @@ final class MetadataGenerator extends Batch_Processor
     private AIManager $ai_manager;
     private ?History $history;
 
+    /** @var string Cron hook for async processing */
+    private const CRON_HOOK = 'media_toolkit_ai_metadata_async_batch';
+
     public function __construct(
         Logger $logger,
         Settings $settings,
@@ -33,6 +36,9 @@ final class MetadataGenerator extends Batch_Processor
         
         $this->ai_manager = $ai_manager;
         $this->history = $history;
+
+        // Register cron handler for background processing
+        add_action(self::CRON_HOOK, [$this, 'process_async_batch']);
     }
 
     protected function get_processor_name(): string
