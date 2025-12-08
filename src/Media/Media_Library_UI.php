@@ -370,7 +370,7 @@ final class Media_Library_UI
             true
         );
 
-        wp_localize_script('media-toolkit-media-library', 's3OffloadMedia', [
+        wp_localize_script('media-toolkit-media-library', 'mediaToolkitMedia', [
             'ajaxUrl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('media_toolkit_nonce'),
             'strings' => [

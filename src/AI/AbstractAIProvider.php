@@ -201,13 +201,31 @@ PROMPT;
      */
     protected function parseJsonResponse(string $response): array
     {
+        // Log raw response for debugging
+        $this->logDebug('Raw AI response length', ['length' => strlen($response)]);
+        
         // Clean up response - remove markdown code blocks if present
-        $response = preg_replace('/^```(?:json)?\s*/i', '', trim($response));
+        $response = trim($response);
+        $response = preg_replace('/^```(?:json)?\s*/i', '', $response);
         $response = preg_replace('/\s*```$/i', '', $response);
         
+        // First try to parse as-is
         $data = json_decode($response, true);
         
-        if (json_last_error() !== JSON_ERROR_NONE) {
+        // If wrapped in {"response": "..."} format, extract the inner content
+        if ($data !== null && isset($data['response']) && is_string($data['response'])) {
+            $innerResponse = $data['response'];
+            // Remove code blocks from inner content too
+            $innerResponse = preg_replace('/^```(?:json)?\s*/i', '', trim($innerResponse));
+            $innerResponse = preg_replace('/\s*```$/i', '', $innerResponse);
+            $data = json_decode($innerResponse, true);
+        }
+        
+        if ($data === null || json_last_error() !== JSON_ERROR_NONE) {
+            $this->logDebug('JSON parse error', [
+                'error' => json_last_error_msg(),
+                'response_preview' => substr($response, 0, 500)
+            ]);
             throw new AIProviderException(
                 'Failed to parse AI response: ' . json_last_error_msg(),
                 AIProviderException::ERROR_PARSE

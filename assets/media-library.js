@@ -5,14 +5,21 @@
  * - Cloud storage info display in attachment details modal
  * - Row action handlers (upload, re-upload, download)
  * - Bulk action confirmation
+ * 
+ * @version 2.4.1
  */
 (function ($, wp) {
     'use strict';
 
-    // Utility: Format bytes to human readable
-    window.s3OffloadMedia = window.s3OffloadMedia || {};
+    console.log('[Media Toolkit] media-library.js loaded v2.4.1');
 
-    s3OffloadMedia.formatBytes = function (bytes, decimals = 1) {
+    // Utility: Format bytes to human readable
+    window.mediaToolkitMedia = window.mediaToolkitMedia || window.mtMedia || {};
+
+    // Alias for backwards compatibility
+    var mtMedia = window.mediaToolkitMedia;
+
+    mtMedia.formatBytes = function (bytes, decimals = 1) {
         if (bytes === 0) return '0 B';
 
         const k = 1024;
@@ -40,24 +47,24 @@
             var attachmentId = $link.data('id');
 
             var originalText = $link.text();
-            $link.text(s3OffloadMedia.strings.uploading);
+            $link.text(mtMedia.strings.uploading);
 
             $.ajax({
-                url: s3OffloadMedia.ajaxUrl,
+                url: mtMedia.ajaxUrl,
                 method: 'POST',
                 data: {
                     action: 'media_toolkit_upload_single',
                     attachment_id: attachmentId,
-                    nonce: s3OffloadMedia.nonce
+                    nonce: mtMedia.nonce
                 },
                 success: function (response) {
                     if (response.success) {
-                        $link.text(s3OffloadMedia.strings.success);
+                        $link.text(mtMedia.strings.success);
                         setTimeout(function () {
                             location.reload();
                         }, 1000);
                     } else {
-                        $link.text(s3OffloadMedia.strings.error);
+                        $link.text(mtMedia.strings.error);
                         alert(response.data.message || 'Upload failed');
                         setTimeout(function () {
                             $link.text(originalText);
@@ -65,7 +72,7 @@
                     }
                 },
                 error: function () {
-                    $link.text(s3OffloadMedia.strings.error);
+                    $link.text(mtMedia.strings.error);
                     setTimeout(function () {
                         $link.text(originalText);
                     }, 2000);
@@ -80,29 +87,29 @@
             var $link = $(this);
             var attachmentId = $link.data('id');
 
-            if (!confirm(s3OffloadMedia.strings.confirmReupload)) {
+            if (!confirm(mtMedia.strings.confirmReupload)) {
                 return;
             }
 
             var originalText = $link.text();
-            $link.text(s3OffloadMedia.strings.uploading);
+            $link.text(mtMedia.strings.uploading);
 
             $.ajax({
-                url: s3OffloadMedia.ajaxUrl,
+                url: mtMedia.ajaxUrl,
                 method: 'POST',
                 data: {
                     action: 'media_toolkit_reupload',
                     attachment_id: attachmentId,
-                    nonce: s3OffloadMedia.nonce
+                    nonce: mtMedia.nonce
                 },
                 success: function (response) {
                     if (response.success) {
-                        $link.text(s3OffloadMedia.strings.success);
+                        $link.text(mtMedia.strings.success);
                         setTimeout(function () {
                             location.reload();
                         }, 1000);
                     } else {
-                        $link.text(s3OffloadMedia.strings.error);
+                        $link.text(mtMedia.strings.error);
                         alert(response.data.message || 'Upload failed');
                         setTimeout(function () {
                             $link.text(originalText);
@@ -110,7 +117,7 @@
                     }
                 },
                 error: function () {
-                    $link.text(s3OffloadMedia.strings.error);
+                    $link.text(mtMedia.strings.error);
                     setTimeout(function () {
                         $link.text(originalText);
                     }, 2000);
@@ -125,29 +132,29 @@
             var $link = $(this);
             var attachmentId = $link.data('id');
 
-            if (!confirm(s3OffloadMedia.strings.confirmDownload)) {
+            if (!confirm(mtMedia.strings.confirmDownload)) {
                 return;
             }
 
             var originalText = $link.text();
-            $link.text(s3OffloadMedia.strings.downloading);
+            $link.text(mtMedia.strings.downloading);
 
             $.ajax({
-                url: s3OffloadMedia.ajaxUrl,
+                url: mtMedia.ajaxUrl,
                 method: 'POST',
                 data: {
                     action: 'media_toolkit_download_from_s3',
                     attachment_id: attachmentId,
-                    nonce: s3OffloadMedia.nonce
+                    nonce: mtMedia.nonce
                 },
                 success: function (response) {
                     if (response.success) {
-                        $link.text(s3OffloadMedia.strings.success);
+                        $link.text(mtMedia.strings.success);
                         setTimeout(function () {
                             location.reload();
                         }, 1000);
                     } else {
-                        $link.text(s3OffloadMedia.strings.error);
+                        $link.text(mtMedia.strings.error);
                         alert(response.data.message || 'Download failed');
                         setTimeout(function () {
                             $link.text(originalText);
@@ -155,7 +162,7 @@
                     }
                 },
                 error: function () {
-                    $link.text(s3OffloadMedia.strings.error);
+                    $link.text(mtMedia.strings.error);
                     setTimeout(function () {
                         $link.text(originalText);
                     }, 2000);
@@ -236,12 +243,12 @@
                         $btn.find('.dashicons').removeClass('dashicons-cloud-upload').addClass('dashicons-update animate-spin');
 
                         $.ajax({
-                            url: s3OffloadMedia.ajaxUrl,
+                            url: mtMedia.ajaxUrl,
                             method: 'POST',
                             data: {
                                 action: 'media_toolkit_upload_single',
                                 attachment_id: attachmentId,
-                                nonce: s3OffloadMedia.nonce
+                                nonce: mtMedia.nonce
                             },
                             success: function (response) {
                                 if (response.success) {
@@ -279,12 +286,12 @@
                         $btn.find('.dashicons').addClass('animate-spin');
 
                         $.ajax({
-                            url: s3OffloadMedia.ajaxUrl,
+                            url: mtMedia.ajaxUrl,
                             method: 'POST',
                             data: {
                                 action: 'media_toolkit_reupload',
                                 attachment_id: attachmentId,
-                                nonce: s3OffloadMedia.nonce
+                                nonce: mtMedia.nonce
                             },
                             success: function (response) {
                                 if (response.success) {
@@ -321,7 +328,7 @@
                         var $btn = $(this);
                         var attachmentId = $btn.data('id');
 
-                        if (!confirm(s3OffloadMedia.strings.confirmDownload)) {
+                        if (!confirm(mtMedia.strings.confirmDownload)) {
                             return;
                         }
 
@@ -329,12 +336,12 @@
                         $btn.find('.dashicons').removeClass('dashicons-download').addClass('dashicons-update animate-spin');
 
                         $.ajax({
-                            url: s3OffloadMedia.ajaxUrl,
+                            url: mtMedia.ajaxUrl,
                             method: 'POST',
                             data: {
                                 action: 'media_toolkit_download_from_s3',
                                 attachment_id: attachmentId,
-                                nonce: s3OffloadMedia.nonce
+                                nonce: mtMedia.nonce
                             },
                             success: function (response) {
                                 if (response.success) {
@@ -368,88 +375,39 @@
                         var originalHtml = $btn.html();
 
                         $btn.prop('disabled', true);
-                        $btn.text(s3OffloadMedia.strings.generating || 'Generating...');
+                        $btn.text(mtMedia.strings.generating || 'Generating...');
 
                         $.ajax({
-                            url: s3OffloadMedia.ajaxUrl,
+                            url: mtMedia.ajaxUrl,
                             method: 'POST',
                             data: {
                                 action: 'media_toolkit_ai_generate_single',
                                 attachment_id: attachmentId,
-                                nonce: s3OffloadMedia.nonce,
+                                nonce: mtMedia.nonce,
                                 overwrite: false
                             },
                             success: function (response) {
                                 console.log('AI Generate Response:', response);
                                 if (response.success) {
-                                    var metadata = response.data.metadata;
-                                    
-                                    if (metadata) {
-                                        // Update Backbone model - this syncs with WordPress
-                                        var modelUpdates = {};
-                                        if (metadata.title) modelUpdates.title = metadata.title;
-                                        if (metadata.alt_text) modelUpdates.alt = metadata.alt_text;
-                                        if (metadata.caption) modelUpdates.caption = metadata.caption;
-                                        if (metadata.description) modelUpdates.description = metadata.description;
-                                        
-                                        model.set(modelUpdates);
-                                        model.save();
-                                        
-                                        // Update DOM fields - Media Library two-column modal
-                                        // These are the specific IDs used in the attachment details modal
-                                        var $altField = $('#attachment-details-two-column-alt-text');
-                                        var $captionField = $('#attachment-details-two-column-caption');
-                                        var $descField = $('#attachment-details-two-column-description');
-                                        
-                                        if ($altField.length && metadata.alt_text) {
-                                            $altField.val(metadata.alt_text).trigger('change').trigger('input');
-                                        }
-                                        if ($captionField.length && metadata.caption) {
-                                            $captionField.val(metadata.caption).trigger('change').trigger('input');
-                                        }
-                                        if ($descField.length && metadata.description) {
-                                            $descField.val(metadata.description).trigger('change').trigger('input');
-                                        }
-                                        
-                                        // Also try data-setting selectors as fallback
-                                        $('[data-setting="alt"]').val(metadata.alt_text || '').trigger('change');
-                                        $('[data-setting="caption"]').val(metadata.caption || '').trigger('change');
-                                        $('[data-setting="description"]').val(metadata.description || '').trigger('change');
-                                        
-                                        console.log('AI Metadata applied:', metadata, {
-                                            altFound: $altField.length,
-                                            captionFound: $captionField.length,
-                                            descFound: $descField.length
-                                        });
-                                    }
-
-                                    // Update AI metadata status in model
-                                    model.set('aiMetadata', $.extend({}, model.get('aiMetadata'), {
-                                        generated: true,
-                                        hasAltText: true,
-                                        hasCaption: true
-                                    }));
-
-                                    $btn.text(s3OffloadMedia.strings.aiGenerated || 'Generated!');
-                                    
-                                    // Re-render section after short delay
+                                    $btn.text('✓ Generated!');
+                                    // Force reload with cache bypass
                                     setTimeout(function () {
-                                        self.renderS3Info();
-                                    }, 1000);
+                                        window.location.href = window.location.href.split('#')[0];
+                                    }, 500);
                                 } else {
                                     console.error('AI Generate Error:', response.data);
-                                    var errorMsg = (response.data && response.data.message) 
-                                        ? response.data.message 
-                                        : (response.data && response.data.error) 
-                                            ? response.data.error 
-                                            : (s3OffloadMedia.strings.aiError || 'Generation failed');
+                                    var errorMsg = (response.data && response.data.message)
+                                        ? response.data.message
+                                        : (response.data && response.data.error)
+                                            ? response.data.error
+                                            : (mtMedia.strings.aiError || 'Generation failed');
                                     alert(errorMsg);
                                     $btn.prop('disabled', false).html(originalHtml);
                                 }
                             },
                             error: function (xhr, status, error) {
                                 console.error('AI Generate AJAX Error:', { xhr: xhr, status: status, error: error });
-                                var errorMsg = s3OffloadMedia.strings.aiError || 'Generation failed';
+                                var errorMsg = mtMedia.strings.aiError || 'Generation failed';
                                 if (error) {
                                     errorMsg += ': ' + error;
                                 }

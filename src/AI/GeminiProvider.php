@@ -235,7 +235,7 @@ final class GeminiProvider extends AbstractAIProvider
             ],
             'generationConfig' => [
                 'temperature' => 0.3,
-                'maxOutputTokens' => 1000,
+                'maxOutputTokens' => 2000,
             ],
         ];
 
