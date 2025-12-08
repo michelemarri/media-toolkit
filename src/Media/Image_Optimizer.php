@@ -30,6 +30,9 @@ final class Image_Optimizer extends Batch_Processor
     
     /** @var array|null In-memory cache for stats within same request */
     private ?array $stats_cache = null;
+    
+    /** @var array<string, array> Temporary storage for upload optimization data (keyed by file path) */
+    private static array $upload_optimization_data = [];
 
     public function __construct(
         Logger $logger,
@@ -145,6 +148,15 @@ final class Image_Optimizer extends Batch_Processor
             $percent_saved = $original_size > 0 ? round(($bytes_saved / $original_size) * 100, 1) : 0;
 
             if ($bytes_saved > 0) {
+                // Store optimization data temporarily (will be saved to DB in handle_attachment_metadata)
+                self::$upload_optimization_data[$file_path] = [
+                    'original_size' => $original_size,
+                    'optimized_size' => $new_size,
+                    'bytes_saved' => $bytes_saved,
+                    'percent_saved' => $percent_saved,
+                    'settings' => $settings,
+                ];
+                
                 $this->logger->success(
                     'optimization',
                     sprintf(
@@ -201,79 +213,125 @@ final class Image_Optimizer extends Batch_Processor
         if (!($settings['optimize_on_upload'] ?? false)) {
             return $metadata;
         }
-
-        // Skip if no sizes (no thumbnails)
-        if (empty($metadata['sizes']) || empty($metadata['file'])) {
-            return $metadata;
+        
+        // Get main image optimization data from handle_upload (if available)
+        $main_file = get_attached_file($attachment_id);
+        $main_original_size = 0;
+        $main_optimized_size = 0;
+        $main_bytes_saved = 0;
+        $main_settings = $settings;
+        
+        if ($main_file && isset(self::$upload_optimization_data[$main_file])) {
+            $opt_data = self::$upload_optimization_data[$main_file];
+            $main_original_size = $opt_data['original_size'];
+            $main_optimized_size = $opt_data['optimized_size'];
+            $main_bytes_saved = $opt_data['bytes_saved'];
+            $main_settings = $opt_data['settings'];
+            
+            // Clean up temporary data
+            unset(self::$upload_optimization_data[$main_file]);
         }
 
-        // Get the upload directory and file directory
-        $upload_dir = wp_upload_dir();
-        $base_dir = $upload_dir['basedir'];
-        $file_dir = dirname($base_dir . '/' . $metadata['file']);
+        // Optimize thumbnails if we have any
+        $thumbnails_bytes_saved = 0;
+        $thumbnails_count = 0;
+        
+        if (!empty($metadata['sizes']) && !empty($metadata['file'])) {
+            $upload_dir = wp_upload_dir();
+            $base_dir = $upload_dir['basedir'];
+            $file_dir = dirname($base_dir . '/' . $metadata['file']);
 
-        $total_bytes_saved = 0;
-        $optimized_count = 0;
+            foreach ($metadata['sizes'] as $size_name => $size_data) {
+                $thumb_file = $file_dir . '/' . $size_data['file'];
 
-        // Optimize each thumbnail
-        foreach ($metadata['sizes'] as $size_name => $size_data) {
-            $thumb_file = $file_dir . '/' . $size_data['file'];
+                if (!file_exists($thumb_file)) {
+                    continue;
+                }
 
-            if (!file_exists($thumb_file)) {
-                continue;
-            }
+                $mime_type = $size_data['mime-type'] ?? '';
+                $supported_types = $this->get_supported_mime_types();
+                if (!in_array($mime_type, $supported_types, true)) {
+                    continue;
+                }
 
-            $mime_type = $size_data['mime-type'] ?? '';
+                $original_size = filesize($thumb_file);
+                if ($original_size === false) {
+                    continue;
+                }
 
-            // Skip if not a supported image type
-            $supported_types = $this->get_supported_mime_types();
-            if (!in_array($mime_type, $supported_types, true)) {
-                continue;
-            }
+                try {
+                    $result = match ($mime_type) {
+                        'image/jpeg', 'image/jpg' => $this->optimize_jpeg($thumb_file, $settings),
+                        'image/png' => $this->optimize_png($thumb_file, $settings),
+                        'image/gif' => $this->optimize_gif($thumb_file, $settings),
+                        'image/webp' => $this->optimize_webp($thumb_file, $settings),
+                        default => ['success' => false],
+                    };
+                } catch (\Throwable $e) {
+                    continue;
+                }
 
-            $original_size = filesize($thumb_file);
-            if ($original_size === false) {
-                continue;
-            }
+                if (!$result['success']) {
+                    continue;
+                }
 
-            // Optimize based on mime type
-            try {
-                $result = match ($mime_type) {
-                    'image/jpeg', 'image/jpg' => $this->optimize_jpeg($thumb_file, $settings),
-                    'image/png' => $this->optimize_png($thumb_file, $settings),
-                    'image/gif' => $this->optimize_gif($thumb_file, $settings),
-                    'image/webp' => $this->optimize_webp($thumb_file, $settings),
-                    default => ['success' => false],
-                };
-            } catch (\Throwable $e) {
-                continue; // Skip this thumbnail on error
-            }
+                clearstatcache(true, $thumb_file);
+                $new_size = filesize($thumb_file);
 
-            if (!$result['success']) {
-                continue;
-            }
-
-            // Calculate savings
-            clearstatcache(true, $thumb_file);
-            $new_size = filesize($thumb_file);
-
-            if ($new_size !== false && $new_size < $original_size) {
-                $bytes_saved = $original_size - $new_size;
-                $total_bytes_saved += $bytes_saved;
-                $optimized_count++;
+                if ($new_size !== false && $new_size < $original_size) {
+                    $thumbnails_bytes_saved += ($original_size - $new_size);
+                    $thumbnails_count++;
+                }
             }
         }
 
-        if ($optimized_count > 0) {
+        // Calculate thumbnails current size (after optimization)
+        $thumbnails_current_size = $this->get_thumbnails_total_size($attachment_id);
+        $thumbnails_original_size = $thumbnails_current_size + $thumbnails_bytes_saved;
+        
+        // Calculate TOTAL for the entire asset (main + thumbnails)
+        $total_original_size = $main_original_size + $thumbnails_original_size;
+        $total_optimized_size = $main_optimized_size + $thumbnails_current_size;
+        $total_bytes_saved = $main_bytes_saved + $thumbnails_bytes_saved;
+        $total_percent_saved = $total_original_size > 0 ? round(($total_bytes_saved / $total_original_size) * 100, 1) : 0;
+
+        // Save TOTAL to optimization table (only if we actually optimized something)
+        if ($total_bytes_saved > 0 || $main_original_size > 0) {
+            OptimizationTable::mark_optimized(
+                $attachment_id,
+                $total_original_size,
+                $total_optimized_size,
+                [
+                    'jpeg_quality' => $main_settings['jpeg_quality'] ?? null,
+                    'png_compression' => $main_settings['png_compression'] ?? null,
+                    'strip_metadata' => $main_settings['strip_metadata'] ?? null,
+                    'max_file_size_mb' => $main_settings['max_file_size_mb'] ?? null,
+                    'min_savings_percent' => $main_settings['min_savings_percent'] ?? null,
+                    // Detailed breakdown
+                    'main_original_size' => $main_original_size,
+                    'main_optimized_size' => $main_optimized_size,
+                    'main_bytes_saved' => $main_bytes_saved,
+                    'thumbnails_count' => $thumbnails_count,
+                    'thumbnails_original_size' => $thumbnails_original_size,
+                    'thumbnails_optimized_size' => $thumbnails_current_size,
+                    'thumbnails_bytes_saved' => $thumbnails_bytes_saved,
+                ]
+            );
+            
+            $this->invalidate_stats_cache();
+            
             $this->logger->success(
                 'optimization',
                 sprintf(
-                    'Optimized %d thumbnails on upload, saved %s total',
-                    $optimized_count,
-                    size_format($total_bytes_saved)
+                    'Asset optimized on upload: saved %s (%s%%) - Main: %s, Thumbnails (%d): %s',
+                    size_format($total_bytes_saved),
+                    $total_percent_saved,
+                    size_format($main_bytes_saved),
+                    $thumbnails_count,
+                    size_format($thumbnails_bytes_saved)
                 ),
                 $attachment_id,
-                basename($metadata['file'])
+                basename($metadata['file'] ?? '')
             );
         }
 
@@ -907,33 +965,10 @@ final class Image_Optimizer extends Batch_Processor
             ];
         }
         
-        $bytes_saved = $original_size - $new_size;
-        $percent_saved = $original_size > 0 ? round(($bytes_saved / $original_size) * 100, 1) : 0;
+        $main_bytes_saved = $original_size - $new_size;
+        $main_percent_saved = $original_size > 0 ? round(($main_bytes_saved / $original_size) * 100, 1) : 0;
 
-        // Check minimum savings threshold
-        $min_savings = $settings['min_savings_percent'] ?? 5;
-        if ($percent_saved < $min_savings && $bytes_saved > 0) {
-            // Restore original if savings too small? No, keep optimized version
-        }
-
-        // Save to custom optimization table with settings used
-        OptimizationTable::mark_optimized(
-            $attachment_id,
-            $original_size,
-            $new_size,
-            [
-                'jpeg_quality' => $settings['jpeg_quality'] ?? null,
-                'png_compression' => $settings['png_compression'] ?? null,
-                'strip_metadata' => $settings['strip_metadata'] ?? null,
-                'max_file_size_mb' => $settings['max_file_size_mb'] ?? null,
-                'min_savings_percent' => $settings['min_savings_percent'] ?? null,
-            ]
-        );
-
-        // Invalidate stats cache so it rebuilds from table
-        $this->invalidate_stats_cache();
-
-        // Re-upload to S3 if already offloaded
+        // Re-upload main image to S3 if already offloaded
         $s3_key = get_post_meta($attachment_id, '_media_toolkit_key', true);
         if (!empty($s3_key) && $this->storage !== null) {
             $upload_result = $this->storage->upload_file($file, $attachment_id);
@@ -944,41 +979,91 @@ final class Image_Optimizer extends Batch_Processor
                     'Optimized image re-uploaded to storage',
                     $attachment_id,
                     basename($file),
-                    ['saved' => size_format($bytes_saved)]
+                    ['saved' => size_format($main_bytes_saved)]
                 );
             }
         }
 
-        // Also optimize thumbnails
-        $this->optimize_thumbnails($attachment_id, $settings);
+        // Also optimize thumbnails and get their savings
+        $thumbnails_result = $this->optimize_thumbnails($attachment_id, $settings);
+        $thumbnails_count = $thumbnails_result['count'] ?? 0;
+        $thumbnails_bytes_saved = $thumbnails_result['bytes_saved'] ?? 0;
+        
+        // Calculate thumbnails original size (current size + bytes saved)
+        $thumbnails_current_size = $this->get_thumbnails_total_size($attachment_id);
+        $thumbnails_original_size = $thumbnails_current_size + $thumbnails_bytes_saved;
+        
+        // Calculate TOTAL for the entire asset (main + thumbnails)
+        $total_original_size = $original_size + $thumbnails_original_size;
+        $total_optimized_size = $new_size + $thumbnails_current_size;
+        $total_bytes_saved = $main_bytes_saved + $thumbnails_bytes_saved;
+        $total_percent_saved = $total_original_size > 0 ? round(($total_bytes_saved / $total_original_size) * 100, 1) : 0;
 
-        // Record in history
+        // Save TOTAL to optimization table with detailed breakdown in settings_json
+        OptimizationTable::mark_optimized(
+            $attachment_id,
+            $total_original_size,
+            $total_optimized_size,
+            [
+                'jpeg_quality' => $settings['jpeg_quality'] ?? null,
+                'png_compression' => $settings['png_compression'] ?? null,
+                'strip_metadata' => $settings['strip_metadata'] ?? null,
+                'max_file_size_mb' => $settings['max_file_size_mb'] ?? null,
+                'min_savings_percent' => $settings['min_savings_percent'] ?? null,
+                // Detailed breakdown
+                'main_original_size' => $original_size,
+                'main_optimized_size' => $new_size,
+                'main_bytes_saved' => $main_bytes_saved,
+                'thumbnails_count' => $thumbnails_count,
+                'thumbnails_original_size' => $thumbnails_original_size,
+                'thumbnails_optimized_size' => $thumbnails_current_size,
+                'thumbnails_bytes_saved' => $thumbnails_bytes_saved,
+            ]
+        );
+
+        // Invalidate stats cache so it rebuilds from table
+        $this->invalidate_stats_cache();
+
+        // Record in history with total savings
         $this->history->record(
             HistoryAction::OPTIMIZED,
             $attachment_id,
             $file,
             $s3_key,
-            $bytes_saved,
+            $total_bytes_saved,
             [
-                'original_size' => $original_size,
-                'optimized_size' => $new_size,
-                'percent_saved' => $percent_saved,
+                'original_size' => $total_original_size,
+                'optimized_size' => $total_optimized_size,
+                'percent_saved' => $total_percent_saved,
+                'main_bytes_saved' => $main_bytes_saved,
+                'thumbnails_bytes_saved' => $thumbnails_bytes_saved,
+                'thumbnails_count' => $thumbnails_count,
             ]
         );
 
         $this->logger->success(
             'optimization',
-            "Image optimized: saved {$percent_saved}% ({$bytes_saved} bytes)",
+            sprintf(
+                'Image optimized: saved %s (%s%%) - Main: %s, Thumbnails (%d): %s',
+                size_format($total_bytes_saved),
+                $total_percent_saved,
+                size_format($main_bytes_saved),
+                $thumbnails_count,
+                size_format($thumbnails_bytes_saved)
+            ),
             $attachment_id,
             basename($file)
         );
 
         return [
             'success' => true,
-            'original_size' => $original_size,
-            'optimized_size' => $new_size,
-            'bytes_saved' => $bytes_saved,
-            'percent_saved' => $percent_saved,
+            'original_size' => $total_original_size,
+            'optimized_size' => $total_optimized_size,
+            'bytes_saved' => $total_bytes_saved,
+            'percent_saved' => $total_percent_saved,
+            'main_bytes_saved' => $main_bytes_saved,
+            'thumbnails_count' => $thumbnails_count,
+            'thumbnails_bytes_saved' => $thumbnails_bytes_saved,
         ];
     }
 
@@ -1158,12 +1243,12 @@ final class Image_Optimizer extends Batch_Processor
     /**
      * Optimize thumbnails for an attachment
      */
-    private function optimize_thumbnails(int $attachment_id, array $settings): void
+    private function optimize_thumbnails(int $attachment_id, array $settings): array
     {
         $metadata = wp_get_attachment_metadata($attachment_id);
         
         if (empty($metadata['sizes'])) {
-            return;
+            return ['count' => 0, 'bytes_saved' => 0];
         }
 
         $file = get_attached_file($attachment_id);
@@ -1171,6 +1256,9 @@ final class Image_Optimizer extends Batch_Processor
         
         $is_s3_active = $this->storage !== null;
         $thumb_keys = get_post_meta($attachment_id, '_media_toolkit_thumb_keys', true) ?: [];
+        
+        $total_bytes_saved = 0;
+        $optimized_count = 0;
 
         foreach ($metadata['sizes'] as $size_name => $size_data) {
             $thumb_file = $file_dir . '/' . $size_data['file'];
@@ -1198,6 +1286,12 @@ final class Image_Optimizer extends Batch_Processor
 
             $mime_type = $size_data['mime-type'] ?? '';
             
+            // Get original size before optimization
+            $original_size = filesize($thumb_file);
+            if ($original_size === false) {
+                continue;
+            }
+            
             try {
                 $result = match ($mime_type) {
                     'image/jpeg', 'image/jpg' => $this->optimize_jpeg($thumb_file, $settings),
@@ -1209,11 +1303,55 @@ final class Image_Optimizer extends Batch_Processor
                 continue; // Skip this thumbnail on error
             }
 
+            if (!$result['success']) {
+                continue;
+            }
+            
+            // Calculate savings
+            clearstatcache(true, $thumb_file);
+            $new_size = filesize($thumb_file);
+            
+            if ($new_size !== false && $new_size < $original_size) {
+                $bytes_saved = $original_size - $new_size;
+                $total_bytes_saved += $bytes_saved;
+                $optimized_count++;
+            }
+
             // Re-upload to S3 if needed
-            if ($result['success'] && $is_s3_active && !empty($thumb_s3_key)) {
+            if ($is_s3_active && !empty($thumb_s3_key)) {
                 $this->storage->upload_file($thumb_file, $attachment_id);
             }
         }
+        
+        return ['count' => $optimized_count, 'bytes_saved' => $total_bytes_saved];
+    }
+
+    /**
+     * Get total size of all thumbnails for an attachment
+     */
+    private function get_thumbnails_total_size(int $attachment_id): int
+    {
+        $metadata = wp_get_attachment_metadata($attachment_id);
+        
+        if (empty($metadata['sizes'])) {
+            return 0;
+        }
+        
+        $file = get_attached_file($attachment_id);
+        $file_dir = dirname($file);
+        $total_size = 0;
+        
+        foreach ($metadata['sizes'] as $size_data) {
+            $thumb_file = $file_dir . '/' . $size_data['file'];
+            if (file_exists($thumb_file)) {
+                $size = filesize($thumb_file);
+                if ($size !== false) {
+                    $total_size += $size;
+                }
+            }
+        }
+        
+        return $total_size;
     }
 
     /**

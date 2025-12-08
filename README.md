@@ -98,6 +98,11 @@ Enhanced Media Library with S3 status and actions:
   - S3 Key and CDN URL
   - Local file status
   - Space savings from optimization
+- **Optimization Section**: Dedicated section in attachment modal
+  - View optimization status (Optimized, Not optimized, Skipped, Failed)
+  - See original vs optimized size with percentage saved
+  - Number of thumbnails included
+  - One-click "Optimize Now" or "Re-optimize" button
 - **Row Actions**: Upload, Re-upload, or Download from S3
 - **Bulk Actions**: Process multiple files at once
 - **Sortable Column**: Sort media by S3 status
@@ -487,6 +492,32 @@ $skip = apply_filters('media_toolkit_skip_resize', false, $file_path, $mime_type
 5. **Image Optimization**: Process during low-traffic periods
 
 ## Changelog
+
+### 2.5.3
+- **Improved**: All optimization data now stored in `OptimizationTable` with complete breakdown in `settings_json`
+- **Improved**: Table stores TOTAL savings (main + thumbnails) in main fields for accurate statistics
+- **Improved**: Detailed breakdown available: main image (original/optimized/saved) + thumbnails (count/original/optimized/saved)
+- **Removed**: Post meta for thumbnails optimization data (now all in optimization table)
+- **Improved**: Logs now show complete breakdown: "Asset optimized: saved X (Y%) - Main: Z, Thumbnails (N): W"
+
+### 2.5.2
+- **New**: Show total savings (main image + thumbnails) in Media Library modal optimization section
+- **New**: Save thumbnails optimization data (bytes saved, count) for each attachment
+- **New**: Save main image optimization data during automatic "optimize on upload"
+- **Improved**: Optimization modal now shows detailed breakdown: Total Savings, Main Image size reduction, Thumbnails count with bytes saved
+
+### 2.5.1
+- **Fix**: "Optimizer not available" shown after successful optimization in Media Library modal - The AJAX response was missing the `available` flag causing the UI to incorrectly show unavailable status after optimizing
+
+### 2.5.0
+- **New**: Image Optimization section in Media Library attachment modal
+- **New**: View optimization status directly from attachment details (Optimized, Not optimized, Skipped, Failed)
+- **New**: One-click "Optimize Now" button to optimize individual images from Media Library
+- **New**: "Re-optimize" button to re-process already optimized images
+- **New**: Display original vs optimized size with percentage saved in attachment modal
+- **New**: Show number of thumbnails optimized for each image
+- **New**: Error message display for failed optimizations
+- **Improved**: Media Library UI now shows complete image optimization information alongside Cloud Storage and AI Metadata sections
 
 ### 2.4.0
 - **New**: AI Metadata Generation - Automatically generate alt text, titles, captions, and descriptions using AI Vision

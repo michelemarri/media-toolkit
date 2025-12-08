@@ -3,15 +3,16 @@
  * 
  * Handles:
  * - Cloud storage info display in attachment details modal
+ * - Image optimization controls
  * - Row action handlers (upload, re-upload, download)
  * - Bulk action confirmation
  * 
- * @version 2.4.1
+ * @version 2.5.0
  */
 (function ($, wp) {
     'use strict';
 
-    console.log('[Media Toolkit] media-library.js loaded v2.4.1');
+    console.log('[Media Toolkit] media-library.js loaded v2.5.0');
 
     // Utility: Format bytes to human readable
     window.mediaToolkitMedia = window.mediaToolkitMedia || window.mtMedia || {};
@@ -143,7 +144,7 @@
                 url: mtMedia.ajaxUrl,
                 method: 'POST',
                 data: {
-                    action: 'media_toolkit_download_from_s3',
+                    action: 'media_toolkit_download_from_cloud',
                     attachment_id: attachmentId,
                     nonce: mtMedia.nonce
                 },
@@ -179,7 +180,7 @@
             return;
         }
 
-        // Extend the TwoColumn view to add S3 info
+        // Extend the TwoColumn view to add cloud storage info
         var AttachmentDetailsTwoColumn = wp.media.view.Attachment.Details.TwoColumn;
 
         if (AttachmentDetailsTwoColumn) {
@@ -188,13 +189,13 @@
                     // Call parent render
                     AttachmentDetailsTwoColumn.prototype.render.apply(this, arguments);
 
-                    // Add S3 info after render
-                    this.renderS3Info();
+                    // Add cloud storage info after render
+                    this.renderCloudInfo();
 
                     return this;
                 },
 
-                renderS3Info: function () {
+                renderCloudInfo: function () {
                     var self = this;
                     var model = this.model;
                     var data = model.toJSON();
@@ -206,13 +207,15 @@
                         return;
                     }
 
-                    // Remove existing sections (S3 and AI)
+                    // Remove existing sections (Cloud, Optimization and AI)
                     this.$('.mt-offload-section').remove();
                     this.$('.settings.mt-offload-section').remove();
+                    this.$('.mt-optimization-section').remove();
+                    this.$('.settings.mt-optimization-section').remove();
                     this.$('.mt-ai-section').remove();
                     this.$('.settings.mt-ai-section').remove();
 
-                    // Add S3 info after the settings section
+                    // Add cloud info after the settings section
                     var $settings = this.$('.attachment-info .settings');
 
                     if ($settings.length) {
@@ -225,10 +228,10 @@
                         }
                     }
 
-                    this.bindS3Actions();
+                    this.bindCloudActions();
                 },
 
-                bindS3Actions: function () {
+                bindCloudActions: function () {
                     var self = this;
                     var model = this.model;
 
@@ -253,14 +256,14 @@
                             success: function (response) {
                                 if (response.success) {
                                     // Update model data
-                                    model.set('s3Offload', $.extend({}, model.get('s3Offload'), {
+                                    model.set('cloudStorage', $.extend({}, model.get('cloudStorage'), {
                                         migrated: true,
-                                        s3Key: response.data.s3Key,
-                                        s3Url: response.data.s3Url
+                                        storageKey: response.data.storageKey,
+                                        storageUrl: response.data.storageUrl
                                     }));
 
                                     // Re-render
-                                    self.renderS3Info();
+                                    self.renderCloudInfo();
                                 } else {
                                     alert(response.data.message || 'Upload failed');
                                     $btn.prop('disabled', false);
@@ -296,8 +299,8 @@
                             success: function (response) {
                                 if (response.success) {
                                     // Update model data
-                                    model.set('s3Offload', $.extend({}, model.get('s3Offload'), {
-                                        s3Url: response.data.s3Url
+                                    model.set('cloudStorage', $.extend({}, model.get('cloudStorage'), {
+                                        storageUrl: response.data.storageUrl
                                     }));
 
                                     // Show success briefly
@@ -305,7 +308,7 @@
                                     $btn.text('✓ Synced');
 
                                     setTimeout(function () {
-                                        self.renderS3Info();
+                                        self.renderCloudInfo();
                                     }, 1500);
                                 } else {
                                     alert(response.data.message || 'Re-upload failed');
@@ -339,19 +342,19 @@
                             url: mtMedia.ajaxUrl,
                             method: 'POST',
                             data: {
-                                action: 'media_toolkit_download_from_s3',
+                                action: 'media_toolkit_download_from_cloud',
                                 attachment_id: attachmentId,
                                 nonce: mtMedia.nonce
                             },
                             success: function (response) {
                                 if (response.success) {
                                     // Update model data
-                                    model.set('s3Offload', $.extend({}, model.get('s3Offload'), {
+                                    model.set('cloudStorage', $.extend({}, model.get('cloudStorage'), {
                                         localExists: true
                                     }));
 
                                     // Re-render
-                                    self.renderS3Info();
+                                    self.renderCloudInfo();
                                 } else {
                                     alert(response.data.message || 'Download failed');
                                     $btn.prop('disabled', false);
@@ -419,6 +422,111 @@
                             }
                         });
                     });
+
+                    // Optimize button (new optimization)
+                    this.$('.mt-btn-optimize').off('click').on('click', function (e) {
+                        e.preventDefault();
+
+                        var $btn = $(this);
+                        var attachmentId = $btn.data('id');
+                        var originalHtml = $btn.html();
+
+                        $btn.prop('disabled', true);
+                        $btn.text(mtMedia.strings.optimizing || 'Optimizing...');
+
+                        $.ajax({
+                            url: mtMedia.ajaxUrl,
+                            method: 'POST',
+                            data: {
+                                action: 'media_toolkit_optimize_single',
+                                attachment_id: attachmentId,
+                                nonce: mtMedia.nonce
+                            },
+                            success: function (response) {
+                                console.log('Optimize Response:', response);
+                                if (response.success) {
+                                    $btn.text('✓ ' + (mtMedia.strings.optimized || 'Optimized!'));
+
+                                    // Update model data with new optimization info
+                                    if (response.data.optimization) {
+                                        model.set('optimization', response.data.optimization);
+                                    }
+
+                                    // Re-render after a short delay
+                                    setTimeout(function () {
+                                        self.renderCloudInfo();
+                                    }, 1000);
+                                } else {
+                                    console.error('Optimize Error:', response.data);
+                                    var errorMsg = (response.data && response.data.message)
+                                        ? response.data.message
+                                        : (mtMedia.strings.optimizeError || 'Optimization failed');
+                                    alert(errorMsg);
+                                    $btn.prop('disabled', false).html(originalHtml);
+                                }
+                            },
+                            error: function (xhr, status, error) {
+                                console.error('Optimize AJAX Error:', { xhr: xhr, status: status, error: error });
+                                var errorMsg = mtMedia.strings.optimizeError || 'Optimization failed';
+                                if (xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message) {
+                                    errorMsg = xhr.responseJSON.data.message;
+                                }
+                                alert(errorMsg);
+                                $btn.prop('disabled', false).html(originalHtml);
+                            }
+                        });
+                    });
+
+                    // Re-optimize button
+                    this.$('.mt-btn-reoptimize').off('click').on('click', function (e) {
+                        e.preventDefault();
+
+                        var $btn = $(this);
+                        var attachmentId = $btn.data('id');
+                        var originalHtml = $btn.html();
+
+                        $btn.prop('disabled', true);
+                        $btn.text(mtMedia.strings.optimizing || 'Optimizing...');
+
+                        $.ajax({
+                            url: mtMedia.ajaxUrl,
+                            method: 'POST',
+                            data: {
+                                action: 'media_toolkit_optimize_single',
+                                attachment_id: attachmentId,
+                                nonce: mtMedia.nonce
+                            },
+                            success: function (response) {
+                                if (response.success) {
+                                    $btn.text('✓ ' + (mtMedia.strings.optimized || 'Optimized!'));
+
+                                    // Update model data with new optimization info
+                                    if (response.data.optimization) {
+                                        model.set('optimization', response.data.optimization);
+                                    }
+
+                                    // Re-render after a short delay
+                                    setTimeout(function () {
+                                        self.renderCloudInfo();
+                                    }, 1000);
+                                } else {
+                                    var errorMsg = (response.data && response.data.message)
+                                        ? response.data.message
+                                        : (mtMedia.strings.optimizeError || 'Optimization failed');
+                                    alert(errorMsg);
+                                    $btn.prop('disabled', false).html(originalHtml);
+                                }
+                            },
+                            error: function (xhr, status, error) {
+                                var errorMsg = mtMedia.strings.optimizeError || 'Optimization failed';
+                                if (xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message) {
+                                    errorMsg = xhr.responseJSON.data.message;
+                                }
+                                alert(errorMsg);
+                                $btn.prop('disabled', false).html(originalHtml);
+                            }
+                        });
+                    });
                 }
             });
         }
@@ -430,16 +538,16 @@
             wp.media.view.Attachment.Details = AttachmentDetails.extend({
                 render: function () {
                     AttachmentDetails.prototype.render.apply(this, arguments);
-                    this.renderS3Info();
+                    this.renderCloudInfo();
                     return this;
                 },
 
-                renderS3Info: function () {
+                renderCloudInfo: function () {
                     var self = this;
                     var data = this.model.toJSON();
                     var template = wp.template('mt-offload-details');
 
-                    if (!template || !data.s3Offload) {
+                    if (!template || !data.cloudStorage) {
                         return;
                     }
 
@@ -451,8 +559,8 @@
                         $info.append(template(data));
 
                         // Bind actions using the same method
-                        if (wp.media.view.Attachment.Details.TwoColumn.prototype.bindS3Actions) {
-                            wp.media.view.Attachment.Details.TwoColumn.prototype.bindS3Actions.call(this);
+                        if (wp.media.view.Attachment.Details.TwoColumn.prototype.bindCloudActions) {
+                            wp.media.view.Attachment.Details.TwoColumn.prototype.bindCloudActions.call(this);
                         }
                     }
                 }

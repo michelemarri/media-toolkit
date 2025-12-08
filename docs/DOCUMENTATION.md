@@ -473,6 +473,28 @@ In the WordPress Media Library:
 3. Click **Generate with AI**
 4. Fields are automatically updated with AI-generated content
 
+### Single Image Optimization
+
+In the WordPress Media Library attachment modal:
+
+1. Click on any image to open the attachment modal
+2. The **Image Optimization** section shows:
+   - **Status**: Optimized, Not optimized, Skipped, or Failed
+   - **Savings**: Bytes saved and percentage (if optimized)
+   - **Size**: Original → Optimized size comparison
+   - **Thumbnails**: Number of thumbnail sizes included
+   - **Error**: Details if optimization failed
+3. Click **Optimize Now** to optimize unoptimized images
+4. Click **Re-optimize** to re-process already optimized images
+
+**Status meanings:**
+| Status | Description |
+|--------|-------------|
+| ✓ Optimized | Image was successfully compressed |
+| Not optimized | Image has not been processed yet |
+| ⏭ Skipped | Image was skipped (e.g., file too large) |
+| ✗ Failed | Optimization encountered an error |
+
 ### Cost Estimation
 
 Before starting batch processing, the plugin estimates total cost based on:
