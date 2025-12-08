@@ -27,4 +27,8 @@ enum HistoryAction: string
     case AI_METADATA_GENERATED = 'ai_metadata_generated';
     case AI_METADATA_STARTED = 'ai_metadata_started';
     case AI_METADATA_COMPLETED = 'ai_metadata_completed';
+    case BACKUP_CREATED = 'backup_created';
+    case BACKUP_RESTORED = 'backup_restored';
+    case CONVERTED_WEBP = 'converted_webp';
+    case CONVERTED_AVIF = 'converted_avif';
 }

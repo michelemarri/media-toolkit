@@ -106,6 +106,7 @@ final class OptimizationTable
 
     /**
      * Insert or update optimization record
+     * Uses INSERT ... ON DUPLICATE KEY UPDATE for atomic upsert (prevents race conditions)
      */
     public static function upsert(array $data): bool
     {
@@ -139,59 +140,53 @@ final class OptimizationTable
             $data['settings_json'] = wp_json_encode($data['settings_json']);
         }
 
-        // Check if record exists
-        $existing = self::get_by_attachment((int) $data['attachment_id']);
+        // Handle NULL values properly for JSON column
+        // wpdb->prepare converts null to empty string, but JSON columns need actual NULL
+        $settings_json_value = $data['settings_json'] !== null && $data['settings_json'] !== '' 
+            ? $wpdb->prepare('%s', $data['settings_json']) 
+            : 'NULL';
+        
+        $optimized_at_value = $data['optimized_at'] !== null && $data['optimized_at'] !== ''
+            ? $wpdb->prepare('%s', $data['optimized_at'])
+            : 'NULL';
+        
+        $error_message_value = $data['error_message'] !== null
+            ? $wpdb->prepare('%s', $data['error_message'])
+            : 'NULL';
 
-        if ($existing) {
-            // Update existing
-            $result = $wpdb->update(
-                $table_name,
-                [
-                    'original_size' => $data['original_size'],
-                    'optimized_size' => $data['optimized_size'],
-                    'bytes_saved' => $data['bytes_saved'],
-                    'percent_saved' => $data['percent_saved'],
-                    'status' => $data['status'],
-                    'error_message' => $data['error_message'],
-                    'jpeg_quality' => $data['jpeg_quality'],
-                    'png_compression' => $data['png_compression'],
-                    'strip_metadata' => $data['strip_metadata'],
-                    'settings_json' => $data['settings_json'],
-                    'optimized_at' => $data['optimized_at'],
-                ],
-                ['attachment_id' => $data['attachment_id']],
-                [
-                    '%d', '%d', '%d', '%f', '%s', '%s',
-                    '%d', '%d', '%d', '%s', '%s',
-                ],
-                ['%d']
-            );
-            return $result !== false;
-        }
-
-        // Insert new
-        $result = $wpdb->insert(
-            $table_name,
-            [
-                'attachment_id' => $data['attachment_id'],
-                'original_size' => $data['original_size'],
-                'optimized_size' => $data['optimized_size'],
-                'bytes_saved' => $data['bytes_saved'],
-                'percent_saved' => $data['percent_saved'],
-                'status' => $data['status'],
-                'error_message' => $data['error_message'],
-                'jpeg_quality' => $data['jpeg_quality'],
-                'png_compression' => $data['png_compression'],
-                'strip_metadata' => $data['strip_metadata'],
-                'settings_json' => $data['settings_json'],
-                'optimized_at' => $data['optimized_at'],
-            ],
-            [
-                '%d', '%d', '%d', '%d', '%f', '%s', '%s',
-                '%d', '%d', '%d', '%s', '%s',
-            ]
+        // Use INSERT ... ON DUPLICATE KEY UPDATE for atomic upsert
+        // This prevents race conditions when multiple batches process the same file
+        $sql = $wpdb->prepare(
+            "INSERT INTO {$table_name} 
+            (attachment_id, original_size, optimized_size, bytes_saved, percent_saved, 
+             status, error_message, jpeg_quality, png_compression, strip_metadata, 
+             settings_json, optimized_at)
+            VALUES (%d, %d, %d, %d, %f, %s, {$error_message_value}, %d, %d, %d, {$settings_json_value}, {$optimized_at_value})
+            ON DUPLICATE KEY UPDATE
+                original_size = VALUES(original_size),
+                optimized_size = VALUES(optimized_size),
+                bytes_saved = VALUES(bytes_saved),
+                percent_saved = VALUES(percent_saved),
+                status = VALUES(status),
+                error_message = VALUES(error_message),
+                jpeg_quality = VALUES(jpeg_quality),
+                png_compression = VALUES(png_compression),
+                strip_metadata = VALUES(strip_metadata),
+                settings_json = VALUES(settings_json),
+                optimized_at = VALUES(optimized_at)",
+            $data['attachment_id'],
+            $data['original_size'],
+            $data['optimized_size'],
+            $data['bytes_saved'],
+            $data['percent_saved'],
+            $data['status'],
+            $data['jpeg_quality'] ?? 0,
+            $data['png_compression'] ?? 0,
+            $data['strip_metadata'] ? 1 : 0
         );
 
+        $result = $wpdb->query($sql);
+        
         return $result !== false;
     }
 

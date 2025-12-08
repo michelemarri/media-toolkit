@@ -27,6 +27,9 @@ $capabilities = $admin_optimize->get_server_capabilities();
 $state = $admin_optimize->get_state();
 $resize_settings = $admin_optimize->get_resize_settings();
 $resize_stats = $admin_optimize->get_resize_stats();
+$optimizer_caps = $admin_optimize->get_optimizer_capabilities();
+$backup_info = $admin_optimize->get_backup_info();
+$conversion_info = $admin_optimize->get_conversion_info();
 
 $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'dashboard';
 
@@ -73,6 +76,10 @@ $hasBanner = file_exists($bannerPath);
         <a href="?page=media-toolkit-optimize&tab=resize" class="flex items-center gap-2 px-5 py-3 text-sm font-medium rounded-lg transition-all whitespace-nowrap <?php echo $active_tab === 'resize' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'; ?>">
             <span class="dashicons dashicons-image-crop"></span>
             <?php esc_html_e('Resize', 'media-toolkit'); ?>
+        </a>
+        <a href="?page=media-toolkit-optimize&tab=settings" class="flex items-center gap-2 px-5 py-3 text-sm font-medium rounded-lg transition-all whitespace-nowrap <?php echo $active_tab === 'settings' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'; ?>">
+            <span class="dashicons dashicons-admin-settings"></span>
+            <?php esc_html_e('Settings', 'media-toolkit'); ?>
         </a>
     </nav>
 
@@ -369,157 +376,188 @@ $hasBanner = file_exists($bannerPath);
                 </div>
             </div>
 
+            <!-- Available Optimization Tools -->
+            <div class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm mt-6">
+                <div class="flex items-center justify-between px-6 py-4 bg-gradient-to-b from-gray-50 to-gray-100 border-b border-gray-200">
+                    <div class="flex items-center gap-3">
+                        <span class="dashicons dashicons-admin-tools text-gray-700"></span>
+                        <h3 class="text-base font-semibold text-gray-900"><?php esc_html_e('Available Optimization Tools', 'media-toolkit'); ?></h3>
+                    </div>
+                </div>
+                <div class="p-6 space-y-6">
+                    <?php 
+                    $by_format = $optimizer_caps['by_format'] ?? [];
+                    $all_caps = $optimizer_caps['capabilities'] ?? [];
+                    $format_labels = [
+                        'jpeg' => 'JPEG',
+                        'png' => 'PNG',
+                        'gif' => 'GIF',
+                        'webp' => 'WebP',
+                        'avif' => 'AVIF',
+                        'svg' => 'SVG',
+                    ];
+                    ?>
+                    
+                    <!-- Tools by Format -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <?php foreach ($by_format as $format => $info): ?>
+                        <div class="p-4 bg-gray-50 border border-gray-200 rounded-xl">
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="text-sm font-bold text-gray-900"><?php echo esc_html($format_labels[$format] ?? strtoupper($format)); ?></span>
+                                <?php if (!empty($info['best'])): ?>
+                                <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-green-700 bg-green-100 rounded">
+                                    <?php echo esc_html($all_caps[$info['best']]['name'] ?? $info['best']); ?>
+                                </span>
+                                <?php else: ?>
+                                <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-gray-500 bg-gray-200 rounded">
+                                    <?php esc_html_e('None', 'media-toolkit'); ?>
+                                </span>
+                                <?php endif; ?>
+                            </div>
+                            <div class="space-y-1.5">
+                                <?php 
+                                $available = $info['available'] ?? [];
+                                $missing = $info['missing'] ?? [];
+                                
+                                foreach ($available as $opt_id):
+                                    $opt = $all_caps[$opt_id] ?? null;
+                                    if (!$opt) continue;
+                                ?>
+                                <div class="flex items-center justify-between text-xs">
+                                    <span class="flex items-center gap-1.5 text-green-700">
+                                        <span class="dashicons dashicons-yes text-green-500" style="font-size: 14px; width: 14px; height: 14px;"></span>
+                                        <?php echo esc_html($opt['name']); ?>
+                                    </span>
+                                    <?php if (!empty($opt['version'])): ?>
+                                    <span class="text-gray-400">v<?php echo esc_html($opt['version']); ?></span>
+                                    <?php endif; ?>
+                                </div>
+                                <?php endforeach; ?>
+                                
+                                <?php foreach (array_slice($missing, 0, 2) as $opt_id):
+                                    $opt = $all_caps[$opt_id] ?? null;
+                                    if (!$opt) continue;
+                                ?>
+                                <div class="flex items-center justify-between text-xs">
+                                    <span class="flex items-center gap-1.5 text-gray-400">
+                                        <span class="dashicons dashicons-minus text-gray-300" style="font-size: 14px; width: 14px; height: 14px;"></span>
+                                        <?php echo esc_html($opt['name']); ?>
+                                    </span>
+                                    <span class="text-gray-300"><?php esc_html_e('Not installed', 'media-toolkit'); ?></span>
+                                </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+
+                    <!-- Recommendations -->
+                    <?php 
+                    $recommendations = $optimizer_caps['recommendations'] ?? [];
+                    if (!empty($recommendations)): 
+                    ?>
+                    <div>
+                        <h4 class="text-sm font-semibold text-gray-700 mb-3"><?php esc_html_e('Recommendations', 'media-toolkit'); ?></h4>
+                        <div class="space-y-2">
+                            <?php foreach (array_slice($recommendations, 0, 3) as $rec): ?>
+                            <div class="flex items-start gap-3 p-3 bg-blue-50 border border-blue-100 rounded-lg">
+                                <span class="dashicons dashicons-lightbulb text-blue-500 flex-shrink-0 mt-0.5"></span>
+                                <div class="min-w-0">
+                                    <p class="text-sm text-blue-800 m-0"><?php echo esc_html($rec['benefit']); ?></p>
+                                    <details class="mt-1">
+                                        <summary class="text-xs text-blue-600 cursor-pointer hover:underline"><?php esc_html_e('Installation instructions', 'media-toolkit'); ?></summary>
+                                        <pre class="mt-2 p-2 text-xs bg-white rounded border border-blue-100 overflow-x-auto whitespace-pre-wrap"><?php echo esc_html(str_replace('\n', "\n", $rec['install'])); ?></pre>
+                                    </details>
+                                </div>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+
         <?php elseif ($active_tab === 'optimize'): ?>
             <!-- ==================== OPTIMIZE TAB ==================== -->
             
-            <!-- Settings & Controls Grid -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                <!-- Compression Settings Card -->
-                <div class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-                    <div class="flex items-center gap-3 px-6 py-4 bg-gradient-to-b from-gray-50 to-gray-100 border-b border-gray-200">
-                        <span class="dashicons dashicons-admin-settings text-gray-700"></span>
-                        <h3 class="text-base font-semibold text-gray-900"><?php esc_html_e('Compression Settings', 'media-toolkit'); ?></h3>
-                    </div>
-                    <div class="p-6 space-y-5">
-                        <!-- Enable Optimize on Upload Toggle -->
-                        <div class="pb-4 border-b border-gray-200">
-                            <label class="mt-toggle inline-flex items-center gap-3 cursor-pointer">
-                                <input type="checkbox" id="optimize-on-upload" <?php checked($opt_settings['optimize_on_upload'] ?? false); ?>>
-                                <span class="mt-toggle-slider"></span>
-                                <div>
-                                    <span class="block text-sm font-semibold text-gray-900"><?php esc_html_e('Optimize on Upload', 'media-toolkit'); ?></span>
-                                    <span class="block text-xs text-gray-500"><?php esc_html_e('Automatically compress images when uploaded (after resize, before cloud upload)', 'media-toolkit'); ?></span>
-                                </div>
-                            </label>
-                        </div>
-
-                        <div>
-                            <label for="jpeg-quality" class="block text-sm font-semibold text-gray-900 mb-2"><?php esc_html_e('JPEG Quality', 'media-toolkit'); ?></label>
-                            <div class="flex items-center gap-3">
-                                <input type="range" id="jpeg-quality" min="60" max="100" value="<?php echo esc_attr($opt_settings['jpeg_quality']); ?>" class="flex-1">
-                                <span class="inline-flex items-center px-3 py-1 text-sm font-medium rounded-full mt-badge-info" id="jpeg-quality-value"><?php echo esc_html($opt_settings['jpeg_quality']); ?></span>
-                            </div>
-                            <p class="mt-2 text-sm text-gray-500"><?php esc_html_e('Higher = better quality, larger file. Recommended: 75-85', 'media-toolkit'); ?></p>
-                        </div>
-                        
-                        <div>
-                            <label for="png-compression" class="block text-sm font-semibold text-gray-900 mb-2"><?php esc_html_e('PNG Compression Level', 'media-toolkit'); ?></label>
-                            <div class="flex items-center gap-3">
-                                <input type="range" id="png-compression" min="0" max="9" value="<?php echo esc_attr($opt_settings['png_compression']); ?>" class="flex-1">
-                                <span class="inline-flex items-center px-3 py-1 text-sm font-medium rounded-full mt-badge-info" id="png-compression-value"><?php echo esc_html($opt_settings['png_compression']); ?></span>
-                            </div>
-                            <p class="mt-2 text-sm text-gray-500"><?php esc_html_e('0 = no compression, 9 = max compression (lossless)', 'media-toolkit'); ?></p>
-                        </div>
-
-                        <div>
-                            <label for="max-file-size" class="block text-sm font-semibold text-gray-900 mb-2"><?php esc_html_e('Max File Size (MB)', 'media-toolkit'); ?></label>
-                            <select id="max-file-size" class="mt-select w-full max-w-xs px-4 py-2.5 text-sm bg-white border border-gray-300 rounded-lg outline-none transition-all">
-                                <option value="5" <?php selected($opt_settings['max_file_size_mb'], 5); ?>>5 MB</option>
-                                <option value="10" <?php selected($opt_settings['max_file_size_mb'], 10); ?>>10 MB</option>
-                                <option value="20" <?php selected($opt_settings['max_file_size_mb'], 20); ?>>20 MB</option>
-                                <option value="50" <?php selected($opt_settings['max_file_size_mb'], 50); ?>>50 MB</option>
-                            </select>
-                            <p class="mt-2 text-sm text-gray-500"><?php esc_html_e('Files larger than this will be skipped', 'media-toolkit'); ?></p>
-                        </div>
-
-                        <div class="pt-2">
-                            <label class="mt-toggle inline-flex items-center gap-3 cursor-pointer">
-                                <input type="checkbox" id="strip-metadata" <?php checked($opt_settings['strip_metadata']); ?>>
-                                <span class="mt-toggle-slider"></span>
-                                <span class="text-sm font-semibold text-gray-900"><?php esc_html_e('Strip EXIF/Metadata', 'media-toolkit'); ?></span>
-                            </label>
-                            <p class="mt-2 ml-14 text-sm text-gray-500"><?php esc_html_e('Remove camera info, GPS data, etc. from JPEG files', 'media-toolkit'); ?></p>
-                        </div>
-
-                        <div class="flex items-center gap-3 pt-3">
-                            <button type="button" class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 shadow-xs transition-all" id="btn-save-optimize-settings">
-                                <span class="dashicons dashicons-saved"></span>
-                                <?php esc_html_e('Save Settings', 'media-toolkit'); ?>
-                            </button>
-                            <span class="text-sm text-gray-500" id="settings-status"></span>
-                        </div>
-                    </div>
+            <!-- Batch Processing Controls -->
+            <div class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm mb-6">
+                <div class="flex items-center gap-3 px-6 py-4 bg-gradient-to-b from-gray-50 to-gray-100 border-b border-gray-200">
+                    <span class="dashicons dashicons-controls-play text-gray-700"></span>
+                    <h3 class="text-base font-semibold text-gray-900"><?php esc_html_e('Batch Optimization', 'media-toolkit'); ?></h3>
                 </div>
-
-                <!-- Batch Processing Controls -->
-                <div class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-                    <div class="flex items-center gap-3 px-6 py-4 bg-gradient-to-b from-gray-50 to-gray-100 border-b border-gray-200">
-                        <span class="dashicons dashicons-controls-play text-gray-700"></span>
-                        <h3 class="text-base font-semibold text-gray-900"><?php esc_html_e('Batch Optimization', 'media-toolkit'); ?></h3>
+                <div class="p-6">
+                    <div class="mb-5">
+                        <label for="batch-size" class="block text-sm font-semibold text-gray-900 mb-2"><?php esc_html_e('Batch Size', 'media-toolkit'); ?></label>
+                        <select id="batch-size" class="mt-select w-full max-w-xs px-4 py-2.5 text-sm bg-white border border-gray-300 rounded-lg outline-none transition-all">
+                            <option value="10"><?php esc_html_e('10 images per batch', 'media-toolkit'); ?></option>
+                            <option value="25" selected><?php esc_html_e('25 images per batch', 'media-toolkit'); ?></option>
+                            <option value="50"><?php esc_html_e('50 images per batch', 'media-toolkit'); ?></option>
+                        </select>
+                        <p class="mt-2 text-sm text-gray-500"><?php esc_html_e('Smaller batches are safer for shared hosting', 'media-toolkit'); ?></p>
                     </div>
-                    <div class="p-6">
-                        <div class="mb-5">
-                            <label for="batch-size" class="block text-sm font-semibold text-gray-900 mb-2"><?php esc_html_e('Batch Size', 'media-toolkit'); ?></label>
-                            <select id="batch-size" class="mt-select w-full max-w-xs px-4 py-2.5 text-sm bg-white border border-gray-300 rounded-lg outline-none transition-all">
-                                <option value="10"><?php esc_html_e('10 images per batch', 'media-toolkit'); ?></option>
-                                <option value="25" selected><?php esc_html_e('25 images per batch', 'media-toolkit'); ?></option>
-                                <option value="50"><?php esc_html_e('50 images per batch', 'media-toolkit'); ?></option>
-                            </select>
-                            <p class="mt-2 text-sm text-gray-500"><?php esc_html_e('Smaller batches are safer for shared hosting', 'media-toolkit'); ?></p>
-                        </div>
 
-                        <div class="flex flex-col gap-3">
-                            <button type="button" class="w-full inline-flex items-center justify-center gap-2 px-5 py-3.5 text-base font-medium text-white bg-gray-800 hover:bg-gray-900 rounded-lg shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all" id="btn-start-optimization">
-                                <span class="dashicons dashicons-performance"></span>
-                                <?php esc_html_e('Start Optimization', 'media-toolkit'); ?>
-                            </button>
-                            
-                            <div class="flex gap-2">
-                                <button type="button" class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all" id="btn-pause-optimization" disabled>
-                                    <span class="dashicons dashicons-controls-pause"></span>
-                                    <?php esc_html_e('Pause', 'media-toolkit'); ?>
-                                </button>
-                                <button type="button" class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all" id="btn-resume-optimization" disabled>
-                                    <span class="dashicons dashicons-controls-play"></span>
-                                    <?php esc_html_e('Resume', 'media-toolkit'); ?>
-                                </button>
-                                <button type="button" class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all" id="btn-stop-optimization" disabled>
-                                    <span class="dashicons dashicons-dismiss"></span>
-                                    <?php esc_html_e('Cancel', 'media-toolkit'); ?>
-                                </button>
-                            </div>
-                        </div>
+                    <div class="flex flex-col gap-3">
+                        <button type="button" class="w-full inline-flex items-center justify-center gap-2 px-5 py-3.5 text-base font-medium text-white bg-gray-800 hover:bg-gray-900 rounded-lg shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all" id="btn-start-optimization">
+                            <span class="dashicons dashicons-performance"></span>
+                            <?php esc_html_e('Start Optimization', 'media-toolkit'); ?>
+                        </button>
                         
-                        <div id="optimization-status" class="<?php echo $state['status'] !== 'idle' ? '' : 'hidden'; ?> mt-5">
-                            <div class="space-y-3">
-                                <!-- Progress Bar -->
-                                <div class="p-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border border-gray-200">
-                                    <div class="flex items-center justify-between mb-2">
-                                        <span class="text-sm font-medium text-gray-700"><?php esc_html_e('Batch Progress', 'media-toolkit'); ?></span>
-                                        <span class="inline-flex items-center px-2.5 py-1 text-sm font-bold text-white bg-gray-800 rounded-full" id="batch-progress-percentage">0%</span>
+                        <div class="flex gap-2">
+                            <button type="button" class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all" id="btn-pause-optimization" disabled>
+                                <span class="dashicons dashicons-controls-pause"></span>
+                                <?php esc_html_e('Pause', 'media-toolkit'); ?>
+                            </button>
+                            <button type="button" class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all" id="btn-resume-optimization" disabled>
+                                <span class="dashicons dashicons-controls-play"></span>
+                                <?php esc_html_e('Resume', 'media-toolkit'); ?>
+                            </button>
+                            <button type="button" class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all" id="btn-stop-optimization" disabled>
+                                <span class="dashicons dashicons-dismiss"></span>
+                                <?php esc_html_e('Cancel', 'media-toolkit'); ?>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="optimization-status" class="<?php echo $state['status'] !== 'idle' ? '' : 'hidden'; ?> mt-5">
+                        <div class="space-y-3">
+                            <!-- Progress Bar -->
+                            <div class="p-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border border-gray-200">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-sm font-medium text-gray-700"><?php esc_html_e('Batch Progress', 'media-toolkit'); ?></span>
+                                    <span class="inline-flex items-center px-2.5 py-1 text-sm font-bold text-white bg-gray-800 rounded-full" id="batch-progress-percentage">0%</span>
+                                </div>
+                                <div class="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+                                    <div class="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full transition-all duration-500 ease-out" id="batch-progress-bar" style="width: 0%"></div>
+                                </div>
+                                <div class="flex items-center justify-between mt-2">
+                                    <span class="text-xs text-gray-500">
+                                        <span id="processed-count"><?php echo esc_html($state['processed']); ?></span> / <span id="total-count"><?php echo esc_html($state['total_files']); ?></span> <?php esc_html_e('images', 'media-toolkit'); ?>
+                                    </span>
+                                    <span class="<?php echo $state['failed'] > 0 ? '' : 'hidden'; ?> px-2 py-0.5 text-xs font-medium rounded mt-badge-error" id="failed-badge">
+                                        <span id="failed-count"><?php echo esc_html($state['failed']); ?></span> <?php esc_html_e('failed', 'media-toolkit'); ?>
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            <!-- Status & Savings Info -->
+                            <div class="grid grid-cols-2 gap-3">
+                                <div class="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200">
+                                    <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100">
+                                        <span class="dashicons dashicons-clock text-gray-600"></span>
                                     </div>
-                                    <div class="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
-                                        <div class="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full transition-all duration-500 ease-out" id="batch-progress-bar" style="width: 0%"></div>
-                                    </div>
-                                    <div class="flex items-center justify-between mt-2">
-                                        <span class="text-xs text-gray-500">
-                                            <span id="processed-count"><?php echo esc_html($state['processed']); ?></span> / <span id="total-count"><?php echo esc_html($state['total_files']); ?></span> <?php esc_html_e('images', 'media-toolkit'); ?>
-                                        </span>
-                                        <span class="<?php echo $state['failed'] > 0 ? '' : 'hidden'; ?> px-2 py-0.5 text-xs font-medium rounded mt-badge-error" id="failed-badge">
-                                            <span id="failed-count"><?php echo esc_html($state['failed']); ?></span> <?php esc_html_e('failed', 'media-toolkit'); ?>
-                                        </span>
+                                    <div>
+                                        <span class="block text-xs text-gray-500"><?php esc_html_e('Status', 'media-toolkit'); ?></span>
+                                        <span class="text-sm font-semibold text-gray-900" id="status-text"><?php echo esc_html(ucfirst($state['status'])); ?></span>
                                     </div>
                                 </div>
-                                
-                                <!-- Status & Savings Info -->
-                                <div class="grid grid-cols-2 gap-3">
-                                    <div class="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200">
-                                        <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100">
-                                            <span class="dashicons dashicons-clock text-gray-600"></span>
-                                        </div>
-                                        <div>
-                                            <span class="block text-xs text-gray-500"><?php esc_html_e('Status', 'media-toolkit'); ?></span>
-                                            <span class="text-sm font-semibold text-gray-900" id="status-text"><?php echo esc_html(ucfirst($state['status'])); ?></span>
-                                        </div>
+                                <div class="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200">
+                                    <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-100">
+                                        <span class="dashicons dashicons-database text-emerald-600"></span>
                                     </div>
-                                    <div class="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200">
-                                        <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-100">
-                                            <span class="dashicons dashicons-database text-emerald-600"></span>
-                                        </div>
-                                        <div>
-                                            <span class="block text-xs text-gray-500"><?php esc_html_e('Batch Saved', 'media-toolkit'); ?></span>
-                                            <span class="text-sm font-semibold text-emerald-600" id="batch-bytes-saved">0 B</span>
-                                        </div>
+                                    <div>
+                                        <span class="block text-xs text-gray-500"><?php esc_html_e('Batch Saved', 'media-toolkit'); ?></span>
+                                        <span class="text-sm font-semibold text-emerald-600" id="batch-bytes-saved">0 B</span>
                                     </div>
                                 </div>
                             </div>
@@ -705,6 +743,192 @@ $hasBanner = file_exists($bannerPath);
                         </div>
                     </div>
                 </div>
+            </div>
+
+        <?php elseif ($active_tab === 'settings'): ?>
+            <!-- ==================== SETTINGS TAB ==================== -->
+            
+            <!-- Info Notice -->
+            <div class="flex gap-3 p-4 rounded-xl bg-blue-50 text-blue-800 mb-6">
+                <span class="dashicons dashicons-info text-blue-600 flex-shrink-0 mt-0.5"></span>
+                <div>
+                    <strong class="block text-sm font-semibold mb-1"><?php esc_html_e('Optimization Settings', 'media-toolkit'); ?></strong>
+                    <p class="text-sm opacity-90 m-0">
+                        <?php esc_html_e('These settings apply to both automatic optimization on upload and batch optimization.', 'media-toolkit'); ?>
+                    </p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Compression Settings Card -->
+                <div class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                    <div class="flex items-center gap-3 px-6 py-4 bg-gradient-to-b from-gray-50 to-gray-100 border-b border-gray-200">
+                        <span class="dashicons dashicons-admin-settings text-gray-700"></span>
+                        <h3 class="text-base font-semibold text-gray-900"><?php esc_html_e('Compression Settings', 'media-toolkit'); ?></h3>
+                    </div>
+                    <div class="p-6 space-y-5">
+                        <!-- Enable Optimize on Upload Toggle -->
+                        <div class="pb-4 border-b border-gray-200">
+                            <label class="mt-toggle inline-flex items-center gap-3 cursor-pointer">
+                                <input type="checkbox" id="optimize-on-upload" <?php checked($opt_settings['optimize_on_upload'] ?? false); ?>>
+                                <span class="mt-toggle-slider"></span>
+                                <div>
+                                    <span class="block text-sm font-semibold text-gray-900"><?php esc_html_e('Optimize on Upload', 'media-toolkit'); ?></span>
+                                    <span class="block text-xs text-gray-500"><?php esc_html_e('Automatically compress images when uploaded (after resize, before cloud upload)', 'media-toolkit'); ?></span>
+                                </div>
+                            </label>
+                        </div>
+
+                        <div>
+                            <label for="jpeg-quality" class="block text-sm font-semibold text-gray-900 mb-2"><?php esc_html_e('JPEG Quality', 'media-toolkit'); ?></label>
+                            <div class="flex items-center gap-3">
+                                <input type="range" id="jpeg-quality" min="60" max="100" value="<?php echo esc_attr($opt_settings['jpeg_quality']); ?>" class="flex-1">
+                                <span class="inline-flex items-center px-3 py-1 text-sm font-medium rounded-full mt-badge-info" id="jpeg-quality-value"><?php echo esc_html($opt_settings['jpeg_quality']); ?></span>
+                            </div>
+                            <p class="mt-2 text-sm text-gray-500"><?php esc_html_e('Higher = better quality, larger file. Recommended: 75-85', 'media-toolkit'); ?></p>
+                        </div>
+                        
+                        <div>
+                            <label for="png-compression" class="block text-sm font-semibold text-gray-900 mb-2"><?php esc_html_e('PNG Compression Level', 'media-toolkit'); ?></label>
+                            <div class="flex items-center gap-3">
+                                <input type="range" id="png-compression" min="0" max="9" value="<?php echo esc_attr($opt_settings['png_compression']); ?>" class="flex-1">
+                                <span class="inline-flex items-center px-3 py-1 text-sm font-medium rounded-full mt-badge-info" id="png-compression-value"><?php echo esc_html($opt_settings['png_compression']); ?></span>
+                            </div>
+                            <p class="mt-2 text-sm text-gray-500"><?php esc_html_e('0 = no compression, 9 = max compression (lossless)', 'media-toolkit'); ?></p>
+                        </div>
+
+                        <div>
+                            <label for="max-file-size" class="block text-sm font-semibold text-gray-900 mb-2"><?php esc_html_e('Max File Size (MB)', 'media-toolkit'); ?></label>
+                            <select id="max-file-size" class="mt-select w-full max-w-xs px-4 py-2.5 text-sm bg-white border border-gray-300 rounded-lg outline-none transition-all">
+                                <option value="5" <?php selected($opt_settings['max_file_size_mb'], 5); ?>>5 MB</option>
+                                <option value="10" <?php selected($opt_settings['max_file_size_mb'], 10); ?>>10 MB</option>
+                                <option value="20" <?php selected($opt_settings['max_file_size_mb'], 20); ?>>20 MB</option>
+                                <option value="50" <?php selected($opt_settings['max_file_size_mb'], 50); ?>>50 MB</option>
+                            </select>
+                            <p class="mt-2 text-sm text-gray-500"><?php esc_html_e('Files larger than this will be skipped', 'media-toolkit'); ?></p>
+                        </div>
+
+                        <div class="pt-2">
+                            <label class="mt-toggle inline-flex items-center gap-3 cursor-pointer">
+                                <input type="checkbox" id="strip-metadata" <?php checked($opt_settings['strip_metadata']); ?>>
+                                <span class="mt-toggle-slider"></span>
+                                <span class="text-sm font-semibold text-gray-900"><?php esc_html_e('Strip EXIF/Metadata', 'media-toolkit'); ?></span>
+                            </label>
+                            <p class="mt-2 ml-14 text-sm text-gray-500"><?php esc_html_e('Remove camera info, GPS data, etc. from JPEG files', 'media-toolkit'); ?></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Backup & Conversion Settings -->
+                <div class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                    <div class="flex items-center gap-3 px-6 py-4 bg-gradient-to-b from-gray-50 to-gray-100 border-b border-gray-200">
+                        <span class="dashicons dashicons-backup text-gray-700"></span>
+                        <h3 class="text-base font-semibold text-gray-900"><?php esc_html_e('Backup & Format Conversion', 'media-toolkit'); ?></h3>
+                    </div>
+                    <div class="p-6 space-y-5">
+                        <!-- Backup Original Toggle -->
+                        <div class="pb-4 border-b border-gray-200">
+                            <label class="mt-toggle inline-flex items-center gap-3 cursor-pointer">
+                                <input type="checkbox" id="backup-enabled" <?php checked($backup_info['settings']['enabled'] ?? false); ?>>
+                                <span class="mt-toggle-slider"></span>
+                                <div>
+                                    <span class="block text-sm font-semibold text-gray-900"><?php esc_html_e('Keep Original Backup', 'media-toolkit'); ?></span>
+                                    <span class="block text-xs text-gray-500"><?php esc_html_e('Save original image as filename_original.ext before optimization', 'media-toolkit'); ?></span>
+                                </div>
+                            </label>
+                            <?php 
+                            $backup_stats = $backup_info['stats'] ?? [];
+                            if (($backup_stats['total'] ?? 0) > 0): 
+                            ?>
+                            <p class="mt-2 ml-14 text-xs text-gray-500">
+                                <?php printf(
+                                    esc_html__('%d backups stored (%s)', 'media-toolkit'),
+                                    $backup_stats['total'],
+                                    size_format($backup_stats['total_size'] ?? 0)
+                                ); ?>
+                            </p>
+                            <?php endif; ?>
+                        </div>
+
+                        <!-- WebP Conversion Toggle -->
+                        <div class="pb-4 border-b border-gray-200">
+                            <label class="mt-toggle inline-flex items-center gap-3 cursor-pointer">
+                                <input type="checkbox" id="webp-enabled" <?php checked($conversion_info['settings']['webp_enabled'] ?? false); ?> <?php disabled(!($conversion_info['stats']['webp_available'] ?? false)); ?>>
+                                <span class="mt-toggle-slider"></span>
+                                <div>
+                                    <span class="block text-sm font-semibold text-gray-900"><?php esc_html_e('Generate WebP Version', 'media-toolkit'); ?></span>
+                                    <span class="block text-xs text-gray-500"><?php esc_html_e('Create .webp alongside original format (20-30% smaller)', 'media-toolkit'); ?></span>
+                                </div>
+                            </label>
+                            <?php if (!($conversion_info['stats']['webp_available'] ?? false)): ?>
+                            <p class="mt-2 ml-14 text-xs text-amber-600">
+                                <span class="dashicons dashicons-warning" style="font-size: 12px; width: 12px; height: 12px;"></span>
+                                <?php esc_html_e('WebP conversion not available. Install cwebp or enable ImageMagick WebP support.', 'media-toolkit'); ?>
+                            </p>
+                            <?php else: ?>
+                            <div class="mt-3 ml-14">
+                                <label for="webp-quality" class="block text-xs font-medium text-gray-700 mb-1"><?php esc_html_e('WebP Quality', 'media-toolkit'); ?></label>
+                                <div class="flex items-center gap-2">
+                                    <input type="range" id="webp-quality" min="50" max="95" value="<?php echo esc_attr($conversion_info['settings']['webp_quality'] ?? 80); ?>" class="w-32">
+                                    <span class="text-xs text-gray-600" id="webp-quality-value"><?php echo esc_html($conversion_info['settings']['webp_quality'] ?? 80); ?></span>
+                                </div>
+                            </div>
+                            <?php endif; ?>
+                        </div>
+
+                        <!-- AVIF Conversion Toggle -->
+                        <div>
+                            <label class="mt-toggle inline-flex items-center gap-3 cursor-pointer">
+                                <input type="checkbox" id="avif-enabled" <?php checked($conversion_info['settings']['avif_enabled'] ?? false); ?> <?php disabled(!($conversion_info['stats']['avif_available'] ?? false)); ?>>
+                                <span class="mt-toggle-slider"></span>
+                                <div>
+                                    <span class="block text-sm font-semibold text-gray-900"><?php esc_html_e('Generate AVIF Version', 'media-toolkit'); ?></span>
+                                    <span class="block text-xs text-gray-500"><?php esc_html_e('Create .avif alongside original format (20-50% smaller than WebP)', 'media-toolkit'); ?></span>
+                                </div>
+                            </label>
+                            <?php if (!($conversion_info['stats']['avif_available'] ?? false)): ?>
+                            <p class="mt-2 ml-14 text-xs text-amber-600">
+                                <span class="dashicons dashicons-warning" style="font-size: 12px; width: 12px; height: 12px;"></span>
+                                <?php esc_html_e('AVIF conversion not available. Install avifenc or upgrade to ImageMagick 7+ with AVIF support.', 'media-toolkit'); ?>
+                            </p>
+                            <?php else: ?>
+                            <div class="mt-3 ml-14">
+                                <label for="avif-quality" class="block text-xs font-medium text-gray-700 mb-1"><?php esc_html_e('AVIF Quality', 'media-toolkit'); ?></label>
+                                <div class="flex items-center gap-2">
+                                    <input type="range" id="avif-quality" min="30" max="80" value="<?php echo esc_attr($conversion_info['settings']['avif_quality'] ?? 50); ?>" class="w-32">
+                                    <span class="text-xs text-gray-600" id="avif-quality-value"><?php echo esc_html($conversion_info['settings']['avif_quality'] ?? 50); ?></span>
+                                </div>
+                            </div>
+                            <?php endif; ?>
+                        </div>
+
+                        <!-- Conversion Stats -->
+                        <?php 
+                        $conv_stats = $conversion_info['stats'] ?? [];
+                        if (($conv_stats['webp_count'] ?? 0) > 0 || ($conv_stats['avif_count'] ?? 0) > 0): 
+                        ?>
+                        <div class="pt-3 border-t border-gray-200">
+                            <div class="flex items-center gap-4 text-sm text-gray-600">
+                                <?php if (($conv_stats['webp_count'] ?? 0) > 0): ?>
+                                <span><strong><?php echo esc_html($conv_stats['webp_count']); ?></strong> <?php esc_html_e('WebP files', 'media-toolkit'); ?></span>
+                                <?php endif; ?>
+                                <?php if (($conv_stats['avif_count'] ?? 0) > 0): ?>
+                                <span><strong><?php echo esc_html($conv_stats['avif_count']); ?></strong> <?php esc_html_e('AVIF files', 'media-toolkit'); ?></span>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Save Button -->
+            <div class="mt-6">
+                <button type="button" class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-gray-800 hover:bg-gray-900 rounded-lg transition-all" id="btn-save-optimize-settings">
+                    <span class="dashicons dashicons-saved"></span>
+                    <?php esc_html_e('Save Settings', 'media-toolkit'); ?>
+                </button>
+                <span class="ml-3 text-sm text-gray-500" id="settings-status"></span>
             </div>
 
         <?php endif; ?>

@@ -16,5 +16,6 @@ enum RetryableError: string
     case THROTTLING = 'ThrottlingException';
     case SLOW_DOWN = 'SlowDown';
     case INTERNAL_ERROR = 'InternalError';
+    case BAD_DIGEST = 'BadDigest'; // CRC32 checksum mismatch - can happen with concurrent file access
 }
 

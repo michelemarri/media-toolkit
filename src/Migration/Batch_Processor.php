@@ -357,6 +357,17 @@ abstract class Batch_Processor
             $result = $this->process_batch();
             $result['stats'] = $this->get_stats();
             
+            // Add retry queue count for better feedback
+            if (function_exists('Metodo\MediaToolkit\media_toolkit')) {
+                $plugin = \Metodo\MediaToolkit\media_toolkit();
+                if ($plugin && method_exists($plugin, 'get_error_handler')) {
+                    $error_handler = $plugin->get_error_handler();
+                    if ($error_handler) {
+                        $result['retry_queue_count'] = $error_handler->get_failed_count();
+                    }
+                }
+            }
+            
             wp_send_json_success($result);
         } catch (\Throwable $e) {
             $this->logger->error($this->processor_id, 'Exception in ajax_process_batch(): ' . $e->getMessage());

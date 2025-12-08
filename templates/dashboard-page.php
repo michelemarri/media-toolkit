@@ -248,7 +248,7 @@ $env_color = $env_colors[$active_environment->value] ?? $env_colors['production'
                         </div>
                         <span class="text-sm text-gray-500"><?php esc_html_e('Last Storage Sync', 'media-toolkit'); ?></span>
                     </div>
-                    <span class="block text-2xl font-bold text-gray-900"><?php echo esc_html($dashboard_stats['s3_synced_at_formatted'] ?? 'Never'); ?></span>
+                    <span class="block text-2xl font-bold text-gray-900"><?php echo esc_html($dashboard_stats['storage_synced_at_formatted'] ?? 'Never'); ?></span>
                 </div>
             </div>
         </div>

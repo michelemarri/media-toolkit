@@ -538,7 +538,7 @@ $hasBanner = file_exists($bannerPath);
                             </div>
                             <span class="text-sm text-gray-500"><?php esc_html_e('Cloud Files', 'media-toolkit'); ?></span>
                         </div>
-                        <span class="block text-2xl font-bold text-gray-900" id="recon-s3-files"><?php echo number_format($reconciliation_stats['s3_original_files'] ?? 0); ?></span>
+                        <span class="block text-2xl font-bold text-gray-900" id="recon-storage-files"><?php echo number_format($reconciliation_stats['storage_original_files'] ?? 0); ?></span>
                     </div>
                     
                     <div class="p-5 <?php echo ($reconciliation_stats['has_discrepancy'] ?? false) ? 'bg-amber-50 border-amber-200 cursor-pointer hover:bg-amber-100 transition-colors' : 'bg-gray-50 border-gray-200'; ?> border rounded-2xl <?php echo ($reconciliation_stats['has_discrepancy'] ?? false) ? 'group' : ''; ?>" <?php echo ($reconciliation_stats['has_discrepancy'] ?? false) ? 'id="btn-view-discrepancies" role="button" tabindex="0"' : ''; ?>>
@@ -582,7 +582,7 @@ $hasBanner = file_exists($bannerPath);
                         </h4>
                         <p class="text-sm text-gray-600 mb-4"><?php esc_html_e('Scan cloud storage to see how many files match WordPress attachments before running reconciliation.', 'media-toolkit'); ?></p>
                         
-                        <button type="button" class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 shadow-xs transition-all" id="btn-scan-s3">
+                        <button type="button" class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 shadow-xs transition-all" id="btn-scan-storage">
                             <span class="dashicons dashicons-search"></span>
                             <?php esc_html_e('Scan Storage', 'media-toolkit'); ?>
                         </button>
@@ -590,7 +590,7 @@ $hasBanner = file_exists($bannerPath);
                         <div id="scan-results" class="hidden mt-4 space-y-2">
                             <div class="flex items-center justify-between p-3 bg-white rounded-lg">
                                 <span class="text-sm text-gray-500"><?php esc_html_e('Cloud Files', 'media-toolkit'); ?></span>
-                                <span class="text-sm font-semibold text-gray-900" id="scan-s3-files">-</span>
+                                <span class="text-sm font-semibold text-gray-900" id="scan-storage-files">-</span>
                             </div>
                             <div class="flex items-center justify-between p-3 bg-white rounded-lg">
                                 <span class="text-sm text-gray-500"><?php esc_html_e('WordPress Attachments', 'media-toolkit'); ?></span>
@@ -763,11 +763,11 @@ $hasBanner = file_exists($bannerPath);
                 <div id="discrepancies-summary" class="p-4 bg-gray-100 rounded-lg space-y-3">
                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
                         <div class="text-center p-3 bg-white rounded-lg">
-                            <div class="text-xl font-bold text-gray-900" id="summary-s3-scanned">-</div>
+                            <div class="text-xl font-bold text-gray-900" id="summary-storage-scanned">-</div>
                             <div class="text-xs text-gray-500"><?php esc_html_e('Cloud Files (scan)', 'media-toolkit'); ?></div>
                         </div>
                         <div class="text-center p-3 bg-white rounded-lg">
-                            <div class="text-xl font-bold text-gray-400" id="summary-s3-cached">-</div>
+                            <div class="text-xl font-bold text-gray-400" id="summary-storage-cached">-</div>
                             <div class="text-xs text-gray-500"><?php esc_html_e('Cloud Files (cached)', 'media-toolkit'); ?></div>
                         </div>
                         <div class="text-center p-3 bg-white rounded-lg">
@@ -791,14 +791,14 @@ $hasBanner = file_exists($bannerPath);
                 </div>
                 
                 <!-- Marked but not on cloud -->
-                <div id="discrepancies-not-on-s3" class="hidden">
+                <div id="discrepancies-not-on-storage" class="hidden">
                     <h4 class="flex items-center gap-2 text-sm font-semibold text-gray-900 mb-3">
                         <span class="dashicons dashicons-cloud-saved text-red-500"></span>
                         <?php esc_html_e('Marked as migrated but NOT found on cloud', 'media-toolkit'); ?>
-                        <span class="px-2 py-0.5 text-xs font-medium rounded bg-red-100 text-red-700" id="count-not-on-s3">0</span>
+                        <span class="px-2 py-0.5 text-xs font-medium rounded bg-red-100 text-red-700" id="count-not-on-storage">0</span>
                     </h4>
                     <p class="text-xs text-gray-500 mb-2"><?php esc_html_e('These files have metadata saying they are on cloud storage, but the actual file was not found.', 'media-toolkit'); ?></p>
-                    <div class="bg-gray-50 rounded-lg border border-gray-200 divide-y divide-gray-200 max-h-48 overflow-y-auto" id="list-not-on-s3"></div>
+                    <div class="bg-gray-50 rounded-lg border border-gray-200 divide-y divide-gray-200 max-h-48 overflow-y-auto" id="list-not-on-storage"></div>
                 </div>
                 
                 <!-- On cloud but not marked -->

@@ -16,6 +16,9 @@ use Metodo\MediaToolkit\Core\Logger;
 use Metodo\MediaToolkit\History\History;
 use Metodo\MediaToolkit\History\HistoryAction;
 use Metodo\MediaToolkit\Database\OptimizationTable;
+use Metodo\MediaToolkit\Optimizer\OptimizerManager;
+use Metodo\MediaToolkit\Optimizer\BackupManager;
+use Metodo\MediaToolkit\Optimizer\ConversionManager;
 
 /**
  * Handles image optimization/compression for media files
@@ -27,6 +30,9 @@ final class Image_Optimizer extends Batch_Processor
     
     private ?StorageInterface $storage;
     private History $history;
+    private OptimizerManager $optimizerManager;
+    private BackupManager $backupManager;
+    private ConversionManager $conversionManager;
     
     /** @var array|null In-memory cache for stats within same request */
     private ?array $stats_cache = null;
@@ -45,9 +51,22 @@ final class Image_Optimizer extends Batch_Processor
         $this->storage = $storage;
         $this->history = $history ?? new History();
         
+        // Initialize optimizer components
+        $this->optimizerManager = new OptimizerManager($logger);
+        $this->backupManager = new BackupManager($logger, $settings, $storage, $this->history);
+        $this->conversionManager = new ConversionManager(
+            $this->optimizerManager,
+            $logger,
+            $settings,
+            $storage,
+            $this->history
+        );
+        
         // Register settings AJAX handler
         add_action('wp_ajax_media_toolkit_save_optimize_settings', [$this, 'ajax_save_settings']);
         add_action('wp_ajax_media_toolkit_rebuild_optimization_stats', [$this, 'ajax_rebuild_stats']);
+        add_action('wp_ajax_media_toolkit_get_optimizer_capabilities', [$this, 'ajax_get_capabilities']);
+        add_action('wp_ajax_media_toolkit_restore_backup', [$this, 'ajax_restore_backup']);
         
         // Hook into attachment deletion to update stats
         add_action('delete_attachment', [$this, 'on_attachment_deleted'], 10, 1);
@@ -126,6 +145,8 @@ final class Image_Optimizer extends Batch_Processor
             'image/png' => $this->optimize_png($file_path, $settings),
             'image/gif' => $this->optimize_gif($file_path, $settings),
             'image/webp' => $this->optimize_webp($file_path, $settings),
+            'image/avif' => $this->optimize_with_manager($file_path, 'avif', $settings),
+            'image/svg+xml' => $this->optimize_svg($file_path, $settings),
             default => ['success' => false, 'error' => 'Unsupported image type'],
         };
 
@@ -265,6 +286,7 @@ final class Image_Optimizer extends Batch_Processor
                         'image/png' => $this->optimize_png($thumb_file, $settings),
                         'image/gif' => $this->optimize_gif($thumb_file, $settings),
                         'image/webp' => $this->optimize_webp($thumb_file, $settings),
+                        'image/avif' => $this->optimize_with_manager($thumb_file, 'avif', $settings),
                         default => ['success' => false],
                     };
                 } catch (\Throwable $e) {
@@ -899,6 +921,31 @@ final class Image_Optimizer extends Batch_Processor
 
         $settings = array_merge($this->get_optimization_settings(), $options);
         $mime_type = get_post_mime_type($attachment_id);
+        
+        // First verify file exists before trying to get size
+        if (!file_exists($file)) {
+            $error_msg = sprintf(
+                'File does not exist at expected path (is_on_s3=%s, download_attempted=%s)',
+                $is_on_s3 ? 'yes' : 'no',
+                ($is_s3_active && $is_on_s3) ? 'yes' : 'no'
+            );
+            OptimizationTable::mark_failed($attachment_id, 'File does not exist');
+            $this->invalidate_stats_cache();
+            
+            $this->logger->error(
+                'optimization',
+                $error_msg,
+                $attachment_id,
+                basename($file),
+                ['file_path' => $file, 's3_key' => $s3_key ?? null]
+            );
+            
+            return [
+                'success' => false,
+                'error' => 'File does not exist - may have failed to download from storage',
+            ];
+        }
+        
         $original_size = filesize($file);
         
         // Verify file is readable
@@ -944,20 +991,75 @@ final class Image_Optimizer extends Batch_Processor
             'image/png' => $this->optimize_png($file, $settings),
             'image/gif' => $this->optimize_gif($file, $settings),
             'image/webp' => $this->optimize_webp($file, $settings),
+            'image/avif' => $this->optimize_with_manager($file, 'avif', $settings),
+            'image/svg+xml' => $this->optimize_svg($file, $settings),
             default => ['success' => false, 'error' => 'Unsupported image type'],
         };
 
         if (!$result['success']) {
+            // Log optimizer failure for debugging
+            $this->logger->warning(
+                'optimization',
+                'Optimizer returned failure: ' . ($result['error'] ?? 'Unknown'),
+                $attachment_id,
+                basename($file),
+                ['optimizer' => $result['optimizer_used'] ?? 'unknown']
+            );
             return $result;
         }
 
+        // IMPORTANT: Verify file still exists after optimization
+        // Some CLI optimizers may fail silently or delete the file
         clearstatcache(true, $file);
+        
+        if (!file_exists($file)) {
+            $error_msg = 'File was deleted by optimizer (file no longer exists after optimization)';
+            OptimizationTable::mark_failed($attachment_id, $error_msg);
+            $this->invalidate_stats_cache();
+            
+            $this->logger->error(
+                'optimization',
+                $error_msg,
+                $attachment_id,
+                basename($file),
+                ['optimizer' => $result['optimizer_used'] ?? 'unknown', 'file_path' => $file]
+            );
+            
+            return [
+                'success' => false,
+                'error' => $error_msg,
+            ];
+        }
+        
         $new_size = filesize($file);
         
         // Verify file is still readable after optimization
         if ($new_size === false) {
-            OptimizationTable::mark_failed($attachment_id, 'File became unreadable after optimization');
+            // Gather diagnostic info
+            $file_exists = file_exists($file);
+            $is_readable = is_readable($file);
+            $dir_exists = is_dir(dirname($file));
+            
+            $diagnostic = sprintf(
+                'exists=%s, readable=%s, dir_exists=%s, optimizer=%s',
+                $file_exists ? 'yes' : 'no',
+                $is_readable ? 'yes' : 'no',
+                $dir_exists ? 'yes' : 'no',
+                $result['optimizer_used'] ?? 'unknown'
+            );
+            
+            $error_msg = "File became unreadable after optimization ({$diagnostic})";
+            
+            OptimizationTable::mark_failed($attachment_id, $error_msg);
             $this->invalidate_stats_cache();
+            
+            $this->logger->error(
+                'optimization',
+                $error_msg,
+                $attachment_id,
+                basename($file),
+                ['diagnostic' => $diagnostic, 'file_path' => $file]
+            );
             
             return [
                 'success' => false,
@@ -1068,149 +1170,90 @@ final class Image_Optimizer extends Batch_Processor
     }
 
     /**
-     * Optimize JPEG image
+     * Optimize JPEG image using OptimizerManager
      */
     private function optimize_jpeg(string $file, array $settings): array
     {
-        $quality = $settings['jpeg_quality'] ?? 82;
-        $strip_metadata = $settings['strip_metadata'] ?? true;
-
-        $editor = wp_get_image_editor($file);
-        
-        if (is_wp_error($editor)) {
-            return [
-                'success' => false,
-                'error' => $editor->get_error_message(),
-            ];
-        }
-
-        $editor->set_quality($quality);
-        
-        $result = $editor->save($file, 'image/jpeg');
-        
-        if (is_wp_error($result)) {
-            return [
-                'success' => false,
-                'error' => $result->get_error_message(),
-            ];
-        }
-
-        // Strip EXIF metadata if requested (using GD directly)
-        if ($strip_metadata && function_exists('imagecreatefromjpeg')) {
-            $this->strip_jpeg_metadata($file, $quality);
-        }
-
-        return ['success' => true];
+        return $this->optimize_with_manager($file, 'jpeg', $settings);
     }
 
     /**
-     * Strip JPEG metadata by re-encoding
-     */
-    private function strip_jpeg_metadata(string $file, int $quality): bool
-    {
-        $image = @imagecreatefromjpeg($file);
-        
-        if ($image === false) {
-            return false;
-        }
-
-        $result = imagejpeg($image, $file, $quality);
-        imagedestroy($image);
-        
-        return $result;
-    }
-
-    /**
-     * Optimize PNG image
+     * Optimize PNG image using OptimizerManager
      */
     private function optimize_png(string $file, array $settings): array
     {
-        $compression = $settings['png_compression'] ?? 6;
-
-        $editor = wp_get_image_editor($file);
-        
-        if (is_wp_error($editor)) {
-            return [
-                'success' => false,
-                'error' => $editor->get_error_message(),
-            ];
-        }
-
-        // PNG compression is 0-9 (0 = none, 9 = max)
-        // WP_Image_Editor doesn't have direct PNG compression setting,
-        // so we use GD directly for better control
-        if (function_exists('imagecreatefrompng')) {
-            $image = @imagecreatefrompng($file);
-            
-            if ($image !== false) {
-                // Preserve transparency
-                imagesavealpha($image, true);
-                imagealphablending($image, false);
-                
-                // Save with compression
-                imagepng($image, $file, $compression);
-                imagedestroy($image);
-                
-                return ['success' => true];
-            }
-        }
-
-        // Fallback to WP editor
-        $result = $editor->save($file, 'image/png');
-        
-        if (is_wp_error($result)) {
-            return [
-                'success' => false,
-                'error' => $result->get_error_message(),
-            ];
-        }
-
-        return ['success' => true];
+        return $this->optimize_with_manager($file, 'png', $settings);
     }
 
     /**
-     * Optimize GIF image
+     * Optimize GIF image using OptimizerManager
      */
     private function optimize_gif(string $file, array $settings): array
     {
-        // GIF optimization is limited - mainly just re-save
-        // Animated GIFs should not be processed
-        if ($this->is_animated_gif($file)) {
-            return [
-                'success' => true,
-                'skipped' => true,
-                'reason' => 'Animated GIF',
-            ];
-        }
-
-        $editor = wp_get_image_editor($file);
-        
-        if (is_wp_error($editor)) {
-            return [
-                'success' => false,
-                'error' => $editor->get_error_message(),
-            ];
-        }
-
-        $result = $editor->save($file, 'image/gif');
-        
-        if (is_wp_error($result)) {
-            return [
-                'success' => false,
-                'error' => $result->get_error_message(),
-            ];
-        }
-
-        return ['success' => true];
+        return $this->optimize_with_manager($file, 'gif', $settings);
     }
 
     /**
-     * Optimize WebP image
+     * Optimize WebP image using OptimizerManager
      */
     private function optimize_webp(string $file, array $settings): array
     {
-        $quality = $settings['webp_quality'] ?? 80;
+        return $this->optimize_with_manager($file, 'webp', $settings);
+    }
 
+    /**
+     * Optimize SVG image using OptimizerManager
+     */
+    private function optimize_svg(string $file, array $settings): array
+    {
+        return $this->optimize_with_manager($file, 'svg', $settings);
+    }
+
+    /**
+     * Generic optimization using OptimizerManager
+     * Uses best available optimizer for the format
+     */
+    private function optimize_with_manager(string $file, string $format, array $settings): array
+    {
+        $optimizer = $this->optimizerManager->getBestOptimizer($format);
+        
+        if ($optimizer === null) {
+            // Fallback to legacy method if no optimizer available
+            return $this->optimize_with_legacy($file, $format, $settings);
+        }
+
+        $result = $optimizer->optimize($file, $file, [
+            'quality' => $settings['jpeg_quality'] ?? $settings['webp_quality'] ?? 82,
+            'jpeg_quality' => $settings['jpeg_quality'] ?? 82,
+            'png_compression' => $settings['png_compression'] ?? 6,
+            'webp_quality' => $settings['webp_quality'] ?? 80,
+            'strip_metadata' => $settings['strip_metadata'] ?? true,
+        ]);
+
+        if (!$result->success) {
+            return [
+                'success' => false,
+                'error' => $result->error ?? 'Optimization failed',
+            ];
+        }
+
+        if ($result->skipped) {
+            return [
+                'success' => true,
+                'skipped' => true,
+                'reason' => $result->skipReason ?? 'Skipped',
+            ];
+        }
+
+        return ['success' => true, 'optimizer_used' => $optimizer->getId()];
+    }
+
+    /**
+     * Legacy optimization using WordPress image editor
+     * Used as fallback when no CLI optimizer is available
+     */
+    private function optimize_with_legacy(string $file, string $format, array $settings): array
+    {
         $editor = wp_get_image_editor($file);
         
         if (is_wp_error($editor)) {
@@ -1220,15 +1263,26 @@ final class Image_Optimizer extends Batch_Processor
             ];
         }
 
-        if (!$editor->supports_mime_type('image/webp')) {
-            return [
-                'success' => false,
-                'error' => 'WebP not supported by image editor',
-            ];
+        $mimeType = match ($format) {
+            'jpeg' => 'image/jpeg',
+            'png' => 'image/png',
+            'gif' => 'image/gif',
+            'webp' => 'image/webp',
+            default => null,
+        };
+
+        if ($mimeType === null) {
+            return ['success' => false, 'error' => "Unsupported format: {$format}"];
         }
 
-        $editor->set_quality($quality);
-        $result = $editor->save($file, 'image/webp');
+        // Set quality for lossy formats
+        if ($format === 'jpeg') {
+            $editor->set_quality($settings['jpeg_quality'] ?? 82);
+        } elseif ($format === 'webp') {
+            $editor->set_quality($settings['webp_quality'] ?? 80);
+        }
+
+        $result = $editor->save($file, $mimeType);
         
         if (is_wp_error($result)) {
             return [
@@ -1237,7 +1291,7 @@ final class Image_Optimizer extends Batch_Processor
             ];
         }
 
-        return ['success' => true];
+        return ['success' => true, 'optimizer_used' => 'legacy'];
     }
 
     /**
@@ -1296,7 +1350,9 @@ final class Image_Optimizer extends Batch_Processor
                 $result = match ($mime_type) {
                     'image/jpeg', 'image/jpg' => $this->optimize_jpeg($thumb_file, $settings),
                     'image/png' => $this->optimize_png($thumb_file, $settings),
+                    'image/gif' => $this->optimize_gif($thumb_file, $settings),
                     'image/webp' => $this->optimize_webp($thumb_file, $settings),
+                    'image/avif' => $this->optimize_with_manager($thumb_file, 'avif', $settings),
                     default => ['success' => false],
                 };
             } catch (\Throwable $e) {
@@ -1405,6 +1461,8 @@ final class Image_Optimizer extends Batch_Processor
             'image/png',
             'image/gif',
             'image/webp',
+            'image/avif',
+            'image/svg+xml',
         ];
     }
 
@@ -1699,6 +1757,78 @@ final class Image_Optimizer extends Batch_Processor
         } else {
             wp_send_json_error(['message' => 'Failed to save settings']);
         }
+    }
+
+    /**
+     * AJAX: Get optimizer capabilities
+     */
+    public function ajax_get_capabilities(): void
+    {
+        check_ajax_referer('media_toolkit_nonce', 'nonce');
+        
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => 'Permission denied']);
+        }
+
+        wp_send_json_success([
+            'capabilities' => $this->optimizerManager->getCapabilities(),
+            'by_format' => $this->optimizerManager->getCapabilitiesByFormat(),
+            'recommendations' => $this->optimizerManager->getRecommendations(),
+            'backup_settings' => $this->backupManager->getSettings(),
+            'backup_stats' => $this->backupManager->getStats(),
+            'conversion_settings' => $this->conversionManager->getSettings(),
+            'conversion_stats' => $this->conversionManager->getStats(),
+        ]);
+    }
+
+    /**
+     * AJAX: Restore backup for an attachment
+     */
+    public function ajax_restore_backup(): void
+    {
+        check_ajax_referer('media_toolkit_nonce', 'nonce');
+        
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => 'Permission denied']);
+        }
+
+        $attachmentId = isset($_POST['attachment_id']) ? (int) $_POST['attachment_id'] : 0;
+        
+        if ($attachmentId <= 0) {
+            wp_send_json_error(['message' => 'Invalid attachment ID']);
+        }
+
+        $result = $this->backupManager->restoreBackup($attachmentId);
+
+        if ($result['success']) {
+            wp_send_json_success(['message' => 'Backup restored successfully']);
+        } else {
+            wp_send_json_error(['message' => $result['error'] ?? 'Failed to restore backup']);
+        }
+    }
+
+    /**
+     * Get OptimizerManager instance
+     */
+    public function getOptimizerManager(): OptimizerManager
+    {
+        return $this->optimizerManager;
+    }
+
+    /**
+     * Get BackupManager instance
+     */
+    public function getBackupManager(): BackupManager
+    {
+        return $this->backupManager;
+    }
+
+    /**
+     * Get ConversionManager instance
+     */
+    public function getConversionManager(): ConversionManager
+    {
+        return $this->conversionManager;
     }
 }
 

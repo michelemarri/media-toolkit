@@ -195,5 +195,73 @@ final class Admin_Optimize
     {
         return $this->resizer !== null;
     }
+
+    /**
+     * Get optimizer capabilities (available tools by format)
+     *
+     * @return array{capabilities: array, by_format: array, recommendations: array}
+     */
+    public function get_optimizer_capabilities(): array
+    {
+        if ($this->optimizer === null) {
+            return [
+                'capabilities' => [],
+                'by_format' => [],
+                'recommendations' => [],
+            ];
+        }
+
+        $manager = $this->optimizer->getOptimizerManager();
+
+        return [
+            'capabilities' => $manager->getCapabilities(),
+            'by_format' => $manager->getCapabilitiesByFormat(),
+            'recommendations' => $manager->getRecommendations(),
+        ];
+    }
+
+    /**
+     * Get backup settings and stats
+     *
+     * @return array{settings: array, stats: array}
+     */
+    public function get_backup_info(): array
+    {
+        if ($this->optimizer === null) {
+            return [
+                'settings' => ['enabled' => false],
+                'stats' => ['total' => 0, 'total_size' => 0],
+            ];
+        }
+
+        $backupManager = $this->optimizer->getBackupManager();
+
+        return [
+            'settings' => $backupManager->getSettings(),
+            'stats' => $backupManager->getStats(),
+        ];
+    }
+
+    /**
+     * Get conversion settings and stats (WebP/AVIF)
+     *
+     * @return array{settings: array, stats: array}
+     */
+    public function get_conversion_info(): array
+    {
+        if ($this->optimizer === null) {
+            return [
+                'settings' => ['webp_enabled' => false, 'avif_enabled' => false],
+                'stats' => ['webp_count' => 0, 'avif_count' => 0],
+            ];
+        }
+
+        $conversionManager = $this->optimizer->getConversionManager();
+
+        return [
+            'settings' => $conversionManager->getSettings(),
+            'stats' => $conversionManager->getStats(),
+        ];
+    }
 }
 

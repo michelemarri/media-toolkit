@@ -485,7 +485,7 @@ final class Reconciliation extends Batch_Processor
             'storage_original_files' => $storage_count,
             'wp_attachments' => $total_attachments,
             'matches' => $matches,
-            'not_found_in_storage' => $not_found,
+            'not_found_on_storage' => $not_found,
             'currently_marked' => $currently_marked,
             'would_be_marked' => $would_be_marked,
             'match_percentage' => $total_attachments > 0
@@ -710,9 +710,9 @@ final class Reconciliation extends Batch_Processor
             );
 
             wp_send_json_success([
-                'not_in_storage' => $not_in_storage,
-                'not_in_storage_count' => count($not_in_storage),
-                'not_in_storage_total' => $not_in_storage_total,
+                'not_on_storage' => $not_in_storage,
+                'not_on_storage_count' => count($not_in_storage),
+                'not_on_storage_total' => $not_in_storage_total,
                 'not_marked' => $not_marked,
                 'not_marked_count' => count($not_marked),
                 'not_marked_total' => $not_marked_total,

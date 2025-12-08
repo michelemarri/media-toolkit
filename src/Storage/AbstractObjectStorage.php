@@ -61,6 +61,9 @@ abstract class AbstractObjectStorage implements StorageInterface
                 'key' => $this->config->accessKey,
                 'secret' => $this->config->secretKey,
             ],
+            // Disable automatic CRC32 checksum calculation to prevent BadDigest errors
+            // AWS SDK 3.x+ sends checksums by default which can fail with concurrent file access
+            'request_checksum_calculation' => 'when_required',
         ];
 
         // Add custom endpoint for non-AWS providers
@@ -308,6 +311,7 @@ abstract class AbstractObjectStorage implements StorageInterface
         $client = $this->get_client();
 
         if ($client === null) {
+            $this->logger->error('download', 'Storage client not configured', $attachment_id, $key);
             return false;
         }
 
@@ -322,7 +326,62 @@ abstract class AbstractObjectStorage implements StorageInterface
                 wp_mkdir_p($dir);
             }
 
-            file_put_contents($local_path, $result['Body']);
+            // Get content from S3 response
+            $content = $result['Body'];
+            $content_length = $result['ContentLength'] ?? 0;
+            
+            // Verify we got actual content
+            if (empty($content) || $content_length === 0) {
+                $this->logger->error(
+                    'download',
+                    'Downloaded file is empty from S3',
+                    $attachment_id,
+                    $key,
+                    ['content_length' => $content_length]
+                );
+                return false;
+            }
+
+            // Write to local file
+            $bytes_written = file_put_contents($local_path, $content);
+            
+            if ($bytes_written === false) {
+                $this->logger->error(
+                    'download',
+                    'Failed to write downloaded file to disk',
+                    $attachment_id,
+                    $key,
+                    ['local_path' => $local_path]
+                );
+                return false;
+            }
+            
+            // Verify file was written correctly
+            clearstatcache(true, $local_path);
+            $local_size = filesize($local_path);
+            
+            if ($local_size === false || $local_size === 0) {
+                $this->logger->error(
+                    'download',
+                    'Downloaded file is empty after write',
+                    $attachment_id,
+                    $key,
+                    ['expected_size' => $content_length, 'actual_size' => $local_size]
+                );
+                @unlink($local_path);
+                return false;
+            }
+            
+            // Verify size matches (with some tolerance for streaming)
+            if ($content_length > 0 && abs($local_size - $content_length) > 100) {
+                $this->logger->warning(
+                    'download',
+                    'Downloaded file size mismatch',
+                    $attachment_id,
+                    $key,
+                    ['expected_size' => $content_length, 'actual_size' => $local_size]
+                );
+            }
 
             return true;
 

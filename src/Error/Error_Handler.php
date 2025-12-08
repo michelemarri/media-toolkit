@@ -366,6 +366,7 @@ final class Error_Handler
             'ServiceUnavailable' => 'Storage service is temporarily unavailable. Please try again later.',
             'ThrottlingException' => 'Too many requests. Please wait and try again.',
             'SlowDown' => 'Request rate too high. Please reduce the request rate.',
+            'BadDigest' => 'Checksum mismatch during upload. The file may have changed during transfer. Will retry automatically.',
             default => $e->getMessage(),
         };
     }
