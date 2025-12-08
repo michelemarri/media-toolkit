@@ -385,62 +385,45 @@
                                     var metadata = response.data.metadata;
                                     
                                     if (metadata) {
-                                        // Update Backbone model first - this syncs with WordPress
-                                        if (metadata.title) {
-                                            model.set('title', metadata.title);
-                                        }
-                                        if (metadata.alt_text) {
-                                            model.set('alt', metadata.alt_text);
-                                        }
-                                        if (metadata.caption) {
-                                            model.set('caption', metadata.caption);
-                                        }
-                                        if (metadata.description) {
-                                            model.set('description', metadata.description);
-                                        }
+                                        // Update Backbone model - this syncs with WordPress
+                                        var modelUpdates = {};
+                                        if (metadata.title) modelUpdates.title = metadata.title;
+                                        if (metadata.alt_text) modelUpdates.alt = metadata.alt_text;
+                                        if (metadata.caption) modelUpdates.caption = metadata.caption;
+                                        if (metadata.description) modelUpdates.description = metadata.description;
                                         
-                                        // Save model to persist changes
+                                        model.set(modelUpdates);
                                         model.save();
                                         
-                                        // Also update DOM fields directly for immediate feedback
-                                        var $modal = $btn.closest('.media-modal, .attachment-details, .media-frame');
-                                        if (!$modal.length) {
-                                            $modal = $(document);
-                                        }
+                                        // Update DOM fields - Media Library two-column modal
+                                        // These are the specific IDs used in the attachment details modal
+                                        var $altField = $('#attachment-details-two-column-alt-text');
+                                        var $captionField = $('#attachment-details-two-column-caption');
+                                        var $descField = $('#attachment-details-two-column-description');
                                         
-                                        // Update title
-                                        var $titleField = $modal.find('[data-setting="title"]');
-                                        if ($titleField.length && metadata.title) {
-                                            $titleField.val(metadata.title).trigger('change');
-                                        }
-                                        
-                                        // Update alt text
-                                        var $altField = $modal.find('[data-setting="alt"]');
                                         if ($altField.length && metadata.alt_text) {
-                                            $altField.val(metadata.alt_text).trigger('change');
+                                            $altField.val(metadata.alt_text).trigger('change').trigger('input');
                                         }
-                                        
-                                        // Update caption
-                                        var $captionField = $modal.find('[data-setting="caption"]');
                                         if ($captionField.length && metadata.caption) {
-                                            $captionField.val(metadata.caption).trigger('change');
+                                            $captionField.val(metadata.caption).trigger('change').trigger('input');
                                         }
-                                        
-                                        // Update description
-                                        var $descField = $modal.find('[data-setting="description"]');
                                         if ($descField.length && metadata.description) {
-                                            $descField.val(metadata.description).trigger('change');
+                                            $descField.val(metadata.description).trigger('change').trigger('input');
                                         }
                                         
-                                        console.log('Fields updated:', {
-                                            title: $titleField.length,
-                                            alt: $altField.length,
-                                            caption: $captionField.length,
-                                            description: $descField.length
+                                        // Also try data-setting selectors as fallback
+                                        $('[data-setting="alt"]').val(metadata.alt_text || '').trigger('change');
+                                        $('[data-setting="caption"]').val(metadata.caption || '').trigger('change');
+                                        $('[data-setting="description"]').val(metadata.description || '').trigger('change');
+                                        
+                                        console.log('AI Metadata applied:', metadata, {
+                                            altFound: $altField.length,
+                                            captionFound: $captionField.length,
+                                            descFound: $descField.length
                                         });
                                     }
 
-                                    // Update model AI metadata status
+                                    // Update AI metadata status in model
                                     model.set('aiMetadata', $.extend({}, model.get('aiMetadata'), {
                                         generated: true,
                                         hasAltText: true,
@@ -449,10 +432,10 @@
 
                                     $btn.text(s3OffloadMedia.strings.aiGenerated || 'Generated!');
                                     
-                                    // Re-render after delay
+                                    // Re-render section after short delay
                                     setTimeout(function () {
                                         self.renderS3Info();
-                                    }, 1500);
+                                    }, 1000);
                                 } else {
                                     console.error('AI Generate Error:', response.data);
                                     var errorMsg = (response.data && response.data.message) 
