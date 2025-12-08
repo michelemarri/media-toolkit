@@ -14,6 +14,9 @@ use Metodo\MediaToolkit\Core\Settings;
 use Metodo\MediaToolkit\Core\Logger;
 use Metodo\MediaToolkit\History\History;
 
+use Metodo\MediaToolkit\AI\AIManager;
+use Metodo\MediaToolkit\AI\UploadHandler as AIUploadHandler;
+
 use function Metodo\MediaToolkit\media_toolkit;
 
 /**
@@ -377,6 +380,9 @@ final class Media_Library_UI
                 'error' => __('Error', 'media-toolkit'),
                 'confirmReupload' => __('Re-upload this file to cloud storage?', 'media-toolkit'),
                 'confirmDownload' => __('Download this file from cloud storage to local server?', 'media-toolkit'),
+                'generating' => __('Generating...', 'media-toolkit'),
+                'aiGenerated' => __('AI metadata generated!', 'media-toolkit'),
+                'aiError' => __('Failed to generate AI metadata', 'media-toolkit'),
             ],
         ]);
     }
@@ -411,6 +417,24 @@ final class Media_Library_UI
             'localExists' => file_exists(get_attached_file($attachment_id)),
             'nonce' => wp_create_nonce('media_toolkit_action_' . $attachment_id),
         ];
+
+        // Add AI metadata info for images
+        if (str_starts_with($attachment->post_mime_type, 'image/')) {
+            $ai_manager = media_toolkit()->get_ai_manager();
+            $ai_generated = get_post_meta($attachment_id, '_media_toolkit_ai_generated', true);
+            $ai_pending = AIUploadHandler::is_generation_pending($attachment_id);
+            
+            $response['aiMetadata'] = [
+                'available' => $ai_manager !== null && $ai_manager->hasConfiguredProvider(),
+                'generated' => !empty($ai_generated),
+                'generatedAt' => $ai_generated ?: null,
+                'pending' => $ai_pending,
+                'provider' => get_post_meta($attachment_id, '_media_toolkit_ai_provider', true) ?: null,
+                'hasAltText' => !empty(get_post_meta($attachment_id, '_wp_attachment_image_alt', true)),
+                'hasCaption' => !empty($attachment->post_excerpt),
+                'hasDescription' => !empty($attachment->post_content),
+            ];
+        }
 
         return $response;
     }
@@ -469,6 +493,69 @@ final class Media_Library_UI
                     <label class="setting">
                         <span class="name">&nbsp;</span>
                         <button type="button" class="button button-primary mt-btn-upload" data-id="{{ data.id }}"><?php _e('Upload to Cloud', 'media-toolkit'); ?></button>
+                    </label>
+                <# } #>
+            </div>
+            <# } #>
+            
+            <# if (data.aiMetadata) { #>
+            <div class="settings mt-ai-section">
+                <h4><span class="dashicons dashicons-format-image"></span> <?php _e('AI Metadata', 'media-toolkit'); ?></h4>
+                
+                <# if (data.aiMetadata.available) { #>
+                    <# if (data.aiMetadata.pending) { #>
+                    <label class="setting">
+                        <span class="name"><?php _e('Status', 'media-toolkit'); ?></span>
+                        <input type="text" value="⏳ <?php _e('AI generation pending...', 'media-toolkit'); ?>" readonly style="color: #7c3aed;">
+                    </label>
+                    <# } else { #>
+                    <label class="setting">
+                        <span class="name"><?php _e('Alt Text', 'media-toolkit'); ?></span>
+                        <# if (data.aiMetadata.hasAltText) { #>
+                            <input type="text" value="✓ <?php _e('Filled', 'media-toolkit'); ?>" readonly style="color: #16a34a;">
+                        <# } else { #>
+                            <input type="text" value="✗ <?php _e('Empty', 'media-toolkit'); ?>" readonly style="color: #dc2626;">
+                        <# } #>
+                    </label>
+                    
+                    <label class="setting">
+                        <span class="name"><?php _e('Caption', 'media-toolkit'); ?></span>
+                        <# if (data.aiMetadata.hasCaption) { #>
+                            <input type="text" value="✓ <?php _e('Filled', 'media-toolkit'); ?>" readonly style="color: #16a34a;">
+                        <# } else { #>
+                            <input type="text" value="✗ <?php _e('Empty', 'media-toolkit'); ?>" readonly style="color: #dc2626;">
+                        <# } #>
+                    </label>
+                    
+                    <# if (data.aiMetadata.generated) { #>
+                    <label class="setting">
+                        <span class="name"><?php _e('AI Generated', 'media-toolkit'); ?></span>
+                        <input type="text" value="✓ {{ data.aiMetadata.provider || 'AI' }}" readonly style="color: #7c3aed;">
+                    </label>
+                    <# } #>
+                    <# } #>
+                    
+                    <label class="setting">
+                        <span class="name">&nbsp;</span>
+                        <# if (data.aiMetadata.pending) { #>
+                        <button type="button" class="button" disabled>
+                            <span class="dashicons dashicons-clock" style="vertical-align: middle; margin-right: 4px;"></span>
+                            <?php _e('Processing...', 'media-toolkit'); ?>
+                        </button>
+                        <# } else { #>
+                        <button type="button" class="button mt-btn-generate-ai" data-id="{{ data.id }}">
+                            <?php _e('Generate with AI', 'media-toolkit'); ?>
+                        </button>
+                        <# } #>
+                    </label>
+                <# } else { #>
+                    <label class="setting">
+                        <span class="name"><?php _e('Status', 'media-toolkit'); ?></span>
+                        <input type="text" value="<?php _e('No AI provider configured', 'media-toolkit'); ?>" readonly style="color: #9ca3af;">
+                    </label>
+                    <label class="setting">
+                        <span class="name">&nbsp;</span>
+                        <a href="<?php echo esc_url(admin_url('admin.php?page=media-toolkit-settings&tab=ai-providers')); ?>" class="button"><?php _e('Configure Provider', 'media-toolkit'); ?></a>
                     </label>
                 <# } #>
             </div>

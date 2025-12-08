@@ -69,6 +69,25 @@ Automatically resize oversized images when they are uploaded:
 - **Statistics**: Track total images resized and space saved
 - **Independent of S3**: Works with or without S3 offloading configured
 
+### 🤖 AI Metadata Generation
+Automatically generate image metadata using AI Vision:
+
+- **Multi-Provider Support**: OpenAI GPT-4o, Anthropic Claude, Google Gemini
+- **Generate Complete Metadata**:
+  - **Title**: 50-70 character descriptive identifier
+  - **Alt Text**: Accessibility-optimized, max 125 characters
+  - **Caption**: Engaging, 150-250 characters
+  - **Description**: Full context with keywords, unlimited length
+- **Generate on Upload**: Automatically generate metadata when new images are uploaded (async, non-blocking)
+- **Batch Processing**: Process entire media library with progress tracking
+- **Cost Estimation**: Preview estimated API costs before starting
+- **Multi-Language**: Generate metadata in any supported language
+- **Fallback System**: Automatic failover between providers
+- **Rate Limiting**: Built-in delays to respect API limits
+- **Media Library Button**: One-click generation for individual images
+- **Statistics Dashboard**: Track metadata completeness across your library
+- **Smart Filtering**: Skip small images (icons/placeholders) based on minimum size setting
+
 ### 📚 Media Library Integration
 Enhanced Media Library with S3 status and actions:
 
@@ -376,6 +395,9 @@ do_action('media_toolkit_optimized', $attachment_id, $bytes_saved, $percent_save
 
 // Fired after an image is resized on upload
 do_action('media_toolkit_resized', $attachment_id, $bytes_saved, $original_dimensions, $new_dimensions);
+
+// Fired after AI metadata is generated for an image
+do_action('media_toolkit_ai_metadata_generated', $attachment_id, $provider, $metadata);
 ```
 
 ### Filters
@@ -408,6 +430,7 @@ $skip = apply_filters('media_toolkit_skip_resize', false, $file_path, $mime_type
 | Settings | AWS credentials, CDN, and general settings |
 | Tools | Migration, Stats Sync, Cache Headers, Reconciliation |
 | Optimize | Image optimization with Dashboard, Optimize, and Resize tabs |
+| AI Metadata | AI-powered metadata generation with Dashboard and Generate tabs |
 | Logs | Activity Logs (real-time logs) and Optimization Status tabs |
 | History | File operation history with export |
 
@@ -464,6 +487,22 @@ $skip = apply_filters('media_toolkit_skip_resize', false, $file_path, $mime_type
 5. **Image Optimization**: Process during low-traffic periods
 
 ## Changelog
+
+### 2.4.0
+- **New**: AI Metadata Generation - Automatically generate alt text, titles, captions, and descriptions using AI Vision
+- **New**: Multi-provider support: OpenAI GPT-4o, Anthropic Claude, Google Gemini
+- **New**: Provider priority system with automatic fallback
+- **New**: AI Providers tab in Settings for configuration and testing
+- **New**: AI Metadata page with statistics dashboard and batch processing
+- **New**: Generate on Upload - Async AI metadata generation when new images are uploaded
+- **New**: Cost estimation before batch processing starts
+- **New**: Multi-language support for generated metadata
+- **New**: One-click "Generate with AI" button in Media Library attachment modal
+- **New**: Field completeness statistics (alt text, title, caption, description)
+- **New**: Minimum image size filter to skip icons and placeholders
+- **New**: Rate limiting and exponential backoff for API calls
+- **New**: Image resizing before AI analysis to reduce API costs
+- **New**: "AI Pending" indicator in Media Library for images being processed
 
 ### 2.3.0
 - **New**: Optimize on Upload - Automatically compress images when uploaded

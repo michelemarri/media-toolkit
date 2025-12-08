@@ -39,8 +39,12 @@ use Metodo\MediaToolkit\Stats\Stats;
 use Metodo\MediaToolkit\Admin\Admin_Settings;
 use Metodo\MediaToolkit\Admin\Admin_Migration;
 use Metodo\MediaToolkit\Admin\Admin_Dashboard;
+use Metodo\MediaToolkit\Admin\Admin_AI_Metadata;
 use Metodo\MediaToolkit\Updater\GitHubUpdater;
 use Metodo\MediaToolkit\Database\OptimizationTable;
+use Metodo\MediaToolkit\AI\AIManager;
+use Metodo\MediaToolkit\AI\MetadataGenerator;
+use Metodo\MediaToolkit\AI\UploadHandler as AIUploadHandler;
 
 /**
  * Main plugin class
@@ -64,6 +68,10 @@ final class Plugin
     private ?Image_Resizer $image_resizer = null;
     private ?Reconciliation $reconciliation = null;
     private ?GitHubUpdater $updater = null;
+    private ?AIManager $ai_manager = null;
+    private ?MetadataGenerator $metadata_generator = null;
+    private ?AIUploadHandler $ai_upload_handler = null;
+    private ?Admin_AI_Metadata $admin_ai_metadata = null;
 
     /**
      * Debug logger (temporary)
@@ -284,6 +292,27 @@ final class Plugin
         $this->updater->init();
         self::debug_log('GitHubUpdater initialized');
         
+        // AI Manager (works independently of storage)
+        self::debug_log('Creating AIManager...');
+        $this->ai_manager = new AIManager($this->encryption, $this->logger);
+        
+        // Metadata Generator (batch processor for AI)
+        self::debug_log('Creating MetadataGenerator...');
+        $this->metadata_generator = new MetadataGenerator(
+            $this->logger,
+            $this->settings,
+            $this->ai_manager,
+            $this->history
+        );
+        
+        // AI Upload Handler (auto-generate on upload)
+        self::debug_log('Creating AIUploadHandler...');
+        $this->ai_upload_handler = new AIUploadHandler(
+            $this->ai_manager,
+            $this->metadata_generator,
+            $this->logger
+        );
+        
         // Admin components
         self::debug_log('is_admin(): ' . (is_admin() ? 'yes' : 'no'));
         if (is_admin()) {
@@ -302,6 +331,12 @@ final class Plugin
             
             self::debug_log('Creating Admin_Dashboard...');
             new Admin_Dashboard($this->stats, $this->settings);
+            
+            self::debug_log('Creating Admin_AI_Metadata...');
+            $this->admin_ai_metadata = new Admin_AI_Metadata(
+                $this->ai_manager,
+                $this->metadata_generator
+            );
         }
         
         self::debug_log('load_components() completed successfully');
@@ -417,8 +452,8 @@ final class Plugin
         
         add_submenu_page(
             'media-toolkit',
-            'Tools',
-            'Tools',
+            'Storage Tools',
+            'Storage Tools',
             'manage_options',
             'media-toolkit-tools',
             [$this, 'render_tools_page']
@@ -431,6 +466,15 @@ final class Plugin
             'manage_options',
             'media-toolkit-optimize',
             [$this, 'render_optimize_page']
+        );
+        
+        add_submenu_page(
+            'media-toolkit',
+            'AI Metadata',
+            'AI Metadata',
+            'manage_options',
+            'media-toolkit-ai-metadata',
+            [$this, 'render_ai_metadata_page']
         );
         
         add_submenu_page(
@@ -480,6 +524,11 @@ final class Plugin
     public function render_optimize_page(): void
     {
         include MEDIA_TOOLKIT_PATH . 'templates/optimize-page.php';
+    }
+
+    public function render_ai_metadata_page(): void
+    {
+        include MEDIA_TOOLKIT_PATH . 'templates/ai-metadata-page.php';
     }
 
     public function enqueue_admin_assets(string $hook): void
@@ -546,6 +595,17 @@ final class Plugin
             wp_enqueue_script(
                 'media-toolkit-optimization',
                 MEDIA_TOOLKIT_URL . 'assets/optimization.js',
+                ['jquery', 'media-toolkit-batch-processor', 'media-toolkit-settings'],
+                MEDIA_TOOLKIT_VERSION,
+                true
+            );
+        }
+        
+        // Load AI metadata scripts on AI metadata page
+        if (str_contains($hook, 'ai-metadata')) {
+            wp_enqueue_script(
+                'media-toolkit-ai-metadata',
+                MEDIA_TOOLKIT_URL . 'assets/ai-metadata.js',
                 ['jquery', 'media-toolkit-batch-processor', 'media-toolkit-settings'],
                 MEDIA_TOOLKIT_VERSION,
                 true
@@ -751,6 +811,21 @@ final class Plugin
     public function get_error_handler(): ?Error_Handler
     {
         return $this->error_handler;
+    }
+
+    public function get_ai_manager(): ?AIManager
+    {
+        return $this->ai_manager;
+    }
+
+    public function get_metadata_generator(): ?MetadataGenerator
+    {
+        return $this->metadata_generator;
+    }
+
+    public function get_admin_ai_metadata(): ?Admin_AI_Metadata
+    {
+        return $this->admin_ai_metadata;
     }
 
     /**

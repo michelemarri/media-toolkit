@@ -360,6 +360,66 @@ add_action('media_toolkit_optimization_complete', function(int $optimized, int $
 
 ---
 
+### AI Metadata Actions
+
+#### `media_toolkit_ai_metadata_generated`
+
+Fired after AI metadata is generated for an image.
+
+```php
+add_action('media_toolkit_ai_metadata_generated', function(int $attachment_id, string $provider, array $metadata): void {
+    // Log the generation
+    error_log(sprintf(
+        'AI metadata generated for #%d using %s',
+        $attachment_id,
+        $provider
+    ));
+    
+    // Send to external service
+    external_api()->update_asset($attachment_id, [
+        'alt_text' => $metadata['alt_text'],
+        'title' => $metadata['title'],
+    ]);
+}, 10, 3);
+```
+
+**Parameters:**
+- `$attachment_id` (int) - WordPress attachment ID
+- `$provider` (string) - AI provider used (openai, claude, gemini)
+- `$metadata` (array) - Generated metadata (title, alt_text, caption, description)
+
+---
+
+#### `media_toolkit_ai_metadata_batch_complete`
+
+Fired when AI metadata batch processing completes.
+
+```php
+add_action('media_toolkit_ai_metadata_batch_complete', function(int $processed, int $failed, int $total): void {
+    // Send notification
+    wp_mail(
+        get_option('admin_email'),
+        'AI Metadata Generation Complete',
+        sprintf('Processed: %d, Failed: %d, Total: %d', $processed, $failed, $total)
+    );
+}, 10, 3);
+```
+
+---
+
+#### `media_toolkit_ai_generate_on_upload`
+
+Internal cron hook fired for async AI metadata generation on upload. Can be used to track when uploads trigger AI generation.
+
+```php
+add_action('media_toolkit_ai_generate_on_upload', function(int $attachment_id): void {
+    // This runs asynchronously after image upload
+    error_log(sprintf('AI generation starting for attachment #%d', $attachment_id));
+}, 5); // Priority 5 runs before the actual generation
+```
+
+---
+
 ### CDN Actions
 
 #### `media_toolkit_cache_invalidated`

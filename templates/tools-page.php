@@ -40,7 +40,7 @@ $hasBanner = file_exists($bannerPath);
         <div class="mt-hero">
             <img src="<?php echo esc_url($bannerUrl); ?>" alt="Media Toolkit" class="mt-hero-banner">
             <div class="mt-hero-overlay">
-                <h1 class="mt-hero-title"><?php esc_html_e('Tools', 'media-toolkit'); ?></h1>
+                <h1 class="mt-hero-title"><?php esc_html_e('Storage Tools', 'media-toolkit'); ?></h1>
                 <p class="mt-hero-description"><?php esc_html_e('Migration and maintenance tools for your media files.', 'media-toolkit'); ?></p>
                 <span class="mt-hero-version">v<?php echo esc_html(MEDIA_TOOLKIT_VERSION); ?></span>
             </div>
@@ -52,7 +52,7 @@ $hasBanner = file_exists($bannerPath);
                 <span class="mt-logo">
                     <span class="dashicons dashicons-admin-tools"></span>
                 </span>
-                <?php esc_html_e('Tools', 'media-toolkit'); ?>
+                <?php esc_html_e('Storage Tools', 'media-toolkit'); ?>
             </h1>
             <p class="text-lg text-gray-500 max-w-xl"><?php esc_html_e('Migration and maintenance tools for your media files.', 'media-toolkit'); ?></p>
         </header>

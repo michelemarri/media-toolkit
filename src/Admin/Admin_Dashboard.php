@@ -111,7 +111,7 @@ final class Admin_Dashboard
             <p style="margin: 0; padding-top: 12px; border-top: 1px solid #e5e7eb; font-size: 13px; color: #6b7280;">
                 <a href="<?php echo admin_url('admin.php?page=media-toolkit'); ?>" style="color: #111827; text-decoration: none;"><?php esc_html_e('Dashboard', 'media-toolkit'); ?></a> | 
                 <a href="<?php echo admin_url('admin.php?page=media-toolkit-settings'); ?>" style="color: #111827; text-decoration: none;"><?php esc_html_e('Settings', 'media-toolkit'); ?></a> | 
-                <a href="<?php echo admin_url('admin.php?page=media-toolkit-tools'); ?>" style="color: #111827; text-decoration: none;"><?php esc_html_e('Tools', 'media-toolkit'); ?></a>
+                <a href="<?php echo admin_url('admin.php?page=media-toolkit-tools'); ?>" style="color: #111827; text-decoration: none;"><?php esc_html_e('Storage Tools', 'media-toolkit'); ?></a>
             </p>
         </div>
         <?php

@@ -92,6 +92,10 @@ final class Admin_Settings
         // Optimization table handlers
         add_action('wp_ajax_media_toolkit_get_optimization_records', [$this, 'ajax_get_optimization_records']);
         add_action('wp_ajax_media_toolkit_reset_failed_optimization', [$this, 'ajax_reset_failed_optimization']);
+        
+        // AI Provider handlers
+        add_action('wp_ajax_media_toolkit_save_ai_settings', [$this, 'ajax_save_ai_settings']);
+        add_action('wp_ajax_media_toolkit_test_ai_provider', [$this, 'ajax_test_ai_provider']);
     }
 
     /**
@@ -1185,6 +1189,128 @@ final class Admin_Settings
             ),
             'reset_count' => $updated,
         ]);
+    }
+
+    /**
+     * AJAX: Save AI provider settings
+     */
+    public function ajax_save_ai_settings(): void
+    {
+        check_ajax_referer('media_toolkit_nonce', 'nonce');
+        
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => 'Permission denied']);
+        }
+
+        $ai_manager = media_toolkit()->get_ai_manager();
+        
+        if ($ai_manager === null) {
+            wp_send_json_error(['message' => 'AI Manager not available']);
+        }
+
+        // Get current settings to preserve unchanged API keys
+        $current_settings = $ai_manager->getSettings();
+
+        // Build new settings
+        $new_settings = [
+            'provider_order' => isset($_POST['provider_order']) 
+                ? array_map('sanitize_text_field', (array) $_POST['provider_order'])
+                : $current_settings['provider_order'],
+            'language' => sanitize_text_field($_POST['language'] ?? 'en'),
+            'generate_on_upload' => isset($_POST['generate_on_upload']) && $_POST['generate_on_upload'] === 'true',
+            'min_image_size' => isset($_POST['min_image_size']) ? max(0, min(500, (int) $_POST['min_image_size'])) : 100,
+            'providers' => [],
+        ];
+
+        // Process each provider
+        $provider_ids = ['openai', 'claude', 'gemini'];
+        foreach ($provider_ids as $provider_id) {
+            $api_key = $_POST["ai_{$provider_id}_api_key"] ?? '';
+            $model = sanitize_text_field($_POST["ai_{$provider_id}_model"] ?? '');
+            $is_already_encrypted = false;
+
+            // If key contains masked characters, use existing (already encrypted) key
+            if (str_contains($api_key, '•')) {
+                $existing = get_option('media_toolkit_ai_settings', []);
+                $api_key = $existing['providers'][$provider_id]['api_key'] ?? '';
+                $is_already_encrypted = true;
+            } else {
+                $api_key = sanitize_text_field($api_key);
+            }
+
+            $new_settings['providers'][$provider_id] = [
+                'api_key' => $api_key,
+                'model' => $model,
+                '_encrypted' => $is_already_encrypted, // Flag to skip re-encryption
+            ];
+        }
+
+        $saved = $ai_manager->saveSettings($new_settings);
+
+        if (!$saved) {
+            wp_send_json_error(['message' => 'Failed to save AI settings']);
+        }
+
+        $this->logger->info('settings', 'AI provider settings updated');
+
+        wp_send_json_success([
+            'message' => __('AI settings saved successfully', 'media-toolkit'),
+            'settings' => $ai_manager->getSettings(),
+        ]);
+    }
+
+    /**
+     * AJAX: Test AI provider connection
+     */
+    public function ajax_test_ai_provider(): void
+    {
+        check_ajax_referer('media_toolkit_nonce', 'nonce');
+        
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => 'Permission denied']);
+        }
+
+        $provider_id = sanitize_text_field($_POST['provider'] ?? '');
+        
+        if (empty($provider_id)) {
+            wp_send_json_error(['message' => 'Provider ID required']);
+        }
+
+        $ai_manager = media_toolkit()->get_ai_manager();
+        
+        if ($ai_manager === null) {
+            wp_send_json_error(['message' => 'AI Manager not available']);
+        }
+
+        // Get provider
+        $provider = $ai_manager->getProvider($provider_id);
+        
+        if ($provider === null) {
+            wp_send_json_error(['message' => 'Provider not found']);
+            return;
+        }
+
+        // If a model was provided, set it
+        $model = sanitize_text_field($_POST['model'] ?? '');
+        if (!empty($model)) {
+            $provider->setModel($model);
+        }
+
+        // If a new API key was provided, test with that
+        $api_key = $_POST["api_key"] ?? '';
+        
+        if (!empty($api_key) && !str_contains($api_key, '•')) {
+            // Test with provided key
+            $provider->setPlainApiKey(sanitize_text_field($api_key));
+        }
+
+        $result = $provider->testConnection();
+
+        if ($result['success']) {
+            wp_send_json_success($result);
+        } else {
+            wp_send_json_error($result);
+        }
     }
 }
 

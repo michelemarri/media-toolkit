@@ -52,8 +52,8 @@ final class Media_Library
         // Media Library JS data
         add_filter('wp_prepare_attachment_for_js', [$this, 'filter_attachment_for_js'], 10, 3);
         
-        // Attachment edit fields
-        add_filter('attachment_fields_to_edit', [$this, 'add_attachment_fields'], 10, 2);
+        // Note: Cloud Storage fields are now rendered via Media_Library_UI::render_attachment_details_template()
+        // to avoid duplication in the modal view
     }
 
     /**
@@ -213,40 +213,6 @@ final class Media_Library
         ];
 
         return $response;
-    }
-
-    /**
-     * Add S3 info fields to attachment edit screen
-     */
-    public function add_attachment_fields(array $form_fields, \WP_Post $post): array
-    {
-        $attachment_id = $post->ID;
-        
-        if (!$this->is_offloaded($attachment_id)) {
-            return $form_fields;
-        }
-
-        $s3_key = get_post_meta($attachment_id, '_media_toolkit_key', true);
-        // Build URL dynamically using current CDN/storage settings
-        $s3_url = $this->get_base_url() . '/' . ltrim($s3_key, '/');
-
-        $form_fields['media_toolkit_info'] = [
-            'label' => 'Cloud Storage',
-            'input' => 'html',
-            'html' => sprintf(
-                '<div class="mt-offload-info">
-                    <p><strong>Status:</strong> <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-700">Offloaded</span></p>
-                    <p><strong>Storage Key:</strong> <code class="px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-sm">%s</code></p>
-                    <p><strong>URL:</strong> <a href="%s" target="_blank" class="text-gray-900 hover:text-accent-500">%s</a></p>
-                </div>',
-                esc_html($s3_key),
-                esc_url($s3_url),
-                esc_html($s3_url)
-            ),
-            'helps' => 'This file is stored on cloud storage',
-        ];
-
-        return $form_fields;
     }
 
     /**

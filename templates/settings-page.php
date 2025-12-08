@@ -10,6 +10,7 @@ declare(strict_types=1);
 use Metodo\MediaToolkit\Core\Environment;
 use Metodo\MediaToolkit\Storage\StorageProvider;
 use Metodo\MediaToolkit\Storage\StorageFactory;
+use Metodo\MediaToolkit\AI\AIManager;
 
 if (!defined('ABSPATH')) {
     exit;
@@ -17,6 +18,7 @@ if (!defined('ABSPATH')) {
 
 $plugin = \Metodo\MediaToolkit\media_toolkit();
 $settings = $plugin->get_settings();
+$ai_manager = $plugin->get_ai_manager();
 
 $is_configured = false;
 $credentials = [];
@@ -96,6 +98,10 @@ $hasBanner = file_exists($bannerPath);
             <a href="?page=media-toolkit-settings&tab=import-export" class="flex items-center gap-2 px-5 py-3 text-sm font-medium rounded-lg transition-all whitespace-nowrap <?php echo $active_tab === 'import-export' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'; ?>">
                 <span class="dashicons dashicons-database-export"></span>
                 <?php esc_html_e('Import/Export', 'media-toolkit'); ?>
+            </a>
+            <a href="?page=media-toolkit-settings&tab=ai-providers" class="flex items-center gap-2 px-5 py-3 text-sm font-medium rounded-lg transition-all whitespace-nowrap <?php echo $active_tab === 'ai-providers' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'; ?>">
+                <span class="dashicons dashicons-format-image"></span>
+                <?php esc_html_e('AI Providers', 'media-toolkit'); ?>
             </a>
         </nav>
 
@@ -384,7 +390,7 @@ $hasBanner = file_exists($bannerPath);
                                 <?php 
                                 printf(
                                     esc_html__('Sets the Cache-Control header on new uploaded files. To update existing files, go to %s.', 'media-toolkit'),
-                                    '<a href="' . esc_url(admin_url('admin.php?page=media-toolkit-tools&tab=cache-sync')) . '" class="font-medium text-gray-900 hover:text-accent-500">' . esc_html__('Tools → Cache Headers', 'media-toolkit') . '</a>'
+                                    '<a href="' . esc_url(admin_url('admin.php?page=media-toolkit-tools&tab=cache-sync')) . '" class="font-medium text-gray-900 hover:text-accent-500">' . esc_html__('Storage Tools → Cache Headers', 'media-toolkit') . '</a>'
                                 );
                                 ?>
                             </p>
@@ -924,6 +930,174 @@ $hasBanner = file_exists($bannerPath);
                 </div>
             </div>
 
+        <?php elseif ($active_tab === 'ai-providers'): ?>
+            <!-- ==================== AI PROVIDERS TAB ==================== -->
+            <?php
+            $ai_settings = $ai_manager ? $ai_manager->getSettings() : [];
+            // Fetch dynamic models if provider is configured (cached for 24h)
+            $ai_providers_info = $ai_manager ? $ai_manager->getProvidersInfo(true) : [];
+            $ai_languages = $ai_manager ? $ai_manager->getSupportedLanguages() : [];
+            $ai_provider_order = $ai_settings['provider_order'] ?? ['openai', 'claude', 'gemini'];
+            ?>
+            
+            <div class="space-y-6">
+                <!-- Info Notice -->
+                <div class="flex gap-3 p-4 rounded-xl bg-blue-50 text-blue-800">
+                    <span class="dashicons dashicons-info text-blue-600 flex-shrink-0 mt-0.5"></span>
+                    <div>
+                        <strong class="block text-sm font-semibold mb-1"><?php esc_html_e('AI Metadata Generation', 'media-toolkit'); ?></strong>
+                        <p class="text-sm opacity-90 m-0">
+                            <?php esc_html_e('Configure AI providers to automatically generate alt text, titles, captions, and descriptions for your images. Providers are tried in order - if one fails, the next will be used.', 'media-toolkit'); ?>
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Provider Priority & Configuration -->
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                    <div class="flex flex-col gap-1 px-6 py-4 border-b border-gray-200">
+                        <div class="flex flex-row items-center gap-2">
+                            <span class="dashicons dashicons-sort text-gray-700"></span>
+                            <h3 class="text-lg font-semibold text-gray-900 m-0"><?php esc_html_e('AI Providers', 'media-toolkit'); ?></h3>
+                        </div>
+                        <p class="text-sm text-gray-600 m-0">
+                            <?php esc_html_e('Drag to reorder priority. Click "Configure" to set up each provider. The first configured provider is used, with automatic fallback.', 'media-toolkit'); ?>
+                        </p>
+                    </div>
+                    <div class="p-6">
+                        <ul id="ai-provider-order" class="space-y-3">
+                            <?php foreach ($ai_provider_order as $provider_id): 
+                                $provider = $ai_providers_info[$provider_id] ?? null;
+                                if (!$provider) continue;
+                                $provider_settings = $ai_settings['providers'][$provider_id] ?? [];
+                            ?>
+                            <li class="flex items-center gap-4 p-4 bg-gray-50 rounded-xl transition-all hover:bg-gray-100 group" data-provider="<?php echo esc_attr($provider_id); ?>">
+                                <span class="dashicons dashicons-menu text-gray-400 cursor-move"></span>
+                                
+                                <!-- Provider Icon -->
+                                <div class="flex items-center justify-center w-10 h-10 rounded-lg <?php echo $provider['configured'] ? 'bg-green-100' : 'bg-gray-200'; ?>">
+                                    <?php if ($provider_id === 'openai'): ?>
+                                        <span class="dashicons dashicons-superhero <?php echo $provider['configured'] ? 'text-green-600' : 'text-gray-400'; ?>"></span>
+                                    <?php elseif ($provider_id === 'claude'): ?>
+                                        <span class="dashicons dashicons-lightbulb <?php echo $provider['configured'] ? 'text-green-600' : 'text-gray-400'; ?>"></span>
+                                    <?php else: ?>
+                                        <span class="dashicons dashicons-google <?php echo $provider['configured'] ? 'text-green-600' : 'text-gray-400'; ?>"></span>
+                                    <?php endif; ?>
+                                </div>
+                                
+                                <!-- Provider Info -->
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-sm font-semibold text-gray-900"><?php echo esc_html($provider['name']); ?></span>
+                                        <?php if ($provider['configured']): ?>
+                                            <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-700">
+                                                <?php esc_html_e('Active', 'media-toolkit'); ?>
+                                            </span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <span class="block text-xs text-gray-500 mt-0.5">
+                                        <?php if ($provider['configured']): ?>
+                                            <?php echo esc_html($provider_settings['model'] ?? $provider['current_model']); ?> &bull; 
+                                        <?php endif; ?>
+                                        ~$<?php echo esc_html(number_format($provider['cost_per_image'], 4)); ?>/<?php esc_html_e('image', 'media-toolkit'); ?>
+                                    </span>
+                                </div>
+                                
+                                <!-- Configure Button -->
+                                <button type="button" 
+                                        class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all btn-configure-ai-provider <?php echo $provider['configured'] ? 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50' : 'text-white bg-gray-800 hover:bg-gray-900'; ?>"
+                                        data-provider="<?php echo esc_attr($provider_id); ?>"
+                                        data-provider-name="<?php echo esc_attr($provider['name']); ?>">
+                                    <span class="dashicons dashicons-admin-generic"></span>
+                                    <?php echo $provider['configured'] ? esc_html__('Edit', 'media-toolkit') : esc_html__('Configure', 'media-toolkit'); ?>
+                                </button>
+                            </li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </div>
+                </div>
+                
+                <!-- Hidden inputs for provider settings (populated by modal) -->
+                <?php foreach ($ai_providers_info as $provider_id => $provider): 
+                    $provider_settings = $ai_settings['providers'][$provider_id] ?? [];
+                ?>
+                <input type="hidden" id="ai_<?php echo esc_attr($provider_id); ?>_api_key" value="<?php echo esc_attr($provider_settings['api_key'] ?? ''); ?>">
+                <input type="hidden" id="ai_<?php echo esc_attr($provider_id); ?>_model" value="<?php echo esc_attr($provider_settings['model'] ?? $provider['current_model']); ?>">
+                <?php endforeach; ?>
+
+                <!-- Generation Settings -->
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                    <div class="flex flex-col gap-1 px-6 py-4 border-b border-gray-200">
+                        <div class="flex flex-row items-center gap-2">
+                            <span class="dashicons dashicons-translation text-gray-700"></span>
+                            <h3 class="text-lg font-semibold text-gray-900 m-0"><?php esc_html_e('Generation Settings', 'media-toolkit'); ?></h3>
+                        </div>
+                        <p class="text-sm text-gray-600 m-0">
+                            <?php esc_html_e('Configure the language and automatic generation options.', 'media-toolkit'); ?>
+                        </p>
+                    </div>
+                    <div class="p-6 space-y-6">
+                        <!-- Generate on Upload -->
+                        <div class="p-4 bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl border border-purple-200">
+                            <label class="mt-toggle inline-flex items-center gap-3 cursor-pointer">
+                                <input type="checkbox" id="ai_generate_on_upload" <?php checked($ai_settings['generate_on_upload'] ?? false); ?>>
+                                <span class="mt-toggle-slider"></span>
+                                <div>
+                                    <span class="block text-sm font-semibold text-gray-900"><?php esc_html_e('Generate on Upload', 'media-toolkit'); ?></span>
+                                    <span class="block text-xs text-gray-500"><?php esc_html_e('Automatically generate AI metadata when new images are uploaded (async, non-blocking)', 'media-toolkit'); ?></span>
+                                </div>
+                            </label>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Language -->
+                            <div>
+                                <label for="ai_language" class="block text-sm font-semibold text-gray-900 mb-2">
+                                    <?php esc_html_e('Output Language', 'media-toolkit'); ?>
+                                </label>
+                                <select name="ai_language" id="ai_language" class="mt-select w-full">
+                                    <?php foreach ($ai_languages as $lang_code => $lang_name): ?>
+                                        <option value="<?php echo esc_attr($lang_code); ?>" <?php selected($ai_settings['language'] ?? 'en', $lang_code); ?>>
+                                            <?php echo esc_html($lang_name); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <p class="mt-2 text-sm text-gray-500">
+                                    <?php esc_html_e('The language in which AI will generate metadata.', 'media-toolkit'); ?>
+                                </p>
+                            </div>
+
+                            <!-- Minimum Image Size -->
+                            <div>
+                                <label for="ai_min_image_size" class="block text-sm font-semibold text-gray-900 mb-2">
+                                    <?php esc_html_e('Minimum Image Size', 'media-toolkit'); ?>
+                                </label>
+                                <div class="flex items-center gap-2">
+                                    <input type="number" 
+                                           id="ai_min_image_size" 
+                                           value="<?php echo esc_attr($ai_settings['min_image_size'] ?? 100); ?>" 
+                                           min="0" 
+                                           max="500" 
+                                           class="mt-input w-24">
+                                    <span class="text-sm text-gray-500">px</span>
+                                </div>
+                                <p class="mt-2 text-sm text-gray-500">
+                                    <?php esc_html_e('Skip images smaller than this (width or height). Helps avoid processing icons.', 'media-toolkit'); ?>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Save Button -->
+                <div class="flex items-center gap-3">
+                    <button type="button" class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-gray-800 hover:bg-gray-900 rounded-lg transition-all" id="btn-save-ai-settings">
+                        <span class="dashicons dashicons-saved"></span>
+                        <?php esc_html_e('Save AI Settings', 'media-toolkit'); ?>
+                    </button>
+                    <span id="ai-settings-status" class="text-sm text-gray-500"></span>
+                </div>
+            </div>
+
         <?php endif; ?>
         </div>
 
@@ -957,3 +1131,103 @@ $hasBanner = file_exists($bannerPath);
         </div>
     </div>
 </div>
+
+<!-- Configure AI Provider Modal -->
+<div id="configure-ai-provider-modal" class="mt-modal-overlay" style="display:none;">
+    <div class="mt-modal max-w-lg">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+            <div class="flex items-center gap-3">
+                <div id="modal-provider-icon" class="flex items-center justify-center w-10 h-10 rounded-lg bg-gray-100">
+                    <span class="dashicons dashicons-admin-generic text-gray-600"></span>
+                </div>
+                <div>
+                    <h3 id="modal-provider-title" class="text-lg font-semibold text-gray-900 m-0"><?php esc_html_e('Configure Provider', 'media-toolkit'); ?></h3>
+                    <p class="text-sm text-gray-500 m-0"><?php esc_html_e('Set up API key and model', 'media-toolkit'); ?></p>
+                </div>
+            </div>
+            <button type="button" class="flex items-center justify-center w-8 h-8 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all modal-close">
+                <span class="dashicons dashicons-no-alt"></span>
+            </button>
+        </div>
+        <div class="p-6 space-y-4">
+            <input type="hidden" id="modal-provider-id" value="">
+            
+            <!-- API Key -->
+            <div>
+                <label for="modal-api-key" class="block text-sm font-semibold text-gray-900 mb-2">
+                    <?php esc_html_e('API Key', 'media-toolkit'); ?>
+                </label>
+                <input type="password" 
+                       id="modal-api-key" 
+                       class="mt-input w-full"
+                       placeholder=""
+                       autocomplete="off">
+                <p id="modal-api-key-hint" class="mt-2 text-xs text-gray-500"></p>
+            </div>
+
+            <!-- Model Selection -->
+            <div>
+                <div class="flex items-center justify-between mb-2">
+                    <label for="modal-model" class="block text-sm font-semibold text-gray-900">
+                        <?php esc_html_e('Model', 'media-toolkit'); ?>
+                    </label>
+                    <button type="button" 
+                            id="modal-refresh-models"
+                            class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition-all"
+                            title="<?php esc_attr_e('Fetch latest models from API', 'media-toolkit'); ?>">
+                        <span class="dashicons dashicons-update" style="font-size: 14px; width: 14px; height: 14px;"></span>
+                        <?php esc_html_e('Refresh', 'media-toolkit'); ?>
+                    </button>
+                </div>
+                <select id="modal-model" class="mt-select w-full"></select>
+                <p id="modal-models-status" class="mt-1 text-xs text-gray-400 hidden"></p>
+            </div>
+
+            <!-- Test Connection Result -->
+            <div id="modal-test-result" class="hidden p-3 text-sm rounded-lg"></div>
+
+            <!-- Actions -->
+            <div class="flex items-center gap-3 pt-2">
+                <button type="button" 
+                        id="modal-test-connection"
+                        class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-all">
+                    <span class="dashicons dashicons-admin-plugins"></span>
+                    <?php esc_html_e('Test Connection', 'media-toolkit'); ?>
+                </button>
+                <button type="button" 
+                        id="modal-save-provider"
+                        class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-gray-800 rounded-lg hover:bg-gray-900 transition-all">
+                    <span class="dashicons dashicons-yes"></span>
+                    <?php esc_html_e('Save', 'media-toolkit'); ?>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Provider Data for JavaScript -->
+<script type="text/javascript">
+    var mediaToolkitAIProviders = <?php echo wp_json_encode([
+        'openai' => [
+            'name' => $ai_providers_info['openai']['name'],
+            'models' => $ai_providers_info['openai']['models'],
+            'placeholder' => 'sk-...',
+            'hint' => __('Get your API key from platform.openai.com', 'media-toolkit'),
+            'icon' => 'dashicons-superhero',
+        ],
+        'claude' => [
+            'name' => $ai_providers_info['claude']['name'],
+            'models' => $ai_providers_info['claude']['models'],
+            'placeholder' => 'sk-ant-...',
+            'hint' => __('Get your API key from console.anthropic.com', 'media-toolkit'),
+            'icon' => 'dashicons-lightbulb',
+        ],
+        'gemini' => [
+            'name' => $ai_providers_info['gemini']['name'],
+            'models' => $ai_providers_info['gemini']['models'],
+            'placeholder' => 'AIza...',
+            'hint' => __('Get your API key from aistudio.google.com', 'media-toolkit'),
+            'icon' => 'dashicons-google',
+        ],
+    ]); ?>;
+</script>

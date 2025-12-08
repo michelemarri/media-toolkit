@@ -1,6 +1,6 @@
 {
   "name": "media-toolkit",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "description": "WordPress plugin for complete media management - Multi-provider storage (S3, R2, Spaces, B2, Wasabi), CDN integration, image optimization",
   "private": true,
   "scripts": {

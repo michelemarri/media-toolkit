@@ -114,6 +114,13 @@
                 $('#resize-max-height').val(height);
             });
 
+            // AI Provider settings
+            $('#btn-save-ai-settings').on('click', this.saveAISettings.bind(this));
+            $('.btn-configure-ai-provider').on('click', this.openProviderModal.bind(this));
+            $('#modal-test-connection').on('click', this.testProviderFromModal.bind(this));
+            $('#modal-save-provider').on('click', this.saveProviderFromModal.bind(this));
+            this.setupAIProviderDragDrop();
+
             // Optimization settings sliders update
             $('#jpeg-quality').on('input', function () {
                 $('#jpeg-quality-value').text($(this).val());
@@ -1934,6 +1941,305 @@
                 error: function () {
                     $status.text('✗ Error').css('color', '#d63638');
                     MediaToolkit.showNotice('An error occurred. Please try again.', 'error');
+                },
+                complete: function () {
+                    $btn.prop('disabled', false).html(originalHtml);
+                }
+            });
+        },
+
+        // Setup AI Provider Drag & Drop
+        setupAIProviderDragDrop: function () {
+            const $list = $('#ai-provider-order');
+            if (!$list.length) return;
+
+            let draggedItem = null;
+            let isDragging = false;
+
+            // Make entire row draggable
+            $list.find('li').attr('draggable', 'true');
+
+            $list.on('dragstart', 'li', function (e) {
+                // Don't drag if clicking on button
+                if ($(e.target).closest('button').length) {
+                    e.preventDefault();
+                    return;
+                }
+                draggedItem = this;
+                isDragging = true;
+                $(this).addClass('opacity-50 scale-105');
+                e.originalEvent.dataTransfer.effectAllowed = 'move';
+                e.originalEvent.dataTransfer.setData('text/plain', ''); // Required for Firefox
+            });
+
+            $list.on('dragend', 'li', function () {
+                $(this).removeClass('opacity-50 scale-105');
+                $list.find('li').removeClass('border-t-2 border-b-2 border-gray-400');
+                draggedItem = null;
+                isDragging = false;
+            });
+
+            $list.on('dragover', 'li', function (e) {
+                if (!isDragging) return;
+                e.preventDefault();
+                e.originalEvent.dataTransfer.dropEffect = 'move';
+
+                const $target = $(this);
+                const bounding = this.getBoundingClientRect();
+                const offset = e.originalEvent.clientY - bounding.top;
+
+                // Visual feedback
+                $list.find('li').removeClass('border-t-2 border-b-2 border-gray-400');
+
+                if (offset > bounding.height / 2) {
+                    $target.addClass('border-b-2 border-gray-400');
+                } else {
+                    $target.addClass('border-t-2 border-gray-400');
+                }
+            });
+
+            $list.on('drop', 'li', function (e) {
+                e.preventDefault();
+                if (!draggedItem) return;
+
+                const $target = $(this);
+                const bounding = this.getBoundingClientRect();
+                const offset = e.originalEvent.clientY - bounding.top;
+
+                if (offset > bounding.height / 2) {
+                    $target.after(draggedItem);
+                } else {
+                    $target.before(draggedItem);
+                }
+
+                $list.find('li').removeClass('border-t-2 border-b-2 border-gray-400');
+            });
+
+            // Prevent dragging when clicking buttons
+            $list.on('mousedown', 'button', function (e) {
+                e.stopPropagation();
+            });
+        },
+
+        // Save AI Settings
+        saveAISettings: function () {
+            const $btn = $('#btn-save-ai-settings');
+            const $status = $('#ai-settings-status');
+
+            // Get provider order from DOM
+            const providerOrder = [];
+            $('#ai-provider-order li').each(function () {
+                providerOrder.push($(this).data('provider'));
+            });
+
+            const data = {
+                action: 'media_toolkit_save_ai_settings',
+                nonce: mediaToolkit.nonce,
+                provider_order: providerOrder,
+                language: $('#ai_language').val(),
+                generate_on_upload: $('#ai_generate_on_upload').is(':checked') ? 'true' : 'false',
+                min_image_size: $('#ai_min_image_size').val() || '100',
+                ai_openai_api_key: $('#ai_openai_api_key').val(),
+                ai_openai_model: $('#ai_openai_model').val(),
+                ai_claude_api_key: $('#ai_claude_api_key').val(),
+                ai_claude_model: $('#ai_claude_model').val(),
+                ai_gemini_api_key: $('#ai_gemini_api_key').val(),
+                ai_gemini_model: $('#ai_gemini_model').val()
+            };
+
+            $btn.prop('disabled', true);
+            const originalHtml = $btn.html();
+            $btn.html('<span class="dashicons dashicons-update animate-spin"></span> Saving...');
+            $status.text('');
+
+            $.ajax({
+                url: mediaToolkit.ajaxUrl,
+                method: 'POST',
+                data: data,
+                success: function (response) {
+                    if (response.success) {
+                        $status.text('✓ Saved').css('color', '#00a32a');
+                        MediaToolkit.showNotice('AI settings saved successfully!', 'success');
+
+                        // Reload to update provider status badges
+                        setTimeout(function () {
+                            location.reload();
+                        }, 1500);
+                    } else {
+                        $status.text('✗ Error').css('color', '#d63638');
+                        MediaToolkit.showNotice(response.data?.message || 'Failed to save AI settings', 'error');
+                    }
+                },
+                error: function () {
+                    $status.text('✗ Error').css('color', '#d63638');
+                    MediaToolkit.showNotice('An error occurred. Please try again.', 'error');
+                },
+                complete: function () {
+                    $btn.prop('disabled', false).html(originalHtml);
+                }
+            });
+        },
+
+        // Open Provider Configuration Modal
+        openProviderModal: function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const $btn = $(e.currentTarget);
+            const providerId = $btn.data('provider');
+            const providerName = $btn.data('provider-name');
+
+            // Get provider data from global object
+            const providers = window.mediaToolkitAIProviders || {};
+            const providerData = providers[providerId];
+
+            if (!providerData) {
+                console.error('Provider data not found for:', providerId);
+                return;
+            }
+
+            // Set modal data
+            $('#modal-provider-id').val(providerId);
+            $('#modal-provider-title').text(providerName);
+            $('#modal-api-key').attr('placeholder', providerData.placeholder);
+            $('#modal-api-key-hint').text(providerData.hint);
+
+            // Set current API key value from hidden input
+            const currentApiKey = $(`#ai_${providerId}_api_key`).val();
+            $('#modal-api-key').val(currentApiKey);
+
+            // Populate models dropdown
+            const $modelSelect = $('#modal-model');
+            $modelSelect.empty();
+            const currentModel = $(`#ai_${providerId}_model`).val();
+
+            for (const [modelId, modelName] of Object.entries(providerData.models)) {
+                const selected = modelId === currentModel ? ' selected' : '';
+                $modelSelect.append(`<option value="${modelId}"${selected}>${modelName}</option>`);
+            }
+
+            // Update icon
+            const $iconContainer = $('#modal-provider-icon');
+            $iconContainer.html(`<span class="dashicons ${providerData.icon} text-gray-600"></span>`);
+
+            // Reset test result
+            $('#modal-test-result').addClass('hidden').removeClass('bg-green-50 bg-red-50 text-green-700 text-red-700');
+
+            // Show modal
+            $('#configure-ai-provider-modal').show();
+        },
+
+        // Test Provider Connection from Modal
+        testProviderFromModal: function () {
+            const $btn = $('#modal-test-connection');
+            const $result = $('#modal-test-result');
+            const providerId = $('#modal-provider-id').val();
+            const apiKey = $('#modal-api-key').val();
+
+            if (!apiKey) {
+                $result.addClass('bg-yellow-50 text-yellow-700').html(
+                    '<span class="dashicons dashicons-info"></span> Please enter an API key first'
+                ).removeClass('hidden');
+                return;
+            }
+
+            $btn.prop('disabled', true);
+            const originalHtml = $btn.html();
+            $btn.html('<span class="dashicons dashicons-update animate-spin"></span> Testing...');
+            $result.removeClass('hidden bg-green-50 bg-red-50 bg-yellow-50 text-green-700 text-red-700 text-yellow-700').html('');
+
+            $.ajax({
+                url: mediaToolkit.ajaxUrl,
+                method: 'POST',
+                data: {
+                    action: 'media_toolkit_test_ai_provider',
+                    nonce: mediaToolkit.nonce,
+                    provider: providerId,
+                    api_key: apiKey,
+                    model: $('#modal-model').val()
+                },
+                success: function (response) {
+                    if (response.success) {
+                        $result.addClass('bg-green-50 text-green-700').html(
+                            '<span class="dashicons dashicons-yes-alt"></span> ' + response.data.message
+                        ).removeClass('hidden');
+                    } else {
+                        $result.addClass('bg-red-50 text-red-700').html(
+                            '<span class="dashicons dashicons-warning"></span> ' + (response.data?.message || 'Connection failed')
+                        ).removeClass('hidden');
+                    }
+                },
+                error: function () {
+                    $result.addClass('bg-red-50 text-red-700').html(
+                        '<span class="dashicons dashicons-warning"></span> Connection error'
+                    ).removeClass('hidden');
+                },
+                complete: function () {
+                    $btn.prop('disabled', false).html(originalHtml);
+                }
+            });
+        },
+
+        // Save Provider from Modal
+        saveProviderFromModal: function () {
+            const $btn = $('#modal-save-provider');
+            const providerId = $('#modal-provider-id').val();
+            const apiKey = $('#modal-api-key').val();
+            const model = $('#modal-model').val();
+
+            // Update hidden inputs
+            $(`#ai_${providerId}_api_key`).val(apiKey);
+            $(`#ai_${providerId}_model`).val(model);
+
+            // Save via AJAX (similar to saveAISettings but single provider)
+            $btn.prop('disabled', true);
+            const originalHtml = $btn.html();
+            $btn.html('<span class="dashicons dashicons-update animate-spin"></span> Saving...');
+
+            // Get provider order from DOM
+            const providerOrder = [];
+            $('#ai-provider-order li').each(function () {
+                providerOrder.push($(this).data('provider'));
+            });
+
+            const data = {
+                action: 'media_toolkit_save_ai_settings',
+                nonce: mediaToolkit.nonce,
+                provider_order: providerOrder,
+                language: $('#ai_language').val(),
+                generate_on_upload: $('#ai_generate_on_upload').is(':checked') ? 'true' : 'false',
+                min_image_size: $('#ai_min_image_size').val() || '100',
+                ai_openai_api_key: $('#ai_openai_api_key').val(),
+                ai_openai_model: $('#ai_openai_model').val(),
+                ai_claude_api_key: $('#ai_claude_api_key').val(),
+                ai_claude_model: $('#ai_claude_model').val(),
+                ai_gemini_api_key: $('#ai_gemini_api_key').val(),
+                ai_gemini_model: $('#ai_gemini_model').val()
+            };
+
+            $.ajax({
+                url: mediaToolkit.ajaxUrl,
+                method: 'POST',
+                data: data,
+                success: function (response) {
+                    if (response.success) {
+                        MediaToolkit.showNotice('Provider settings saved!', 'success');
+                        MediaToolkit.closeModal();
+
+                        // Reload to update provider status badges
+                        setTimeout(function () {
+                            location.reload();
+                        }, 1000);
+                    } else {
+                        $('#modal-test-result').addClass('bg-red-50 text-red-700').html(
+                            '<span class="dashicons dashicons-warning"></span> ' + (response.data?.message || 'Failed to save')
+                        ).removeClass('hidden');
+                    }
+                },
+                error: function () {
+                    $('#modal-test-result').addClass('bg-red-50 text-red-700').html(
+                        '<span class="dashicons dashicons-warning"></span> Connection error'
+                    ).removeClass('hidden');
                 },
                 complete: function () {
                     $btn.prop('disabled', false).html(originalHtml);

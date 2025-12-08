@@ -10,11 +10,12 @@ Complete documentation for the Media Toolkit WordPress plugin.
 4. [CDN Integration](#cdn-integration)
 5. [Image Optimization](#image-optimization)
 6. [Image Resizing](#image-resizing)
-7. [Migration](#migration)
-8. [Reconciliation](#reconciliation)
-9. [Caching & Headers](#caching--headers)
-10. [Import/Export](#importexport)
-11. [Troubleshooting](#troubleshooting)
+7. [AI Metadata Generation](#ai-metadata-generation)
+8. [Migration](#migration)
+9. [Reconciliation](#reconciliation)
+10. [Caching & Headers](#caching--headers)
+11. [Import/Export](#importexport)
+12. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -415,6 +416,105 @@ $result = $resizer->resize_image(
     $jpeg_quality
 );
 ```
+
+---
+
+## AI Metadata Generation
+
+Automatically generate image metadata (alt text, titles, captions, descriptions) using AI Vision providers.
+
+### Supported Providers
+
+| Provider | Models | Cost per Image |
+|----------|--------|----------------|
+| **OpenAI** | GPT-4o, GPT-4o Mini, GPT-4 Turbo | ~$0.001-0.01 |
+| **Anthropic Claude** | Claude 3.5 Sonnet, Claude 3.5 Haiku, Claude 3 Opus | ~$0.001-0.02 |
+| **Google Gemini** | Gemini 1.5 Pro, Gemini 1.5 Flash, Gemini 1.5 Flash 8B | ~$0.0002-0.003 |
+
+### Configuration
+
+1. Go to **Media Toolkit → Settings → AI Providers**
+2. Enter your API key for one or more providers
+3. Select your preferred model for each provider
+4. Drag to reorder provider priority (first provider is used, others are fallbacks)
+5. Select the output language for generated metadata
+6. Click **Save AI Settings**
+
+### Provider Priority & Fallback
+
+Providers are tried in order of priority. If the first provider fails (rate limit, network error), the next provider is automatically used. Configure multiple providers for reliability.
+
+### Generated Metadata Fields
+
+| Field | Character Limit | Purpose |
+|-------|-----------------|---------|
+| **Title** | 50-70 | Descriptive identifier for media library |
+| **Alt Text** | Max 125 | Accessibility + Image SEO |
+| **Caption** | 150-250 | Engaging text below images |
+| **Description** | Unlimited | Full context with keywords |
+
+### Batch Generation
+
+1. Go to **Media Toolkit → AI Metadata → Generate**
+2. Configure options:
+   - **Only empty fields**: Generate only for images missing metadata
+   - **Overwrite**: Replace existing metadata
+   - **Batch size**: Number of images per batch (5, 10, 25)
+3. Review cost estimation
+4. Click **Start Generation**
+5. Monitor progress and logs
+
+### Single Image Generation
+
+In the WordPress Media Library:
+
+1. Click on any image to open the attachment modal
+2. Scroll to the **AI Metadata** section
+3. Click **Generate with AI**
+4. Fields are automatically updated with AI-generated content
+
+### Cost Estimation
+
+Before starting batch processing, the plugin estimates total cost based on:
+- Number of images to process
+- Selected provider and model
+- Average cost per image
+
+Review the estimate before confirming to avoid unexpected API charges.
+
+### Rate Limiting
+
+Built-in delays between API calls prevent rate limiting:
+- OpenAI: 200ms delay
+- Claude: 500ms delay
+- Gemini: 100ms delay
+
+Failed requests are automatically retried with exponential backoff.
+
+### Image Processing
+
+Images are automatically resized to max 1024px before sending to AI to reduce API costs and improve response times.
+
+### Generate on Upload
+
+Enable automatic AI metadata generation when new images are uploaded:
+
+1. Go to **Media Toolkit → Settings → AI Providers**
+2. Enable **Generate on Upload** toggle
+3. Configure **Minimum Image Size** (default: 100px)
+4. Save settings
+
+**How it works:**
+- When an image is uploaded, a background job is scheduled (5 seconds delay)
+- The upload completes immediately - no waiting for AI
+- AI analyzes the image asynchronously and saves metadata
+- A "⏳ AI generation pending" indicator shows in Media Library
+- Once complete, metadata fields are automatically populated
+
+**Skipped images:**
+- Images smaller than the minimum size (width or height)
+- Images that already have alt text (not just filename)
+- Images already processed by AI
 
 ---
 

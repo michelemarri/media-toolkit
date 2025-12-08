@@ -356,6 +356,91 @@
                             }
                         });
                     });
+
+                    // AI Generate button
+                    this.$('.mt-btn-generate-ai').off('click').on('click', function (e) {
+                        e.preventDefault();
+
+                        var $btn = $(this);
+                        var attachmentId = $btn.data('id');
+                        var originalHtml = $btn.html();
+
+                        $btn.prop('disabled', true);
+                        $btn.html('<span class="dashicons dashicons-update animate-spin" style="vertical-align: middle;"></span> ' + (s3OffloadMedia.strings.generating || 'Generating...'));
+
+                        $.ajax({
+                            url: s3OffloadMedia.ajaxUrl,
+                            method: 'POST',
+                            data: {
+                                action: 'media_toolkit_ai_generate_single',
+                                attachment_id: attachmentId,
+                                nonce: s3OffloadMedia.nonce,
+                                overwrite: false
+                            },
+                            success: function (response) {
+                                console.log('AI Generate Response:', response);
+                                if (response.success) {
+                                    // Update attachment fields in the modal
+                                    if (response.data.metadata) {
+                                        var $details = $btn.closest('.attachment-details');
+                                        
+                                        // Update alt text
+                                        var $altField = $details.find('input[data-setting="alt"]');
+                                        if ($altField.length && response.data.metadata.alt_text) {
+                                            $altField.val(response.data.metadata.alt_text).trigger('change');
+                                        }
+                                        
+                                        // Update caption
+                                        var $captionField = $details.find('textarea[data-setting="caption"]');
+                                        if ($captionField.length && response.data.metadata.caption) {
+                                            $captionField.val(response.data.metadata.caption).trigger('change');
+                                        }
+                                        
+                                        // Update description
+                                        var $descField = $details.find('textarea[data-setting="description"]');
+                                        if ($descField.length && response.data.metadata.description) {
+                                            $descField.val(response.data.metadata.description).trigger('change');
+                                        }
+                                    }
+
+                                    // Update model data
+                                    model.set('aiMetadata', $.extend({}, model.get('aiMetadata'), {
+                                        generated: true,
+                                        hasAltText: true,
+                                        hasCaption: true
+                                    }));
+
+                                    $btn.html('<span class="dashicons dashicons-yes-alt" style="vertical-align: middle; color: #16a34a;"></span> ' + (s3OffloadMedia.strings.aiGenerated || 'Generated!'));
+                                    
+                                    // Re-render after delay
+                                    setTimeout(function () {
+                                        self.renderS3Info();
+                                    }, 2000);
+                                } else {
+                                    console.error('AI Generate Error:', response.data);
+                                    var errorMsg = (response.data && response.data.message) 
+                                        ? response.data.message 
+                                        : (response.data && response.data.error) 
+                                            ? response.data.error 
+                                            : (s3OffloadMedia.strings.aiError || 'Generation failed');
+                                    alert(errorMsg);
+                                    $btn.prop('disabled', false).html(originalHtml);
+                                }
+                            },
+                            error: function (xhr, status, error) {
+                                console.error('AI Generate AJAX Error:', { xhr: xhr, status: status, error: error });
+                                var errorMsg = s3OffloadMedia.strings.aiError || 'Generation failed';
+                                if (error) {
+                                    errorMsg += ': ' + error;
+                                }
+                                if (xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message) {
+                                    errorMsg = xhr.responseJSON.data.message;
+                                }
+                                alert(errorMsg);
+                                $btn.prop('disabled', false).html(originalHtml);
+                            }
+                        });
+                    });
                 }
             });
         }

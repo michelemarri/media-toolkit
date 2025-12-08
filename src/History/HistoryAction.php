@@ -24,4 +24,7 @@ enum HistoryAction: string
     case OPTIMIZATION_STARTED = 'optimization_started';
     case OPTIMIZATION_COMPLETED = 'optimization_completed';
     case RESIZED = 'resized';
+    case AI_METADATA_GENERATED = 'ai_metadata_generated';
+    case AI_METADATA_STARTED = 'ai_metadata_started';
+    case AI_METADATA_COMPLETED = 'ai_metadata_completed';
 }
