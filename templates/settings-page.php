@@ -1190,7 +1190,7 @@ $hasBanner = file_exists($bannerPath);
             <div class="flex items-center gap-3 pt-2">
                 <button type="button" 
                         id="modal-test-connection"
-                        class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-all">
+                        class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all">
                     <span class="dashicons dashicons-admin-plugins"></span>
                     <?php esc_html_e('Test Connection', 'media-toolkit'); ?>
                 </button>

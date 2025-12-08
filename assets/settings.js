@@ -119,6 +119,7 @@
             $('.btn-configure-ai-provider').on('click', this.openProviderModal.bind(this));
             $('#modal-test-connection').on('click', this.testProviderFromModal.bind(this));
             $('#modal-save-provider').on('click', this.saveProviderFromModal.bind(this));
+            $('#modal-refresh-models').on('click', this.refreshProviderModels.bind(this));
             this.setupAIProviderDragDrop();
 
             // Optimization settings sliders update
@@ -2176,6 +2177,64 @@
                 },
                 complete: function () {
                     $btn.prop('disabled', false).html(originalHtml);
+                }
+            });
+        },
+
+        // Refresh Provider Models from API
+        refreshProviderModels: function () {
+            const $btn = $('#modal-refresh-models');
+            const $status = $('#modal-models-status');
+            const $modelSelect = $('#modal-model');
+            const providerId = $('#modal-provider-id').val();
+            const apiKey = $('#modal-api-key').val();
+
+            // Allow refresh if API key is entered OR if it's a masked key (already saved)
+            if (!apiKey) {
+                $status.text('Enter API key first to fetch models').removeClass('hidden text-green-600').addClass('text-yellow-600');
+                return;
+            }
+
+            $btn.prop('disabled', true);
+            $btn.find('.dashicons').addClass('animate-spin');
+            $status.text('Fetching models...').removeClass('hidden text-green-600 text-yellow-600').addClass('text-gray-500');
+
+            $.ajax({
+                url: mediaToolkit.ajaxUrl,
+                method: 'POST',
+                data: {
+                    action: 'media_toolkit_refresh_ai_models',
+                    nonce: mediaToolkit.nonce,
+                    provider: providerId,
+                    api_key: apiKey
+                },
+                success: function (response) {
+                    if (response.success && response.data.models) {
+                        const currentModel = $modelSelect.val();
+                        $modelSelect.empty();
+                        
+                        for (const [modelId, modelName] of Object.entries(response.data.models)) {
+                            const selected = modelId === currentModel ? ' selected' : '';
+                            $modelSelect.append(`<option value="${modelId}"${selected}>${modelName}</option>`);
+                        }
+
+                        // Update local cache
+                        if (window.mediaToolkitAIProviders && window.mediaToolkitAIProviders[providerId]) {
+                            window.mediaToolkitAIProviders[providerId].models = response.data.models;
+                        }
+
+                        const count = Object.keys(response.data.models).length;
+                        $status.text(`Found ${count} models`).removeClass('text-gray-500 text-yellow-600').addClass('text-green-600');
+                    } else {
+                        $status.text(response.data?.message || 'Failed to fetch models').removeClass('text-gray-500 text-green-600').addClass('text-yellow-600');
+                    }
+                },
+                error: function () {
+                    $status.text('Connection error').removeClass('text-gray-500 text-green-600').addClass('text-yellow-600');
+                },
+                complete: function () {
+                    $btn.prop('disabled', false);
+                    $btn.find('.dashicons').removeClass('animate-spin');
                 }
             });
         },

@@ -28,7 +28,8 @@ abstract class AbstractAIProvider implements AIProviderInterface
         'title' => 'Generate a concise, descriptive title for this image. The title should be 50-70 characters, serving as a clear identifier for the image content.',
         'alt_text' => 'Generate an alt text description for this image optimized for accessibility and SEO. Maximum 125 characters. Describe the key visual elements concisely.',
         'caption' => 'Generate an engaging caption for this image. 150-250 characters. The caption should engage readers and add context to what they see.',
-        'description' => 'Generate a detailed description of this image including all relevant visual elements, context, and potential keywords for SEO. No character limit.',
+        'description' => 'Generate a detailed description of this image including all relevant visual elements and context. No character limit.',
+        'keywords' => 'Generate 5-10 relevant SEO keywords/tags for this image, comma-separated. Focus on searchable terms that describe the image content, style, and context.',
     ];
 
     /** @var array<string, array<string, string>> Language-specific prompts */
@@ -37,7 +38,8 @@ abstract class AbstractAIProvider implements AIProviderInterface
             'title' => 'Genera un titolo conciso e descrittivo per questa immagine. Il titolo dovrebbe essere di 50-70 caratteri, servendo come identificatore chiaro del contenuto.',
             'alt_text' => 'Genera un testo alternativo per questa immagine ottimizzato per accessibilità e SEO. Massimo 125 caratteri. Descrivi gli elementi visivi chiave in modo conciso.',
             'caption' => 'Genera una didascalia coinvolgente per questa immagine. 150-250 caratteri. La didascalia dovrebbe coinvolgere i lettori e aggiungere contesto.',
-            'description' => 'Genera una descrizione dettagliata di questa immagine includendo tutti gli elementi visivi rilevanti, il contesto e potenziali parole chiave per la SEO. Nessun limite di caratteri.',
+            'description' => 'Genera una descrizione dettagliata di questa immagine includendo tutti gli elementi visivi rilevanti e il contesto. Nessun limite di caratteri.',
+            'keywords' => 'Genera 5-10 parole chiave/tag SEO rilevanti per questa immagine, separate da virgola. Concentrati su termini ricercabili che descrivono il contenuto, lo stile e il contesto.',
         ],
         'en' => self::DEFAULT_PROMPTS,
     ];
@@ -175,7 +177,8 @@ Analyze this image and generate metadata in the following JSON format:
     "title": "...",
     "alt_text": "...",
     "caption": "...",
-    "description": "..."
+    "description": "...",
+    "keywords": "..."
 }
 
 Guidelines for each field:
@@ -183,6 +186,7 @@ Guidelines for each field:
 - ALT_TEXT: {$prompts['alt_text']}
 - CAPTION: {$prompts['caption']}
 - DESCRIPTION: {$prompts['description']}
+- KEYWORDS: {$prompts['keywords']}
 
 {$langInstruction}
 
@@ -221,12 +225,21 @@ PROMPT;
             }
         }
 
+        // Build description with keywords appended
+        $description = trim($data['description']);
+        $keywords = isset($data['keywords']) ? trim($data['keywords']) : '';
+        
+        if (!empty($keywords)) {
+            $description .= "\n\nKeywords: " . $keywords;
+        }
+
         // Enforce character limits
         return [
             'title' => mb_substr(trim($data['title']), 0, 70),
             'alt_text' => mb_substr(trim($data['alt_text']), 0, 125),
             'caption' => mb_substr(trim($data['caption']), 0, 250),
-            'description' => trim($data['description']),
+            'description' => $description,
+            'keywords' => $keywords, // Also return separately for potential future use
         ];
     }
 

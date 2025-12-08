@@ -20,28 +20,28 @@ final class ClaudeProvider extends AbstractAIProvider
     private const API_URL = 'https://api.anthropic.com/v1/messages';
     private const API_VERSION = '2023-06-01';
 
-    /** @var array<string, string> Available models (updated Dec 2024) */
+    /** @var array<string, string> Available models (updated Dec 2025) */
     private const MODELS = [
-        'claude-sonnet-4-20250514' => 'Claude Sonnet 4 (Latest, best quality)',
-        'claude-3-5-sonnet-20241022' => 'Claude 3.5 Sonnet (Great quality)',
-        'claude-3-5-haiku-20241022' => 'Claude 3.5 Haiku (Fast, cheap)',
-        'claude-3-opus-20240229' => 'Claude 3 Opus (Most capable)',
-        'claude-3-haiku-20240307' => 'Claude 3 Haiku (Fastest)',
+        'claude-opus-4-5-20251124' => 'Claude Opus 4.5 (Most advanced)',
+        'claude-sonnet-4-5-20250929' => 'Claude Sonnet 4.5 (Best quality)',
+        'claude-haiku-4-5-20251015' => 'Claude Haiku 4.5 (Fast, intelligent)',
+        'claude-opus-4-1-20250805' => 'Claude Opus 4.1 (Specialized reasoning)',
+        'claude-sonnet-4-20250514' => 'Claude Sonnet 4 (Great quality)',
     ];
 
     /** @var array<string, float> Cost per image estimate in USD */
     private const COST_PER_IMAGE = [
+        'claude-opus-4-5-20251124' => 0.025,
+        'claude-sonnet-4-5-20250929' => 0.005,
+        'claude-haiku-4-5-20251015' => 0.001,
+        'claude-opus-4-1-20250805' => 0.02,
         'claude-sonnet-4-20250514' => 0.004,
-        'claude-3-5-sonnet-20241022' => 0.004,
-        'claude-3-5-haiku-20241022' => 0.001,
-        'claude-3-opus-20240229' => 0.02,
-        'claude-3-haiku-20240307' => 0.0005,
     ];
 
     public function __construct(Encryption $encryption, ?Logger $logger = null)
     {
         parent::__construct($encryption, $logger);
-        $this->model = 'claude-3-5-haiku-20241022'; // Default to cost-effective model
+        $this->model = 'claude-haiku-4-5-20251015'; // Default to cost-effective model
         $this->rateLimitDelay = 500;
     }
 
@@ -58,6 +58,59 @@ final class ClaudeProvider extends AbstractAIProvider
     public function getAvailableModels(): array
     {
         return self::MODELS;
+    }
+
+    /**
+     * Fetch models from Anthropic API
+     * Note: Anthropic provides a models endpoint since API version 2024-01-01
+     */
+    protected function fetchModelsFromApi(): array
+    {
+        $response = wp_remote_get('https://api.anthropic.com/v1/models', [
+            'headers' => [
+                'x-api-key' => $this->apiKey,
+                'anthropic-version' => self::API_VERSION,
+            ],
+            'timeout' => 10,
+        ]);
+
+        if (is_wp_error($response)) {
+            $this->logDebug('Failed to fetch Claude models', ['error' => $response->get_error_message()]);
+            return [];
+        }
+
+        $statusCode = wp_remote_retrieve_response_code($response);
+        if ($statusCode !== 200) {
+            $this->logDebug('Claude models API returned non-200', ['status' => $statusCode]);
+            return [];
+        }
+
+        $body = json_decode(wp_remote_retrieve_body($response), true);
+        
+        if (!isset($body['data']) || !is_array($body['data'])) {
+            $this->logDebug('Unexpected Claude models response format', ['body' => $body]);
+            return [];
+        }
+
+        $models = [];
+        foreach ($body['data'] as $model) {
+            $id = $model['id'] ?? '';
+            $displayName = $model['display_name'] ?? $id;
+            
+            // Only include claude-* models that support vision
+            if (str_starts_with($id, 'claude-') && !str_contains($id, 'instant')) {
+                // Skip very old models
+                if (str_contains($id, '-2.0') || str_contains($id, '-2.1')) {
+                    continue;
+                }
+                $models[$id] = $displayName;
+            }
+        }
+
+        // Sort by key (newer models have later names)
+        krsort($models);
+
+        return $models;
     }
 
     public function getEstimatedCostPerImage(): float

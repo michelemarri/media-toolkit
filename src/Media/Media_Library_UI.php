@@ -538,14 +538,9 @@ final class Media_Library_UI
                     <label class="setting">
                         <span class="name">&nbsp;</span>
                         <# if (data.aiMetadata.pending) { #>
-                        <button type="button" class="button" disabled>
-                            <span class="dashicons dashicons-clock" style="vertical-align: middle; margin-right: 4px;"></span>
-                            <?php _e('Processing...', 'media-toolkit'); ?>
-                        </button>
+                        <button type="button" class="button" disabled><?php _e('Processing...', 'media-toolkit'); ?></button>
                         <# } else { #>
-                        <button type="button" class="button mt-btn-generate-ai" data-id="{{ data.id }}">
-                            <?php _e('Generate with AI', 'media-toolkit'); ?>
-                        </button>
+                        <button type="button" class="button mt-btn-generate-ai" data-id="{{ data.id }}"><?php _e('Generate with AI', 'media-toolkit'); ?></button>
                         <# } #>
                     </label>
                 <# } else { #>

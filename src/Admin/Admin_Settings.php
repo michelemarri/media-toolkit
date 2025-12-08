@@ -96,6 +96,7 @@ final class Admin_Settings
         // AI Provider handlers
         add_action('wp_ajax_media_toolkit_save_ai_settings', [$this, 'ajax_save_ai_settings']);
         add_action('wp_ajax_media_toolkit_test_ai_provider', [$this, 'ajax_test_ai_provider']);
+        add_action('wp_ajax_media_toolkit_refresh_ai_models', [$this, 'ajax_refresh_ai_models']);
     }
 
     /**
@@ -1310,6 +1311,64 @@ final class Admin_Settings
             wp_send_json_success($result);
         } else {
             wp_send_json_error($result);
+        }
+    }
+
+    /**
+     * AJAX: Refresh AI provider models from API
+     */
+    public function ajax_refresh_ai_models(): void
+    {
+        check_ajax_referer('media_toolkit_nonce', 'nonce');
+        
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => 'Permission denied']);
+        }
+
+        $provider_id = sanitize_text_field($_POST['provider'] ?? '');
+        $api_key = sanitize_text_field($_POST['api_key'] ?? '');
+        
+        if (empty($provider_id)) {
+            wp_send_json_error(['message' => 'Provider ID required']);
+        }
+
+        $ai_manager = media_toolkit()->get_ai_manager();
+        
+        if ($ai_manager === null) {
+            wp_send_json_error(['message' => 'AI Manager not available']);
+        }
+
+        $provider = $ai_manager->getProvider($provider_id);
+        
+        if ($provider === null) {
+            wp_send_json_error(['message' => 'Provider not found']);
+            return;
+        }
+
+        // Set API key for fetching models
+        if (!empty($api_key) && !str_contains($api_key, '•')) {
+            $provider->setPlainApiKey($api_key);
+        }
+
+        if (!$provider->isConfigured()) {
+            wp_send_json_error(['message' => __('API key required to fetch models', 'media-toolkit')]);
+        }
+
+        try {
+            // Clear cache and fetch fresh models
+            $provider->clearModelsCache();
+            $models = $provider->fetchAvailableModels();
+
+            if (empty($models)) {
+                wp_send_json_error(['message' => __('No models found', 'media-toolkit')]);
+            }
+
+            wp_send_json_success([
+                'models' => $models,
+                'message' => sprintf(__('Found %d models', 'media-toolkit'), count($models)),
+            ]);
+        } catch (\Exception $e) {
+            wp_send_json_error(['message' => $e->getMessage()]);
         }
     }
 }

@@ -199,9 +199,11 @@
                         return;
                     }
 
-                    // Remove existing S3 info
+                    // Remove existing sections (S3 and AI)
                     this.$('.mt-offload-section').remove();
                     this.$('.settings.mt-offload-section').remove();
+                    this.$('.mt-ai-section').remove();
+                    this.$('.settings.mt-ai-section').remove();
 
                     // Add S3 info after the settings section
                     var $settings = this.$('.attachment-info .settings');
@@ -366,7 +368,7 @@
                         var originalHtml = $btn.html();
 
                         $btn.prop('disabled', true);
-                        $btn.html('<span class="dashicons dashicons-update animate-spin" style="vertical-align: middle;"></span> ' + (s3OffloadMedia.strings.generating || 'Generating...'));
+                        $btn.text(s3OffloadMedia.strings.generating || 'Generating...');
 
                         $.ajax({
                             url: s3OffloadMedia.ajaxUrl,
@@ -380,42 +382,77 @@
                             success: function (response) {
                                 console.log('AI Generate Response:', response);
                                 if (response.success) {
-                                    // Update attachment fields in the modal
-                                    if (response.data.metadata) {
-                                        var $details = $btn.closest('.attachment-details');
+                                    var metadata = response.data.metadata;
+                                    
+                                    if (metadata) {
+                                        // Update Backbone model first - this syncs with WordPress
+                                        if (metadata.title) {
+                                            model.set('title', metadata.title);
+                                        }
+                                        if (metadata.alt_text) {
+                                            model.set('alt', metadata.alt_text);
+                                        }
+                                        if (metadata.caption) {
+                                            model.set('caption', metadata.caption);
+                                        }
+                                        if (metadata.description) {
+                                            model.set('description', metadata.description);
+                                        }
+                                        
+                                        // Save model to persist changes
+                                        model.save();
+                                        
+                                        // Also update DOM fields directly for immediate feedback
+                                        var $modal = $btn.closest('.media-modal, .attachment-details, .media-frame');
+                                        if (!$modal.length) {
+                                            $modal = $(document);
+                                        }
+                                        
+                                        // Update title
+                                        var $titleField = $modal.find('[data-setting="title"]');
+                                        if ($titleField.length && metadata.title) {
+                                            $titleField.val(metadata.title).trigger('change');
+                                        }
                                         
                                         // Update alt text
-                                        var $altField = $details.find('input[data-setting="alt"]');
-                                        if ($altField.length && response.data.metadata.alt_text) {
-                                            $altField.val(response.data.metadata.alt_text).trigger('change');
+                                        var $altField = $modal.find('[data-setting="alt"]');
+                                        if ($altField.length && metadata.alt_text) {
+                                            $altField.val(metadata.alt_text).trigger('change');
                                         }
                                         
                                         // Update caption
-                                        var $captionField = $details.find('textarea[data-setting="caption"]');
-                                        if ($captionField.length && response.data.metadata.caption) {
-                                            $captionField.val(response.data.metadata.caption).trigger('change');
+                                        var $captionField = $modal.find('[data-setting="caption"]');
+                                        if ($captionField.length && metadata.caption) {
+                                            $captionField.val(metadata.caption).trigger('change');
                                         }
                                         
                                         // Update description
-                                        var $descField = $details.find('textarea[data-setting="description"]');
-                                        if ($descField.length && response.data.metadata.description) {
-                                            $descField.val(response.data.metadata.description).trigger('change');
+                                        var $descField = $modal.find('[data-setting="description"]');
+                                        if ($descField.length && metadata.description) {
+                                            $descField.val(metadata.description).trigger('change');
                                         }
+                                        
+                                        console.log('Fields updated:', {
+                                            title: $titleField.length,
+                                            alt: $altField.length,
+                                            caption: $captionField.length,
+                                            description: $descField.length
+                                        });
                                     }
 
-                                    // Update model data
+                                    // Update model AI metadata status
                                     model.set('aiMetadata', $.extend({}, model.get('aiMetadata'), {
                                         generated: true,
                                         hasAltText: true,
                                         hasCaption: true
                                     }));
 
-                                    $btn.html('<span class="dashicons dashicons-yes-alt" style="vertical-align: middle; color: #16a34a;"></span> ' + (s3OffloadMedia.strings.aiGenerated || 'Generated!'));
+                                    $btn.text(s3OffloadMedia.strings.aiGenerated || 'Generated!');
                                     
                                     // Re-render after delay
                                     setTimeout(function () {
                                         self.renderS3Info();
-                                    }, 2000);
+                                    }, 1500);
                                 } else {
                                     console.error('AI Generate Error:', response.data);
                                     var errorMsg = (response.data && response.data.message) 
