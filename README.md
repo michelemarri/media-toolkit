@@ -493,6 +493,11 @@ $skip = apply_filters('media_toolkit_skip_resize', false, $file_path, $mime_type
 
 ## Changelog
 
+### 2.5.4
+- **Cleanup**: Removed all reads from legacy optimization post meta (`_media_toolkit_optimized`, `_media_toolkit_bytes_saved`, etc.)
+- **Improved**: All optimization data now read exclusively from `OptimizationTable` (single source of truth)
+- **Simplified**: `cloudStorage` response object no longer includes redundant optimization fields
+
 ### 2.5.3
 - **Improved**: All optimization data now stored in `OptimizationTable` with complete breakdown in `settings_json`
 - **Improved**: Table stores TOTAL savings (main + thumbnails) in main fields for accurate statistics

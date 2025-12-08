@@ -122,9 +122,12 @@ add_filter('media_toolkit_optimize_settings', function(array $settings, int $att
 Skip specific files from optimization.
 
 ```php
+use Metodo\MediaToolkit\Database\OptimizationTable;
+
 add_filter('media_toolkit_skip_optimization', function(bool $skip, int $attachment_id): bool {
-    // Skip already optimized images
-    if (get_post_meta($attachment_id, '_media_toolkit_optimized', true)) {
+    // Skip already optimized images (check optimization table)
+    $record = OptimizationTable::get_by_attachment($attachment_id);
+    if ($record && $record['status'] === 'optimized') {
         return true;
     }
     return $skip;
