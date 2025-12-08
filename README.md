@@ -105,6 +105,7 @@ Automatically generate image metadata using AI Vision:
   - **Description**: Full context with keywords, unlimited length
 - **Generate on Upload**: Automatically generate metadata when new images are uploaded (async, non-blocking)
 - **Batch Processing**: Process entire media library with progress tracking
+- **Background Processing**: Continue processing even with browser closed (via WP Cron)
 - **Cost Estimation**: Preview estimated API costs before starting
 - **Multi-Language**: Generate metadata in any supported language
 - **Fallback System**: Automatic failover between providers
@@ -517,6 +518,15 @@ $skip = apply_filters('media_toolkit_skip_resize', false, $file_path, $mime_type
 5. **Image Optimization**: Process during low-traffic periods
 
 ## Changelog
+
+### 2.8.0
+- **New**: Background Processing for AI Metadata Generation
+  - New toggle option to enable background processing via WP Cron
+  - Process continues even if you close the browser
+  - Auto-reconnect: page automatically reconnects to active background processes
+  - Proper stop/pause handling that cancels scheduled cron events
+- **New**: Batch size option of 1 image for granular progress updates
+- **Improved**: AI metadata generation progress tracking
 
 ### 2.7.7
 - **Improved**: S3 download validation for optimization
