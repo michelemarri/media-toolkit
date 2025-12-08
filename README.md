@@ -45,17 +45,42 @@ A powerful WordPress plugin for complete media management. Offload media files t
 ### 🖼️ Image Optimization
 Compress and optimize your media library images to save storage and bandwidth:
 
+- **Multi-Driver Optimizer System**: Automatically uses the best available tool for each format
+  - **JPEG**: mozjpeg > jpegoptim > ImageMagick > GD
+  - **PNG**: pngquant (lossy) > oxipng > optipng > ImageMagick
+  - **WebP**: cwebp > ImageMagick > GD
+  - **AVIF**: avifenc > ImageMagick
+  - **GIF**: gifsicle > ImageMagick > GD
+  - **SVG**: svgo
 - **Optimize on Upload**: Automatically compress images when uploaded (after resize, before cloud upload)
 - **JPEG Compression**: Configurable quality (60-100%)
 - **PNG Compression**: Lossless compression levels (0-9)
 - **GIF Support**: Automatic handling (animated GIFs are preserved)
-- **WebP Support**: Optimize existing WebP files
+- **WebP/AVIF Support**: Optimize existing files and convert from JPEG/PNG
 - **EXIF Stripping**: Remove camera metadata, GPS data, etc.
 - **Batch Processing**: Optimize images in bulk with progress tracking
 - **Thumbnail Optimization**: Automatically optimizes all generated sizes
 - **S3 Re-upload**: Optimized images are automatically re-uploaded to S3
 - **Space Savings Tracking**: Monitor how much storage you've saved
-- **Server Capability Detection**: Checks for GD, ImageMagick, WebP support
+- **Server Capability Detection**: Auto-detects available CLI tools with recommendations
+
+### 🔄 Format Conversion
+Generate modern formats for better performance:
+
+- **WebP Conversion**: Create .webp version alongside original (20-30% smaller)
+- **AVIF Conversion**: Create .avif version (20-50% smaller than WebP)
+- **Cloud Storage Integration**: Converted files are automatically uploaded to S3/R2/etc.
+- **Keep Original**: Original format is always preserved
+- **Quality Settings**: Configurable quality for each format
+
+### 💾 Backup System
+Keep original images before optimization:
+
+- **Backup Before Optimize**: Save original as `filename_original.ext`
+- **Same Directory**: Backup stays alongside optimized file
+- **Cloud Sync**: Backups are uploaded to cloud storage
+- **Restore Capability**: One-click restore from backup
+- **Auto-Cleanup**: Optional cleanup after X days
 
 ### 📐 Automatic Image Resizing
 Automatically resize oversized images when they are uploaded:
@@ -492,6 +517,86 @@ $skip = apply_filters('media_toolkit_skip_resize', false, $file_path, $mime_type
 5. **Image Optimization**: Process during low-traffic periods
 
 ## Changelog
+
+### 2.7.7
+- **Improved**: S3 download validation for optimization
+  - Now verifies file content is not empty before and after download
+  - Checks file_put_contents actually wrote bytes
+  - Verifies local file size matches S3 content length
+  - Better error logging to identify download vs corruption issues
+  - Deletes failed/empty downloads instead of leaving corrupt files
+
+### 2.7.6
+- **Fixed**: Database error "CONSTRAINT settings_json failed" when marking failed optimizations
+  - JSON columns don't accept empty strings, only NULL or valid JSON
+  - Now properly handles NULL values for settings_json, optimized_at, and error_message columns
+
+### 2.7.5
+- **Fixed**: "File became unreadable after optimization" - files being corrupted during optimization
+  - **Root cause**: ImageMagick and GD were writing directly to destination, corrupting files if optimization failed mid-write
+  - **Solution**: Both optimizers now write to temp file first, then atomically rename to destination
+  - This "write-to-temp-then-rename" pattern protects original files from corruption
+  - If optimization fails, original file is preserved intact
+
+### 2.7.4
+- **Fixed**: "Duplicate entry for key 'attachment_id'" database errors
+  - Changed upsert to use atomic `INSERT ... ON DUPLICATE KEY UPDATE` query
+  - Prevents race conditions when multiple batches process the same file
+- **Improved**: Better handling of missing files during optimization
+  - Added explicit file existence check before reading file size
+  - Added check after optimization to detect if optimizer deleted the file
+  - Better error messages indicating if file was missing from S3 download or deleted by optimizer
+- **Improved**: More detailed logging for optimization failures
+  - Logs which optimizer was used when failures occur
+  - Logs S3 key and download status for missing files
+
+### 2.7.3
+- **Improved**: Automatic retry for HTTP errors (502, 503, 504) during batch processing
+  - Retries up to 2 times with exponential backoff (2s, 4s delays)
+  - Shows retry progress in log: "HTTP 502 - retrying in 2s... (attempt 2/3)"
+  - Added 60 second timeout for AJAX requests
+- **Improved**: Better diagnostics for "File became unreadable after optimization" error
+  - Now logs file exists status, readability, directory status, and optimizer used
+  - Helps identify if issue is permissions, missing file, or optimizer problem
+
+### 2.7.2
+- **Fixed**: Stop/Cancel button not responding on first click during batch processing
+  - Added check for stop request after AJAX response to handle in-flight requests
+  - Disabled all action buttons during stop to prevent multiple clicks
+  - Better feedback message: "Stopping... (waiting for current batch to complete)"
+
+### 2.7.1
+- **Fixed**: AWS S3 BadDigest (CRC32) checksum errors during file uploads
+  - Disabled automatic checksum calculation in AWS SDK to prevent errors with concurrent file access
+  - Added BadDigest as retryable error for automatic retry on checksum failures
+- **Improved**: Better batch processor feedback in frontend logs
+  - Show bytes saved per batch for optimization
+  - Show skipped items count
+  - Show retry queue count
+  - Simplified error messages for common issues (checksum errors, timeouts)
+- **Improved**: User-friendly error message for checksum failures
+
+### 2.7.0
+- **Improved**: Reorganized Image Optimization page with new "Settings" tab
+  - Compression settings and format conversion options moved to dedicated tab
+  - Settings now apply to both "Optimize on Upload" and batch optimization
+  - Cleaner UI with separation between configuration and execution controls
+
+### 2.6.0
+- **New**: Multi-Driver Optimizer System with automatic tool detection
+  - Supports CLI tools: mozjpeg, jpegoptim, pngquant, optipng, oxipng, cwebp, avifenc, gifsicle, svgo
+  - Automatic fallback chain: uses best available tool for each format
+  - Dashboard shows available tools with version and recommendations
+- **New**: WebP Conversion - Generate .webp versions alongside original images
+- **New**: AVIF Conversion - Generate .avif versions (20-50% smaller than WebP)
+- **New**: Backup System - Keep original images with `_original` suffix before optimization
+  - Backup stored in same directory as optimized file
+  - Cloud storage integration (backup uploaded to S3/R2/etc.)
+  - One-click restore from Media Library
+- **New**: SVG Optimization support (requires svgo)
+- **New**: AVIF image optimization support
+- **Improved**: Optimization settings page shows available tools by format
+- **Improved**: Installation instructions for missing optimization tools
 
 ### 2.5.4
 - **Cleanup**: Removed all reads from legacy optimization post meta (`_media_toolkit_optimized`, `_media_toolkit_bytes_saved`, etc.)

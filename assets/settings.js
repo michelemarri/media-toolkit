@@ -1073,7 +1073,7 @@
                                         <span class="block text-xs text-gray-500">${timeStr}</span>
                                     </td>
                                     <td class="px-4 py-3"><span class="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full ${actionClass}">${item.action}</span></td>
-                                    <td class="px-4 py-3"><span class="text-sm text-gray-600 font-mono truncate max-w-[200px] block" title="${MediaToolkit.escapeHtml(item.file_path || item.s3_key || '-')}">${MediaToolkit.escapeHtml(item.file_path || item.s3_key || '-')}</span></td>
+                                    <td class="px-4 py-3"><span class="text-sm text-gray-600 font-mono truncate max-w-[200px] block" title="${MediaToolkit.escapeHtml(item.file_path || item.storage_key || '-')}">${MediaToolkit.escapeHtml(item.file_path || item.storage_key || '-')}</span></td>
                                     <td class="px-4 py-3 text-sm text-gray-600">${item.file_size ? MediaToolkit.formatBytes(item.file_size) : '-'}</td>
                                     <td class="px-4 py-3">
                                         <div class="flex items-center gap-2">

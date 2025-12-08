@@ -62,6 +62,7 @@
             this.isPaused = false;
             this.intervalId = null;
             this.pendingCallback = null;
+            this.stopAcknowledged = false; // Prevents duplicate "Stop acknowledged" messages
 
             this.init();
         }
@@ -217,6 +218,9 @@
             delete options._confirmTitle;
             delete options._confirmMessage;
 
+            // Reset stop acknowledged flag for new session
+            this.stopAcknowledged = false;
+            
             this.setButtonsState('running');
             this.log('Starting...', 'info');
 
@@ -252,11 +256,22 @@
             this.stopInterval();
 
             const processBatch = () => {
+                // Check before sending request
                 if (!this.isRunning || this.isPaused) {
                     return;
                 }
 
                 this.ajax(this.config.actions.process, {}, (response) => {
+                    // IMPORTANT: Check again after response - user may have clicked stop while request was in flight
+                    if (!this.isRunning) {
+                        // Only log once (multiple in-flight requests may return after stop)
+                        if (!this.stopAcknowledged) {
+                            this.stopAcknowledged = true;
+                            this.log('Stop acknowledged', 'warning');
+                        }
+                        return;
+                    }
+
                     if (response.success) {
                         if (response.data.stats) {
                             this.updateStats(response.data.stats);
@@ -270,16 +285,38 @@
 
                         // Log batch results
                         if (response.data.batch_processed > 0) {
-                            this.log(`Processed ${response.data.batch_processed} items`, 'success');
+                            let successMsg = `Processed ${response.data.batch_processed} items`;
+                            // Add bytes saved info if available (for optimization)
+                            if (response.data.batch_bytes_saved_formatted) {
+                                successMsg += ` (saved ${response.data.batch_bytes_saved_formatted})`;
+                            }
+                            this.log(successMsg, 'success');
+                        }
+
+                        if (response.data.batch_skipped > 0) {
+                            this.log(`Skipped ${response.data.batch_skipped} items (already optimized or too large)`, 'info');
                         }
 
                         if (response.data.batch_failed > 0) {
-                            this.log(`${response.data.batch_failed} items failed`, 'warning');
+                            this.log(`${response.data.batch_failed} items failed (queued for retry)`, 'warning');
                             if (response.data.batch_errors) {
                                 response.data.batch_errors.forEach(err => {
-                                    this.log(`  Error: ${err.error}`, 'error');
+                                    // Show a more user-friendly error message
+                                    let errorMsg = err.error || 'Unknown error';
+                                    // Simplify common error messages
+                                    if (errorMsg.includes('BadDigest') || errorMsg.includes('CRC32')) {
+                                        errorMsg = 'Checksum error - will retry automatically';
+                                    } else if (errorMsg.includes('timeout') || errorMsg.includes('Timeout')) {
+                                        errorMsg = 'Connection timeout - will retry';
+                                    }
+                                    this.log(`  ID ${err.item_id}: ${errorMsg}`, 'error');
                                 });
                             }
+                        }
+
+                        // Show retry queue status if there are items in the queue
+                        if (response.data.retry_queue_count > 0) {
+                            this.log(`${response.data.retry_queue_count} operations in retry queue`, 'info');
                         }
 
                         // Check if complete
@@ -299,6 +336,10 @@
                         }
                     }
                 }, () => {
+                    // Check if stop was requested during error
+                    if (!this.isRunning) {
+                        return;
+                    }
                     this.log('Batch processing error', 'error');
                 });
             };
@@ -408,15 +449,23 @@
             this.isRunning = false;
             this.isPaused = false;
             this.stopInterval();
-            this.setButtonsState('idle');
-            this.log('Stopping...', 'info');
+            
+            // Disable all action buttons during stop
+            this.$startBtn.prop('disabled', true);
+            this.$pauseBtn.prop('disabled', true);
+            this.$resumeBtn.prop('disabled', true);
+            this.$stopBtn.prop('disabled', true);
+            
+            this.log('Stopping... (waiting for current batch to complete)', 'info');
 
             this.ajax(this.config.actions.stop, {}, (response) => {
-                this.log('Stopped', 'warning');
+                this.log('Stopped successfully', 'warning');
+                this.setButtonsState('idle');
                 this.checkCurrentStatus();
             }, () => {
-                this.log('Error stopping', 'error');
+                this.log('Error stopping (process may still have stopped)', 'error');
                 // Even on error, keep the process stopped
+                this.setButtonsState('idle');
                 this.checkCurrentStatus();
             });
         }
@@ -579,19 +628,37 @@
         }
 
         /**
-         * AJAX helper
+         * AJAX helper with automatic retry for temporary errors
          */
-        ajax(action, data, success, error) {
+        ajax(action, data, success, error, retryCount = 0) {
             const self = this;
+            const maxRetries = 2;
+            const retryableStatuses = [0, 502, 503, 504, 520, 521, 522, 523, 524]; // 0 = timeout, 5xx = server errors
+            
             $.ajax({
                 url: mediaToolkit.ajaxUrl,
                 method: 'POST',
+                timeout: 60000, // 60 second timeout
                 data: Object.assign({
                     action: action,
                     nonce: mediaToolkit.nonce
                 }, data),
                 success: success,
                 error: function(xhr, status, errorThrown) {
+                    // Check if this is a retryable error and we haven't exceeded max retries
+                    if (retryableStatuses.includes(xhr.status) && retryCount < maxRetries && self.isRunning) {
+                        const retryDelay = (retryCount + 1) * 2000; // 2s, 4s
+                        self.log(`HTTP ${xhr.status || 'timeout'} - retrying in ${retryDelay/1000}s... (attempt ${retryCount + 2}/${maxRetries + 1})`, 'warning');
+                        
+                        setTimeout(() => {
+                            // Check again if still running before retry
+                            if (self.isRunning) {
+                                self.ajax(action, data, success, error, retryCount + 1);
+                            }
+                        }, retryDelay);
+                        return;
+                    }
+                    
                     // Log detailed error info
                     self.log(`HTTP Error: ${xhr.status} ${errorThrown}`, 'error');
                     if (xhr.responseText) {

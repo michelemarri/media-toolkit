@@ -256,21 +256,44 @@ This catches issues like:
 
 ### Optimize Tab
 
-#### Supported Formats
+#### Multi-Driver Optimizer System
 
-| Format | Method | Settings |
-|--------|--------|----------|
-| JPEG | GD/ImageMagick | Quality 60-100% |
-| PNG | GD/ImageMagick | Compression 0-9 |
-| GIF | Preserved | No changes to animated GIFs |
-| WebP | GD/ImageMagick | Quality 60-100% |
+The plugin automatically detects and uses the best available optimization tool for each format:
+
+| Format | Priority | Tools (best to fallback) |
+|--------|----------|--------------------------|
+| JPEG | High | mozjpeg → jpegoptim → ImageMagick → GD |
+| PNG | High | pngquant (lossy) → oxipng → optipng → ImageMagick → GD |
+| GIF | Medium | gifsicle → ImageMagick → GD |
+| WebP | High | cwebp → ImageMagick → GD |
+| AVIF | High | avifenc → ImageMagick |
+| SVG | Low | svgo |
+
+**Tool Benefits:**
+- **mozjpeg**: 5-15% better JPEG compression than libjpeg
+- **pngquant**: Up to 70% smaller PNG files (lossy, excellent quality)
+- **oxipng**: Modern, multi-threaded lossless PNG optimizer
+- **cwebp**: Native Google WebP encoder
+- **avifenc**: AVIF encoder (20-50% smaller than WebP)
+- **gifsicle**: GIF optimizer with animated GIF support
+- **svgo**: SVG optimizer (removes unnecessary data)
+
+#### Available Optimizers Panel
+
+The Dashboard shows:
+- Available tools by format with version numbers
+- Best tool currently in use for each format
+- Missing tools with installation instructions
+- Recommendations for improving compression
 
 #### Optimization Process
 
-1. Original image is compressed locally
-2. All thumbnails are optimized
-3. Files are re-uploaded to S3
-4. Space savings are tracked
+1. Backup original (if enabled) as `filename_original.ext`
+2. Original image is compressed using best available tool
+3. All thumbnails are optimized
+4. WebP/AVIF versions generated (if enabled)
+5. All files re-uploaded to S3
+6. Space savings are tracked
 
 #### Settings
 
@@ -301,6 +324,97 @@ When enabled, images are automatically compressed during the upload process:
 7. **Cloud Upload** (priority 10): Optimized thumbnails are uploaded to storage provider
 
 This ensures that both the main image and all thumbnails are optimized before being stored in the cloud, maximizing storage and bandwidth savings.
+
+### Backup System
+
+Keep original images before optimization with the `_original` suffix:
+
+**How it works:**
+```
+wp-content/uploads/2024/01/
+├── photo.jpg              # Optimized version
+├── photo_original.jpg     # Backup of original (if enabled)
+├── photo.webp             # WebP version (if enabled)
+└── photo.avif             # AVIF version (if enabled)
+```
+
+**Settings:**
+| Setting | Description | Default |
+|---------|-------------|---------|
+| Keep Original Backup | Save original before optimization | Disabled |
+| Auto Cleanup | Delete backups after X days | Never |
+
+**Cloud Storage Integration:**
+- Backup files are automatically uploaded to cloud storage
+- Stored with same key pattern: `uploads/2024/01/photo_original.jpg`
+- Restore downloads from cloud, overwrites optimized, re-uploads
+
+**Restore Process:**
+1. Download `_original` from cloud (if needed)
+2. Overwrite optimized file with original
+3. Re-upload restored file to cloud
+4. Delete backup file (local and cloud)
+5. Reset optimization status to "pending"
+
+### Format Conversion
+
+Generate modern image formats alongside originals:
+
+**WebP Conversion:**
+- Creates `.webp` version alongside original
+- 20-30% smaller than JPEG at equivalent quality
+- Supported by 97%+ of browsers
+- Uses: cwebp > ImageMagick > GD
+
+**AVIF Conversion:**
+- Creates `.avif` version alongside original
+- 20-50% smaller than WebP
+- Supported by 93%+ of browsers
+- Uses: avifenc > ImageMagick > GD (PHP 8.1+)
+
+**Settings:**
+| Setting | Description | Default |
+|---------|-------------|---------|
+| Generate WebP | Create WebP versions | Disabled |
+| WebP Quality | Quality setting | 80 |
+| Generate AVIF | Create AVIF versions | Disabled |
+| AVIF Quality | Quality setting | 50 |
+
+**Cloud Storage:**
+- Converted files uploaded with same path structure
+- Stored as: `uploads/2024/01/photo.webp`, `uploads/2024/01/photo.avif`
+- Metadata saved in post meta for URL retrieval
+
+### Installing Optimization Tools
+
+**Ubuntu/Debian:**
+```bash
+# JPEG
+sudo apt install jpegoptim
+# For mozjpeg, download from: https://github.com/mozilla/mozjpeg/releases
+
+# PNG
+sudo apt install pngquant optipng
+# For oxipng: cargo install oxipng
+
+# WebP
+sudo apt install webp
+
+# AVIF
+sudo apt install libavif-bin  # Ubuntu 22.04+
+
+# GIF
+sudo apt install gifsicle
+
+# SVG (requires Node.js)
+npm install -g svgo
+```
+
+**macOS (Homebrew):**
+```bash
+brew install jpegoptim mozjpeg pngquant optipng oxipng webp libavif gifsicle
+npm install -g svgo
+```
 
 #### Batch Optimization
 

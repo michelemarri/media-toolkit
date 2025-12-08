@@ -119,8 +119,9 @@
                 },
                 success: function (response) {
                     if (response.success) {
-                        self.updateProgress(response.data);
-                        self.addLog('Batch started: ' + response.data.total_files + ' images to process', 'success');
+                        const state = response.data.state || response.data;
+                        self.updateProgress(state);
+                        self.addLog('Batch started: ' + state.total_files + ' images to process', 'success');
                         self.processBatch();
                     } else {
                         self.addLog('Error: ' + (response.data?.message || 'Unknown error'), 'error');
@@ -150,16 +151,18 @@
                 },
                 success: function (response) {
                     if (response.success) {
-                        self.updateProgress(response.data);
+                        const data = response.data;
+                        const state = data.state || data;
+                        self.updateProgress(state);
 
                         // Log batch results
-                        if (response.data.batch_processed > 0) {
-                            self.addLog('Processed ' + response.data.batch_processed + ' images (Total: ' + response.data.processed + '/' + response.data.total_files + ')', 'info');
+                        if (data.batch_processed > 0) {
+                            self.addLog('Processed ' + data.batch_processed + ' images (Total: ' + state.processed + '/' + state.total_files + ')', 'info');
                         }
 
                         // Check if complete
-                        if (response.data.status === 'completed') {
-                            self.addLog('✓ Generation complete! ' + response.data.total_success + ' images processed.', 'success');
+                        if (state.status === 'completed') {
+                            self.addLog('✓ Generation complete! ' + state.processed + ' images processed.', 'success');
                             self.state.isRunning = false;
                             self.updateButtonStates();
                             return;
