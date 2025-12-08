@@ -139,6 +139,14 @@
                         $('#scan-not-found').text(formatNumber(data.not_found_on_storage || 0));
                         $('#scan-would-mark').text(formatNumber(data.would_be_marked || 0));
 
+                        // Update stats cards with fresh data from scan
+                        $('#recon-storage-files').text(formatNumber(data.storage_original_files || 0));
+                        
+                        // Recalculate discrepancy
+                        const markedMigrated = parseInt($('#recon-marked').text().replace(/,/g, '')) || 0;
+                        const discrepancy = Math.abs((data.storage_original_files || 0) - markedMigrated);
+                        $('#recon-discrepancy').text(formatNumber(discrepancy));
+
                         // Log the scan results
                         reconciliation.log('Storage scan completed', 'success');
                         reconciliation.log(`Found ${formatNumber(data.storage_original_files)} files on cloud storage`, 'info');

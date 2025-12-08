@@ -12,7 +12,8 @@
             isPaused: false,
             batchSize: 10,
             onlyEmpty: true,
-            overwrite: false
+            overwrite: false,
+            backgroundMode: false
         },
 
         init: function () {
@@ -31,6 +32,7 @@
             $('#ai-batch-size').on('change', this.updateBatchSize.bind(this));
             $('#ai-only-empty').on('change', this.updateOnlyEmpty.bind(this));
             $('#ai-overwrite').on('change', this.updateOverwrite.bind(this));
+            $('#ai-background-mode').on('change', this.updateBackgroundMode.bind(this));
             $('#btn-refresh-estimate').on('click', this.refreshEstimate.bind(this));
 
             // Modal
@@ -43,8 +45,60 @@
         },
 
         initializePage: function () {
+            const self = this;
+            
             // Load initial estimate
             this.refreshEstimate();
+
+            // Check if there's an active process and resume monitoring
+            this.checkActiveProcess();
+        },
+
+        /**
+         * Check if there's an active background process and resume monitoring
+         */
+        checkActiveProcess: function () {
+            const self = this;
+
+            $.ajax({
+                url: mediaToolkit.ajaxUrl,
+                method: 'POST',
+                data: {
+                    action: 'media_toolkit_ai_metadata_get_status',
+                    nonce: mediaToolkit.nonce
+                },
+                success: function (response) {
+                    if (response.success) {
+                        const state = response.data.state || response.data;
+                        
+                        // If there's an active process, resume monitoring
+                        if (state.status === 'running' || state.status === 'paused') {
+                            self.state.isRunning = state.status === 'running';
+                            self.state.isPaused = state.status === 'paused';
+                            self.state.backgroundMode = !!(state.options && state.options.background_mode);
+                            
+                            self.updateProgress(state);
+                            self.updateButtonStates();
+                            $('#ai-generation-status').removeClass('hidden');
+                            
+                            if (self.state.backgroundMode) {
+                                self.addLog('📡 Reconnected to background process', 'info');
+                            } else {
+                                self.addLog('📡 Reconnected to active process', 'info');
+                            }
+                            
+                            // Start polling or processing based on mode
+                            if (state.status === 'running') {
+                                if (self.state.backgroundMode) {
+                                    self.pollStatus();
+                                } else {
+                                    self.processBatch();
+                                }
+                            }
+                        }
+                    }
+                }
+            });
         },
 
         updateBatchSize: function () {
@@ -58,6 +112,10 @@
 
         updateOverwrite: function () {
             this.state.overwrite = $('#ai-overwrite').is(':checked');
+        },
+
+        updateBackgroundMode: function () {
+            this.state.backgroundMode = $('#ai-background-mode').is(':checked');
         },
 
         refreshEstimate: function () {
@@ -93,8 +151,14 @@
         startGeneration: function () {
             const self = this;
 
-            // Confirm start
-            if (!confirm('This will start generating AI metadata. Estimated cost: $' + $('#estimate-cost').text().replace('$', '') + '. Continue?')) {
+            // Build confirmation message
+            let confirmMsg = 'This will start generating AI metadata. Estimated cost: $' + $('#estimate-cost').text().replace('$', '') + '.';
+            if (this.state.backgroundMode) {
+                confirmMsg += '\n\n⚡ Background mode enabled: processing will continue even if you close the browser.';
+            }
+            confirmMsg += '\n\nContinue?';
+
+            if (!confirm(confirmMsg)) {
                 return;
             }
 
@@ -104,7 +168,12 @@
             // Update UI
             this.updateButtonStates();
             $('#ai-generation-status').removeClass('hidden');
-            this.addLog('Starting AI metadata generation...', 'info');
+            
+            if (this.state.backgroundMode) {
+                this.addLog('Starting AI metadata generation in BACKGROUND mode...', 'info');
+            } else {
+                this.addLog('Starting AI metadata generation...', 'info');
+            }
 
             // Call batch processor start
             $.ajax({
@@ -115,14 +184,23 @@
                     nonce: mediaToolkit.nonce,
                     batch_size: this.state.batchSize,
                     only_empty_fields: this.state.onlyEmpty ? 'true' : 'false',
-                    overwrite: this.state.overwrite ? 'true' : 'false'
+                    overwrite: this.state.overwrite ? 'true' : 'false',
+                    background_mode: this.state.backgroundMode ? 'true' : 'false'
                 },
                 success: function (response) {
                     if (response.success) {
                         const state = response.data.state || response.data;
                         self.updateProgress(state);
                         self.addLog('Batch started: ' + state.total_files + ' images to process', 'success');
-                        self.processBatch();
+                        
+                        if (self.state.backgroundMode) {
+                            // In background mode, just poll for status updates
+                            self.addLog('🔄 Background processing started - you can close this page', 'success');
+                            self.pollStatus();
+                        } else {
+                            // In foreground mode, process batches via AJAX
+                            self.processBatch();
+                        }
                     } else {
                         self.addLog('Error: ' + (response.data?.message || 'Unknown error'), 'error');
                         self.stopGeneration();
@@ -200,6 +278,72 @@
             });
         },
 
+        /**
+         * Poll for status updates in background mode
+         * This doesn't trigger processing, just checks the current state
+         */
+        pollStatus: function () {
+            const self = this;
+
+            if (!this.state.isRunning || this.state.isPaused) {
+                return;
+            }
+
+            $.ajax({
+                url: mediaToolkit.ajaxUrl,
+                method: 'POST',
+                data: {
+                    action: 'media_toolkit_ai_metadata_get_status',
+                    nonce: mediaToolkit.nonce
+                },
+                success: function (response) {
+                    if (response.success) {
+                        const state = response.data.state || response.data;
+                        const prevProcessed = parseInt($('#ai-processed-count').text(), 10) || 0;
+                        
+                        self.updateProgress(state);
+
+                        // Log progress if changed
+                        if (state.processed > prevProcessed) {
+                            self.addLog('Background progress: ' + state.processed + '/' + state.total_files + ' images', 'info');
+                        }
+
+                        // Check if complete
+                        if (state.status === 'completed') {
+                            self.addLog('✓ Background generation complete! ' + state.processed + ' images processed.', 'success');
+                            self.state.isRunning = false;
+                            self.updateButtonStates();
+                            return;
+                        }
+
+                        // Check if stopped/paused externally
+                        if (state.status === 'idle' || state.status === 'paused') {
+                            self.addLog('Processing ' + state.status, 'warning');
+                            self.state.isRunning = state.status !== 'idle';
+                            self.state.isPaused = state.status === 'paused';
+                            self.updateButtonStates();
+                            return;
+                        }
+
+                        // Continue polling (every 5 seconds for background mode)
+                        if (self.state.isRunning && !self.state.isPaused) {
+                            setTimeout(function () {
+                                self.pollStatus();
+                            }, 5000);
+                        }
+                    }
+                },
+                error: function () {
+                    // Retry polling after delay
+                    setTimeout(function () {
+                        if (self.state.isRunning && !self.state.isPaused) {
+                            self.pollStatus();
+                        }
+                    }, 10000);
+                }
+            });
+        },
+
         pauseGeneration: function () {
             this.state.isPaused = true;
             this.addLog('Generation paused', 'warning');
@@ -216,6 +360,7 @@
         },
 
         resumeGeneration: function () {
+            const self = this;
             this.state.isPaused = false;
             this.addLog('Generation resumed', 'info');
             this.updateButtonStates();
@@ -227,8 +372,14 @@
                     action: 'media_toolkit_ai_metadata_resume',
                     nonce: mediaToolkit.nonce
                 },
-                success: () => {
-                    this.processBatch();
+                success: function () {
+                    if (self.state.backgroundMode) {
+                        // In background mode, just poll for status
+                        self.pollStatus();
+                    } else {
+                        // In foreground mode, process batches
+                        self.processBatch();
+                    }
                 }
             });
         },

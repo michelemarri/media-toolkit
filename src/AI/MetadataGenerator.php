@@ -47,6 +47,26 @@ final class MetadataGenerator extends Batch_Processor
     }
 
     /**
+     * Start batch processing
+     * Override to support background mode scheduling
+     * 
+     * @param array $options Processing options
+     * @return array Initial state
+     */
+    public function start(array $options = []): array
+    {
+        $state = parent::start($options);
+
+        // If background mode is enabled, schedule the first cron event
+        if (!empty($options['background_mode'])) {
+            $this->schedule_async_batch();
+            $this->logger->info('ai_metadata', 'Started in background mode - processing will continue without browser');
+        }
+
+        return $state;
+    }
+
+    /**
      * Get statistics about image metadata completeness
      */
     public function get_stats(): array
@@ -460,7 +480,117 @@ final class MetadataGenerator extends Batch_Processor
             'batch_size' => isset($_POST['batch_size']) ? (int) $_POST['batch_size'] : 10,
             'only_empty_fields' => isset($_POST['only_empty_fields']) ? $_POST['only_empty_fields'] === 'true' : true,
             'overwrite' => isset($_POST['overwrite']) ? $_POST['overwrite'] === 'true' : false,
+            'background_mode' => isset($_POST['background_mode']) ? $_POST['background_mode'] === 'true' : false,
         ];
+    }
+
+    /**
+     * Schedule async batch processing via WP Cron
+     */
+    public function schedule_async_batch(): void
+    {
+        // Only schedule if not already scheduled
+        if (!wp_next_scheduled(self::CRON_HOOK)) {
+            wp_schedule_single_event(time() + 5, self::CRON_HOOK);
+            $this->logger->info('ai_metadata', 'Scheduled async batch processing');
+        }
+    }
+
+    /**
+     * Process async batch (cron callback)
+     * This runs in the background without browser connection
+     */
+    public function process_async_batch(): void
+    {
+        $state = $this->get_state();
+
+        // Don't process if not running
+        if ($state['status'] !== 'running') {
+            $this->logger->info('ai_metadata', 'Async batch skipped - status: ' . $state['status']);
+            return;
+        }
+
+        // Check if background mode is enabled
+        if (empty($state['options']['background_mode'])) {
+            $this->logger->info('ai_metadata', 'Async batch skipped - background mode not enabled');
+            return;
+        }
+
+        $this->logger->info('ai_metadata', 'Processing async batch...');
+
+        $result = $this->process_batch();
+
+        // Schedule next batch if not complete and still running
+        $state = $this->get_state(); // Refresh state
+        if (!($result['complete'] ?? false) && $state['status'] === 'running') {
+            $this->schedule_async_batch();
+        } else {
+            $this->logger->info('ai_metadata', 'Async processing finished or stopped');
+        }
+    }
+
+    /**
+     * Stop processing and clear scheduled cron events
+     */
+    public function stop(): void
+    {
+        // Clear any scheduled cron events first
+        $this->clear_scheduled_events();
+
+        // Call parent stop
+        parent::stop();
+
+        $this->logger->info('ai_metadata', 'AI Metadata Generator stopped and cron events cleared');
+    }
+
+    /**
+     * Pause processing and clear scheduled cron events
+     */
+    public function pause(): void
+    {
+        // Clear any scheduled cron events
+        $this->clear_scheduled_events();
+
+        // Call parent pause
+        parent::pause();
+    }
+
+    /**
+     * Resume processing and reschedule if in background mode
+     */
+    public function resume(): void
+    {
+        parent::resume();
+
+        // If in background mode, reschedule the cron
+        $state = $this->get_state();
+        if (!empty($state['options']['background_mode']) && $state['status'] === 'running') {
+            $this->schedule_async_batch();
+        }
+    }
+
+    /**
+     * Clear all scheduled cron events for this processor
+     */
+    private function clear_scheduled_events(): void
+    {
+        // Clear any pending cron events
+        $timestamp = wp_next_scheduled(self::CRON_HOOK);
+        if ($timestamp) {
+            wp_unschedule_event($timestamp, self::CRON_HOOK);
+            $this->logger->info('ai_metadata', 'Cleared scheduled cron event');
+        }
+
+        // Also clear all instances just to be safe
+        wp_clear_scheduled_hook(self::CRON_HOOK);
+    }
+
+    /**
+     * Check if background processing is currently scheduled
+     */
+    public function is_background_scheduled(): bool
+    {
+        return (bool) wp_next_scheduled(self::CRON_HOOK);
     }
 }
 

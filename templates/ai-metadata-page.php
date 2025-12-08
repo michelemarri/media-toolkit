@@ -353,6 +353,18 @@ $hasBanner = file_exists($bannerPath);
                                 </label>
                             </div>
                         </div>
+                        
+                        <!-- Background Processing Option -->
+                        <div class="mb-5 p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
+                            <label class="mt-toggle inline-flex items-center gap-3 cursor-pointer">
+                                <input type="checkbox" id="ai-background-mode">
+                                <span class="mt-toggle-slider"></span>
+                                <div>
+                                    <span class="block text-sm font-semibold text-gray-900"><?php esc_html_e('Background Processing', 'media-toolkit'); ?></span>
+                                    <span class="block text-xs text-gray-500"><?php esc_html_e('Process continues even if you close the browser (uses WP Cron)', 'media-toolkit'); ?></span>
+                                </div>
+                            </label>
+                        </div>
 
                         <div class="flex flex-col gap-3">
                             <button type="button" class="w-full inline-flex items-center justify-center gap-2 px-5 py-3.5 text-base font-medium text-white bg-gray-800 hover:bg-gray-900 rounded-lg shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all" id="btn-start-ai-generation">

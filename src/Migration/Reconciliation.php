@@ -481,6 +481,23 @@ final class Reconciliation extends Batch_Processor
         // How many would be newly marked
         $would_be_marked = count(array_diff($matched_ids, $this->get_already_marked_ids()));
 
+        // Calculate total size from scanned files
+        $total_size = 0;
+        foreach ($storage_files as $file_data) {
+            $total_size += $file_data['size'] ?? 0;
+        }
+
+        // Update cached storage stats so the dashboard cards show correct values
+        $this->settings->save_storage_stats([
+            'files' => $storage_count,           // Total files (originals only, thumbnails excluded)
+            'original_files' => $storage_count,  // Same as files (we only count originals)
+            'size' => $total_size,
+            'original_size' => $total_size,
+            'synced_at' => current_time('mysql'),
+        ]);
+
+        $this->logger->info('reconciliation', "Storage stats cache updated: {$storage_count} files, " . size_format($total_size));
+
         wp_send_json_success([
             'storage_original_files' => $storage_count,
             'wp_attachments' => $total_attachments,
