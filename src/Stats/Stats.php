@@ -50,11 +50,11 @@ final class Stats
             return $cached;
         }
 
-        // Use existing migration stats method as source of truth
-        $migration = $this->get_migration_stats();
+        // Use private helper for fast counts (skip expensive pending_size)
+        $counts = $this->get_migration_counts();
         
-        $wp_attachments = $migration['total_attachments'];
-        $migrated_via_plugin = $migration['migrated_attachments'];
+        $wp_attachments = $counts['total_attachments'];
+        $migrated_via_plugin = $counts['migrated_attachments'];
 
         // Get storage stats for hybrid logic
         $storage_stats = $this->settings?->get_cached_storage_stats();
@@ -196,11 +196,12 @@ final class Stats
     }
 
     /**
-     * Get migration stats - source of truth for migration data
+     * Get base migration counts (private helper)
      * 
-     * All migration-related statistics should use this method.
+     * Fast queries only - no expensive calculations.
+     * Used internally by get_migration_stats() and get_dashboard_stats().
      */
-    public function get_migration_stats(): array
+    private function get_migration_counts(): array
     {
         global $wpdb;
 
@@ -223,9 +224,6 @@ final class Stats
         // Pending based on WordPress metadata
         $pending_attachments = max(0, $total_attachments - $migrated_attachments);
 
-        // Get total size of non-migrated files
-        $pending_size = $this->calculate_pending_migration_size();
-
         // Cap at 100% maximum
         $progress = $total_attachments > 0 
             ? min(100, round(($migrated_attachments / $total_attachments) * 100, 2))
@@ -235,10 +233,29 @@ final class Stats
             'total_attachments' => $total_attachments,
             'migrated_attachments' => min($migrated_attachments, $total_attachments),
             'pending_attachments' => $pending_attachments,
-            'pending_size' => $pending_size,
-            'pending_size_formatted' => $this->format_bytes($pending_size),
             'progress_percentage' => $progress,
         ];
+    }
+
+    /**
+     * Get migration stats - source of truth for migration data
+     * 
+     * @param bool $include_pending_size Whether to calculate pending file sizes (expensive)
+     */
+    public function get_migration_stats(bool $include_pending_size = true): array
+    {
+        $counts = $this->get_migration_counts();
+
+        if ($include_pending_size) {
+            $pending_size = $this->calculate_pending_migration_size();
+            $counts['pending_size'] = $pending_size;
+            $counts['pending_size_formatted'] = $this->format_bytes($pending_size);
+        } else {
+            $counts['pending_size'] = 0;
+            $counts['pending_size_formatted'] = '';
+        }
+
+        return $counts;
     }
 
     /**

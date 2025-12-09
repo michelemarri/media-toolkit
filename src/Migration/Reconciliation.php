@@ -70,8 +70,8 @@ final class Reconciliation extends Batch_Processor
      */
     public function get_stats(): array
     {
-        // Use existing migration stats method
-        $migration = $this->stats->get_migration_stats();
+        // Use existing migration stats method (skip expensive pending_size)
+        $migration = $this->stats->get_migration_stats(include_pending_size: false);
 
         // Get storage stats for discrepancy check
         $storageStats = $this->settings->get_cached_storage_stats();
@@ -184,8 +184,8 @@ final class Reconciliation extends Batch_Processor
      */
     protected function count_pending_items(array $options = []): int
     {
-        // Use existing migration stats method
-        $migration = $this->stats->get_migration_stats();
+        // Use existing migration stats method (skip expensive pending_size)
+        $migration = $this->stats->get_migration_stats(include_pending_size: false);
 
         // If we're in "mark all found" mode, count all attachments
         if ($options['mode'] ?? '' === 'mark_found') {
@@ -420,8 +420,8 @@ final class Reconciliation extends Batch_Processor
         $storage_files = $this->scan_storage_files();
         $storage_count = count($storage_files);
 
-        // Use existing migration stats method
-        $migration = $this->stats->get_migration_stats();
+        // Use existing migration stats method (skip expensive pending_size)
+        $migration = $this->stats->get_migration_stats(include_pending_size: false);
         $total_attachments = $migration['total_attachments'];
         $currently_marked = $migration['migrated_attachments'];
 

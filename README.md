@@ -530,9 +530,13 @@ $skip = apply_filters('media_toolkit_skip_resize', false, $file_path, $mime_type
 - **Fixed**: Statistics consistency across all pages (Dashboard, CloudSync, Batch Processor)
   - Centralized `OptimizationTable::get_full_stats()` method for optimization stats
   - `Stats::get_migration_stats()` is now the single source of truth for migration stats
-  - CloudSync and Reconciliation use Stats via dependency injection
+  - Private `get_migration_counts()` helper for fast queries (skips expensive pending_size)
+  - CloudSync and Reconciliation use Stats via dependency injection with optimized calls
   - All stats calculations now use unified methods - no more duplicate queries
   - Properly accounts for skipped images in pending optimization count
+- **Improved**: Performance optimization for batch operations
+  - `count_pending_items()` no longer calculates unnecessary pending_size on each batch
+  - CloudSync analyze uses fast path without file size calculation
 - **Improved**: CloudSync page optimization card simplified
   - Shows compact recommendation card only when optimization is below 100%
   - Removed redundant "optimize_before_sync" from Suggested Actions (now in dedicated card)

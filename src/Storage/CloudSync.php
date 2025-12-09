@@ -81,8 +81,8 @@ final class CloudSync extends Batch_Processor
      */
     public function analyze(): CloudSyncStatus
     {
-        // Use existing migration stats method
-        $migrationStats = $this->stats->get_migration_stats();
+        // Use existing migration stats method (skip expensive pending_size calculation)
+        $migrationStats = $this->stats->get_migration_stats(include_pending_size: false);
         
         $totalAttachments = $migrationStats['total_attachments'];
         $migratedToCloud = $migrationStats['migrated_attachments'];
@@ -189,8 +189,8 @@ final class CloudSync extends Batch_Processor
 
         global $wpdb;
 
-        // Use existing migration stats method for total count
-        $migrationStats = $this->stats->get_migration_stats();
+        // Use existing migration stats method for total count (skip expensive pending_size)
+        $migrationStats = $this->stats->get_migration_stats(include_pending_size: false);
         $totalAttachments = $migrationStats['total_attachments'];
 
         // Get all attachments with their status (need full list for detailed comparison)
