@@ -526,7 +526,7 @@ $skip = apply_filters('media_toolkit_skip_resize', false, $file_path, $mime_type
 
 ## Changelog
 
-### 2.11.3
+### 2.11.4
 - **Fixed**: Statistics consistency across all pages (Dashboard, CloudSync, Batch Processor)
   - Centralized `OptimizationTable::get_full_stats()` method for optimization stats
   - `Stats::get_migration_stats()` is now the single source of truth for migration stats
