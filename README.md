@@ -34,13 +34,20 @@ A powerful WordPress plugin for complete media management. Offload media files t
 - Seamless URL rewriting for served files
 - Batched cache invalidation for efficiency (up to 15 paths per request)
 
-### 📦 Bulk Migration
-- Migrate existing media library to S3 in bulk
-- Configurable batch size (10, 25, 50, 100 files per batch)
-- Real-time progress tracking with detailed logs
-- Pause/Resume capability for large migrations
-- Automatic retry for failed uploads
-- Option to delete local files after migration
+### ☁️ CloudSync
+Unified tool for keeping your media library in sync with cloud storage:
+
+- **Smart Analysis**: Automatically detects pending uploads, integrity issues, and orphan files
+- **Batch Upload**: Migrate existing media to cloud with configurable batch sizes
+- **Integrity Check**: Finds files marked as migrated but missing from cloud storage
+- **Auto-Fix**: Re-uploads from local backup or cleans orphan metadata
+- **Deep Scan**: Full cloud inventory with discrepancy detection
+- **Progress Tracking**: Real-time progress with pause/resume capability
+- **Admin Notices**: Global warnings when sync issues are detected
+- **Optimization Status**: Shows optimization progress alongside sync status
+  - Warns when syncing unoptimized images
+  - Suggests optimizing before upload to save bandwidth and storage costs
+  - Displays total space saved from optimization
 
 ### 🖼️ Image Optimization
 Compress and optimize your media library images to save storage and bandwidth:
@@ -518,6 +525,88 @@ $skip = apply_filters('media_toolkit_skip_resize', false, $file_path, $mime_type
 5. **Image Optimization**: Process during low-traffic periods
 
 ## Changelog
+
+### 2.11.3
+- **Fixed**: Statistics consistency across all pages (Dashboard, CloudSync, Batch Processor)
+  - Centralized `OptimizationTable::get_full_stats()` method for optimization stats
+  - `Stats::get_migration_stats()` is now the single source of truth for migration stats
+  - CloudSync and Reconciliation use Stats via dependency injection
+  - All stats calculations now use unified methods - no more duplicate queries
+  - Properly accounts for skipped images in pending optimization count
+- **Improved**: CloudSync page optimization card simplified
+  - Shows compact recommendation card only when optimization is below 100%
+  - Removed redundant "optimize_before_sync" from Suggested Actions (now in dedicated card)
+- **Improved**: Optimize Dashboard simplified
+  - Consolidated 6 stat cards into 3: Optimized (%), Space Saved, Avg. Savings
+  - Cleaner, more focused UI
+
+### 2.11.2
+- **Fixed**: SVG files incorrectly marked as "corrupted"
+  - `getimagesize()` doesn't work for SVG (they're XML, not bitmap images)
+  - Now validates SVG content by checking for `<svg` or `<?xml` markup
+  - SVG files without svgo installed are now skipped with clear message instead of failing
+- **Fixed**: Unsupported image types now skipped instead of failing
+  - Previously marked as "Unsupported image type" error
+  - Now properly skipped with clear reason in the log
+- **Improved**: Better error messages for SVG optimization
+  - Clear indication when svgo is not installed: "SVG optimization not available (install svgo)"
+
+### 2.11.1
+- **New**: Detailed per-image logging in optimization batch process
+  - Shows individual stats for each image: original size → optimized size, savings %, thumbnails count
+  - Direct "View image" link for each processed image in the log
+  - For failed images: shows error message + "Check image" link to verify the file
+  - New "1 image at a time" batch option for maximum visibility
+  - Added batch size options: 1 and 5 images for granular control
+
+### 2.11.0
+- **New**: Failed/Corrupted Images section in Optimization page
+  - Shows list of all images that failed during optimization
+  - Displays error messages for each failed image (corrupted, missing, permission issues)
+  - Direct "Edit" link to inspect individual images in Media Library
+  - "Retry All Failed" button to reset failed images to pending status
+  - Pagination support for large numbers of failed images
+  - Helpful information about why images fail
+- **Fixed**: "NaN undefined" display bug in Batch Saved indicator
+  - Fixed issue when page was reloaded during active optimization
+  - Improved formatBytes function to handle invalid values
+
+### 2.10.0
+- **New**: Optimization Status integration in CloudSync page
+  - Shows optimization progress bar with percentage
+  - Displays total images, optimized count, pending count, and space saved
+  - Average savings percentage per image
+- **New**: "Optimize before sync" suggested action
+  - When there are pending files to sync AND unoptimized images, shows recommendation
+  - Direct link to optimization page for quick access
+  - Helps reduce upload bandwidth and cloud storage costs
+- **New**: Warning banner when syncing unoptimized images
+  - Visual alert in Optimization Status card
+  - Explains benefits of optimizing before cloud sync
+- **Improved**: CloudSync analysis now includes optimization statistics
+
+### 2.9.0
+- **New**: CloudSync - Unified tool for storage synchronization
+  - Replaces and unifies Migration, Sync stats, and Reconciliation tools
+  - Smart analysis: automatically detects what needs to be done
+  - Deep scan mode: full cloud storage inventory with discrepancy detection
+  - Integrity check: finds files marked as migrated but missing from cloud
+  - Auto-fix: re-uploads files from local backup or cleans orphan metadata
+  - New dedicated CloudSync page with intuitive UI
+- **New**: Admin notice for sync issues
+  - Shows global warning when integrity issues are detected
+  - Links directly to CloudSync page for resolution
+- **Improved**: AI Metadata Generator now verifies cloud URLs before processing
+  - Performs HEAD request to check if cloud URL is accessible
+  - Falls back to local file if cloud URL returns error (404, etc.)
+  - Caches URL accessibility status to avoid repeated requests
+  - Better error messages when files are truly unavailable
+- **Improved**: Remove Local Files warning modal
+  - Shows detailed warning about data loss risk
+  - Requires explicit confirmation checkbox before enabling
+- **Refactored**: Batch_Processor moved to Core namespace
+  - Used by CloudSync, AI Metadata Generator, and Image Optimizer
+  - Cleaner architecture with shared base class
 
 ### 2.8.3
 - **Fixed**: Dashboard stats showing wrong values after storage sync

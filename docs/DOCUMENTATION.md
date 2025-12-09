@@ -11,11 +11,10 @@ Complete documentation for the Media Toolkit WordPress plugin.
 5. [Image Optimization](#image-optimization)
 6. [Image Resizing](#image-resizing)
 7. [AI Metadata Generation](#ai-metadata-generation)
-8. [Migration](#migration)
-9. [Reconciliation](#reconciliation)
-10. [Caching & Headers](#caching--headers)
-11. [Import/Export](#importexport)
-12. [Troubleshooting](#troubleshooting)
+8. [CloudSync](#cloudsync)
+9. [Caching & Headers](#caching--headers)
+10. [Import/Export](#importexport)
+11. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -654,54 +653,87 @@ Enable automatic AI metadata generation when new images are uploaded:
 
 ---
 
-## Migration
+## CloudSync
 
-### Bulk Migration
+CloudSync is the unified tool for keeping your media library synchronized with cloud storage.
 
-Migrate existing media library to S3:
+### Accessing CloudSync
 
-1. Go to **Media Toolkit → Tools → Migration**
-2. Review statistics (total files, pending, size)
-3. Select batch size (10, 25, 50, 100)
-4. Click **Start Migration**
+Navigate to **Media Toolkit → CloudSync**.
+
+### Status Overview
+
+The CloudSync page displays:
+
+| Metric | Description |
+|--------|-------------|
+| **Total Files** | All media attachments in WordPress |
+| **On Cloud** | Files successfully uploaded to cloud storage |
+| **Pending** | Files waiting to be uploaded |
+| **Issues** | Integrity problems (marked as migrated but not on cloud) |
+
+### Optimization Status
+
+CloudSync shows the optimization status of your image library:
+
+| Metric | Description |
+|--------|-------------|
+| **Total Images** | All image attachments in WordPress |
+| **Optimized** | Images that have been optimized |
+| **Pending** | Images not yet optimized |
+| **Space Saved** | Total bytes saved from optimization |
+
+**Recommendation:** Optimize images before syncing to cloud to reduce:
+- Upload bandwidth
+- Cloud storage costs
+- CDN egress fees
+
+A warning banner appears when syncing unoptimized images, with a direct link to the optimization page.
+
+### Sync Modes
+
+| Mode | Description |
+|------|-------------|
+| **Upload pending files** | Upload local files not yet on cloud |
+| **Check and fix integrity** | Verify files exist on cloud, re-upload if missing |
+| **Full sync + integrity check** | Complete sync with verification |
+
+### Options
+
+- **Batch Size**: 10, 25, 50, or 100 files per batch
+- **Delete local files**: Remove local copies after successful upload (use with caution!)
+
+### Suggested Actions
+
+CloudSync analyzes your library and suggests actions:
+
+1. **Fix integrity issues** (high priority): Files marked as migrated but not found on cloud
+2. **Optimize images before sync** (high priority): Unoptimized images waiting to be uploaded
+3. **Sync pending files** (medium priority): Files waiting to be uploaded
+4. **Clean up orphan files** (low priority): Cloud files without WordPress attachment
+
+### Advanced Actions
+
+- **Deep Analyze**: Full scan of cloud storage to detect discrepancies
+- **View Discrepancies**: Detailed view of files not matching between WordPress and cloud
+- **Clear All Metadata**: Reset migration metadata (files on cloud are NOT deleted)
 
 ### Migration Process
 
-For each attachment:
+For each attachment being synced:
 
-1. Main file is uploaded to S3
+1. Main file is uploaded to cloud storage
 2. All thumbnails are uploaded
-3. Post meta is updated with S3 keys
-4. URL is updated in post content (optional)
-5. Local file is deleted (optional)
+3. Post meta is updated with storage keys and URLs
+4. Local file is deleted (if option enabled)
 
 ### Resume Support
 
-Migration can be paused and resumed:
+Sync operations can be paused and resumed:
 
 - State is saved in transients
 - Failed uploads are queued for retry
 - Progress is preserved across sessions
-
----
-
-## Reconciliation
-
-When files exist on S3 but WordPress doesn't know about them (e.g., manual uploads or plugin reinstall):
-
-### Scan S3
-
-1. Go to **Media Toolkit → Tools → Reconciliation**
-2. Click **Scan S3**
-3. Review matched and unmatched files
-4. Click **Start Reconciliation**
-
-### Process
-
-1. List all objects in S3 bucket path
-2. Match S3 keys to WordPress attachments
-3. Update post meta for matched files
-4. Report discrepancies
 
 ---
 

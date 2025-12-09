@@ -10,10 +10,12 @@ declare(strict_types=1);
 namespace Metodo\MediaToolkit\Migration;
 
 use Metodo\MediaToolkit\Storage\StorageInterface;
+use Metodo\MediaToolkit\Core\Batch_Processor;
 use Metodo\MediaToolkit\Core\Settings;
 use Metodo\MediaToolkit\Core\Logger;
 use Metodo\MediaToolkit\History\History;
 use Metodo\MediaToolkit\History\HistoryAction;
+use Metodo\MediaToolkit\Stats\Stats;
 
 /**
  * Handles reconciliation between storage bucket and WordPress metadata
@@ -25,6 +27,7 @@ final class Reconciliation extends Batch_Processor
 {
     private StorageInterface $storage;
     private History $history;
+    private Stats $stats;
     
     /** @var array Cached storage file list during reconciliation */
     private array $storage_files_cache = [];
@@ -36,12 +39,14 @@ final class Reconciliation extends Batch_Processor
         StorageInterface $storage,
         Settings $settings,
         Logger $logger,
-        History $history
+        History $history,
+        Stats $stats
     ) {
         parent::__construct($logger, $settings, 'reconciliation');
         
         $this->storage = $storage;
         $this->history = $history;
+        $this->stats = $stats;
         
         // Register additional AJAX handlers
         add_action('wp_ajax_media_toolkit_reconciliation_scan_storage', [$this, 'ajax_scan_storage']);
@@ -60,47 +65,32 @@ final class Reconciliation extends Batch_Processor
 
     /**
      * Get reconciliation statistics
+     * 
+     * Uses existing Stats::get_migration_stats() for consistency.
      */
     public function get_stats(): array
     {
-        global $wpdb;
+        // Use existing migration stats method
+        $migration = $this->stats->get_migration_stats();
 
-        // Total WordPress attachments
-        $total_attachments = (int) $wpdb->get_var(
-            "SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = 'attachment'"
-        );
+        // Get storage stats for discrepancy check
+        $storageStats = $this->settings->get_cached_storage_stats();
+        $storageOriginalFiles = $storageStats['original_files'] ?? $storageStats['files'] ?? 0;
+        $storageTotalFiles = $storageStats['files'] ?? 0;
 
-        // Marked as migrated
-        $marked_migrated = (int) $wpdb->get_var(
-            $wpdb->prepare(
-                "SELECT COUNT(*) FROM {$wpdb->postmeta} pm
-                 INNER JOIN {$wpdb->posts} p ON pm.post_id = p.ID AND p.post_type = 'attachment'
-                 WHERE pm.meta_key = %s AND pm.meta_value = %s",
-                '_media_toolkit_migrated',
-                '1'
-            )
-        );
-
-        // Storage stats from cache
-        $storage_stats = $this->settings->get_cached_storage_stats();
-        $storage_original_files = $storage_stats['original_files'] ?? 0;
-        $storage_total_files = $storage_stats['files'] ?? 0;
-
-        // Discrepancy
-        $discrepancy = abs($storage_original_files - $marked_migrated);
-        $has_discrepancy = $discrepancy > 0 && $storage_original_files > 0;
+        // Discrepancy between WordPress metadata and actual storage
+        $discrepancy = abs($storageOriginalFiles - $migration['migrated_attachments']);
+        $has_discrepancy = $discrepancy > 0 && $storageOriginalFiles > 0;
 
         return [
-            'total_attachments' => $total_attachments,
-            'marked_migrated' => $marked_migrated,
-            'not_marked' => $total_attachments - $marked_migrated,
-            'storage_original_files' => $storage_original_files,
-            'storage_total_files' => $storage_total_files,
+            'total_attachments' => $migration['total_attachments'],
+            'marked_migrated' => $migration['migrated_attachments'],
+            'not_marked' => $migration['pending_attachments'],
+            'storage_original_files' => $storageOriginalFiles,
+            'storage_total_files' => $storageTotalFiles,
             'discrepancy' => $discrepancy,
             'has_discrepancy' => $has_discrepancy,
-            'progress_percentage' => $total_attachments > 0
-                ? round(($marked_migrated / $total_attachments) * 100, 1)
-                : 0,
+            'progress_percentage' => $migration['progress_percentage'],
         ];
     }
 
@@ -189,29 +179,21 @@ final class Reconciliation extends Batch_Processor
 
     /**
      * Get pending items (WordPress attachments not marked as migrated)
+     * 
+     * Uses existing Stats::get_migration_stats() for consistency.
      */
     protected function count_pending_items(array $options = []): int
     {
-        global $wpdb;
+        // Use existing migration stats method
+        $migration = $this->stats->get_migration_stats();
 
         // If we're in "mark all found" mode, count all attachments
         if ($options['mode'] ?? '' === 'mark_found') {
-            return (int) $wpdb->get_var(
-                "SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = 'attachment'"
-            );
+            return $migration['total_attachments'];
         }
 
         // Default: count not marked
-        return (int) $wpdb->get_var(
-            $wpdb->prepare(
-                "SELECT COUNT(*) FROM {$wpdb->posts} p
-                 LEFT JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id AND pm.meta_key = %s
-                 WHERE p.post_type = 'attachment'
-                 AND (pm.meta_value IS NULL OR pm.meta_value != %s)",
-                '_media_toolkit_migrated',
-                '1'
-            )
-        );
+        return $migration['pending_attachments'];
     }
 
     /**
@@ -438,14 +420,13 @@ final class Reconciliation extends Batch_Processor
         $storage_files = $this->scan_storage_files();
         $storage_count = count($storage_files);
 
-        // Count how many WordPress attachments match
+        // Use existing migration stats method
+        $migration = $this->stats->get_migration_stats();
+        $total_attachments = $migration['total_attachments'];
+        $currently_marked = $migration['migrated_attachments'];
+
+        // Get all attachment file paths for detailed matching
         global $wpdb;
-
-        $total_attachments = (int) $wpdb->get_var(
-            "SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = 'attachment'"
-        );
-
-        // Get all attachment file paths
         $attachment_files = $wpdb->get_results(
             "SELECT p.ID, pm.meta_value as file_path 
              FROM {$wpdb->posts} p
@@ -466,17 +447,6 @@ final class Reconciliation extends Batch_Processor
                 $not_found++;
             }
         }
-
-        // Currently marked as migrated
-        $currently_marked = (int) $wpdb->get_var(
-            $wpdb->prepare(
-                "SELECT COUNT(*) FROM {$wpdb->postmeta} pm
-                 INNER JOIN {$wpdb->posts} p ON pm.post_id = p.ID AND p.post_type = 'attachment'
-                 WHERE pm.meta_key = %s AND pm.meta_value = %s",
-                '_media_toolkit_migrated',
-                '1'
-            )
-        );
 
         // How many would be newly marked
         $would_be_marked = count(array_diff($matched_ids, $this->get_already_marked_ids()));

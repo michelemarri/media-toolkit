@@ -82,11 +82,11 @@ final class Admin_Dashboard
             <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: #fffbeb; border: 1px solid #fcd34d; border-radius: 8px; margin-bottom: 16px;">
                 <p style="margin: 0; color: #92400e; font-size: 13px;">
                     <strong><?php echo esc_html($migration_stats['pending_attachments']); ?></strong> 
-                    <?php esc_html_e('files pending migration', 'media-toolkit'); ?> 
+                    <?php esc_html_e('files pending sync', 'media-toolkit'); ?> 
                     (<?php echo esc_html($migration_stats['pending_size_formatted']); ?>)
                 </p>
-                <a href="<?php echo admin_url('admin.php?page=media-toolkit-migration'); ?>" class="button button-small">
-                    <?php esc_html_e('Start Migration', 'media-toolkit'); ?>
+                <a href="<?php echo admin_url('admin.php?page=media-toolkit-cloudsync'); ?>" class="button button-small">
+                    <?php esc_html_e('Open CloudSync', 'media-toolkit'); ?>
                 </a>
             </div>
             <?php endif; ?>
@@ -110,8 +110,8 @@ final class Admin_Dashboard
             
             <p style="margin: 0; padding-top: 12px; border-top: 1px solid #e5e7eb; font-size: 13px; color: #6b7280;">
                 <a href="<?php echo admin_url('admin.php?page=media-toolkit'); ?>" style="color: #111827; text-decoration: none;"><?php esc_html_e('Dashboard', 'media-toolkit'); ?></a> | 
-                <a href="<?php echo admin_url('admin.php?page=media-toolkit-settings'); ?>" style="color: #111827; text-decoration: none;"><?php esc_html_e('Settings', 'media-toolkit'); ?></a> | 
-                <a href="<?php echo admin_url('admin.php?page=media-toolkit-tools'); ?>" style="color: #111827; text-decoration: none;"><?php esc_html_e('Storage Tools', 'media-toolkit'); ?></a>
+                <a href="<?php echo admin_url('admin.php?page=media-toolkit-cloudsync'); ?>" style="color: #111827; text-decoration: none;"><?php esc_html_e('CloudSync', 'media-toolkit'); ?></a> | 
+                <a href="<?php echo admin_url('admin.php?page=media-toolkit-settings'); ?>" style="color: #111827; text-decoration: none;"><?php esc_html_e('Settings', 'media-toolkit'); ?></a>
             </p>
         </div>
         <?php

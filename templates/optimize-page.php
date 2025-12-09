@@ -88,81 +88,49 @@ $hasBanner = file_exists($bannerPath);
         <?php if ($active_tab === 'dashboard'): ?>
             <!-- ==================== DASHBOARD TAB ==================== -->
             
-            <!-- Stats Row -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5 mb-6">
-                <div class="p-5 bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
-                    <div class="flex items-center gap-3 mb-3">
-                        <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-gray-100 text-gray-600">
-                            <span class="dashicons dashicons-format-image"></span>
+            <!-- Optimization Stats -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-6">
+                <!-- Optimized Card -->
+                <div class="p-6 bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="flex items-center justify-center w-10 h-10 rounded-xl <?php echo $stats['progress_percentage'] == 100 ? 'bg-emerald-100 text-emerald-600' : 'bg-gray-100 text-gray-600'; ?>">
+                                <span class="dashicons <?php echo $stats['progress_percentage'] == 100 ? 'dashicons-yes-alt' : 'dashicons-performance'; ?>"></span>
                         </div>
-                        <span class="text-sm text-gray-500"><?php esc_html_e('Total Images', 'media-toolkit'); ?></span>
+                            <span class="text-sm font-medium text-gray-500"><?php esc_html_e('Optimized', 'media-toolkit'); ?></span>
                     </div>
-                    <span class="block text-2xl font-bold text-gray-900" id="stat-total_images"><?php echo esc_html($stats['total_images']); ?></span>
+                        <button type="button" class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-all" id="btn-rebuild-stats" title="<?php esc_attr_e('Rebuild statistics from database', 'media-toolkit'); ?>">
+                            <span class="dashicons dashicons-update text-sm"></span>
+                        </button>
+                </div>
+                    <div class="flex items-baseline gap-2">
+                        <span class="text-4xl font-bold <?php echo $stats['progress_percentage'] == 100 ? 'text-emerald-600' : 'text-gray-900'; ?>" id="progress-percentage"><?php echo esc_html($stats['progress_percentage']); ?>%</span>
+                        </div>
+                    <div class="mt-2 text-sm text-gray-500">
+                        <span id="stat-optimized_images"><?php echo esc_html($stats['optimized_images']); ?></span> / <span id="stat-total_images"><?php echo esc_html($stats['total_images']); ?></span>
+                    </div>
                 </div>
                 
-                <div class="p-5 bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
-                    <div class="flex items-center gap-3 mb-3">
-                        <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600">
-                            <span class="dashicons dashicons-yes-alt"></span>
-                        </div>
-                        <span class="text-sm text-gray-500"><?php esc_html_e('Optimized', 'media-toolkit'); ?></span>
-                    </div>
-                    <span class="block text-2xl font-bold text-gray-900" id="stat-optimized_images"><?php echo esc_html($stats['optimized_images']); ?></span>
-                </div>
-                
-                <div class="p-5 bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
-                    <div class="flex items-center gap-3 mb-3">
-                        <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-amber-100 text-amber-600">
-                            <span class="dashicons dashicons-clock"></span>
-                        </div>
-                        <span class="text-sm text-gray-500"><?php esc_html_e('Pending', 'media-toolkit'); ?></span>
-                    </div>
-                    <span class="block text-2xl font-bold text-gray-900" id="stat-pending_images"><?php echo esc_html($stats['pending_images']); ?></span>
-                </div>
-                
-                <div class="p-5 bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
-                    <div class="flex items-center gap-3 mb-3">
+                <!-- Space Saved Card -->
+                <div class="p-6 bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+                    <div class="flex items-center gap-3 mb-4">
                         <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-blue-100 text-blue-600">
                             <span class="dashicons dashicons-database"></span>
                         </div>
-                        <span class="text-sm text-gray-500"><?php esc_html_e('Space Saved', 'media-toolkit'); ?></span>
+                        <span class="text-sm font-medium text-gray-500"><?php esc_html_e('Space Saved', 'media-toolkit'); ?></span>
                     </div>
-                    <span class="block text-2xl font-bold text-gray-900" id="stat-total_saved_formatted"><?php echo esc_html($stats['total_saved_formatted']); ?></span>
+                    <span class="block text-4xl font-bold text-blue-600" id="stat-total_saved_formatted"><?php echo esc_html($stats['total_saved_formatted']); ?></span>
                 </div>
                 
-                <div class="p-5 bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
-                    <div class="flex items-center gap-3 mb-3">
+                <!-- Avg. Savings Card -->
+                <div class="p-6 bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+                    <div class="flex items-center gap-3 mb-4">
                         <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-purple-100 text-purple-600">
                             <span class="dashicons dashicons-chart-pie"></span>
                         </div>
-                        <span class="text-sm text-gray-500"><?php esc_html_e('Avg. Savings', 'media-toolkit'); ?></span>
+                        <span class="text-sm font-medium text-gray-500"><?php esc_html_e('Avg. Savings', 'media-toolkit'); ?></span>
                     </div>
-                    <span class="block text-2xl font-bold text-purple-600" id="stat-average_savings_percent"><?php echo esc_html($stats['average_savings_percent'] ?? 0); ?>%</span>
-                </div>
-            </div>
-
-            <!-- Progress Card -->
-            <div class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm mb-6">
-                <div class="flex items-center justify-between px-6 py-4 bg-gradient-to-b from-gray-50 to-gray-100 border-b border-gray-200">
-                    <div class="flex items-center gap-3">
-                        <span class="dashicons dashicons-chart-line text-gray-700"></span>
-                        <h3 class="text-base font-semibold text-gray-900"><?php esc_html_e('Optimization Progress', 'media-toolkit'); ?></h3>
-                    </div>
-                    <div class="flex items-center gap-3">
-                        <button type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-all" id="btn-rebuild-stats" title="<?php esc_attr_e('Rebuild statistics from database', 'media-toolkit'); ?>">
-                            <span class="dashicons dashicons-update text-sm"></span>
-                            <?php esc_html_e('Rebuild Stats', 'media-toolkit'); ?>
-                        </button>
-                        <span class="inline-flex items-center px-3 py-1 text-sm font-semibold text-white bg-gray-800 rounded-full" id="progress-percentage"><?php echo esc_html($stats['progress_percentage']); ?>%</span>
-                    </div>
-                </div>
-                <div class="p-6">
-                    <div class="flex items-center gap-4">
-                        <div class="flex-1 mt-progress-bar mt-progress-animated">
-                            <div class="mt-progress-fill" id="optimization-progress" style="width: <?php echo esc_attr($stats['progress_percentage']); ?>%"></div>
-                        </div>
-                        <span class="text-sm font-semibold text-gray-900 min-w-[45px] text-right"><?php echo esc_html($stats['progress_percentage']); ?>%</span>
-                    </div>
+                    <span class="block text-4xl font-bold text-purple-600" id="stat-average_savings_percent"><?php echo esc_html($stats['average_savings_percent'] ?? 0); ?>%</span>
                 </div>
             </div>
 
@@ -490,11 +458,13 @@ $hasBanner = file_exists($bannerPath);
                     <div class="mb-5">
                         <label for="batch-size" class="block text-sm font-semibold text-gray-900 mb-2"><?php esc_html_e('Batch Size', 'media-toolkit'); ?></label>
                         <select id="batch-size" class="mt-select w-full max-w-xs px-4 py-2.5 text-sm bg-white border border-gray-300 rounded-lg outline-none transition-all">
+                            <option value="1"><?php esc_html_e('1 image at a time (detailed view)', 'media-toolkit'); ?></option>
+                            <option value="5"><?php esc_html_e('5 images per batch', 'media-toolkit'); ?></option>
                             <option value="10"><?php esc_html_e('10 images per batch', 'media-toolkit'); ?></option>
                             <option value="25" selected><?php esc_html_e('25 images per batch', 'media-toolkit'); ?></option>
                             <option value="50"><?php esc_html_e('50 images per batch', 'media-toolkit'); ?></option>
                         </select>
-                        <p class="mt-2 text-sm text-gray-500"><?php esc_html_e('Smaller batches are safer for shared hosting', 'media-toolkit'); ?></p>
+                        <p class="mt-2 text-sm text-gray-500"><?php esc_html_e('Use "1 image at a time" to see detailed stats for each image in the log', 'media-toolkit'); ?></p>
                     </div>
 
                     <div class="flex flex-col gap-3">
@@ -585,6 +555,60 @@ $hasBanner = file_exists($bannerPath);
                         <div class="mt-terminal-line">
                             <span class="mt-terminal-prompt">$</span>
                             <span class="mt-terminal-text mt-terminal-muted"><?php esc_html_e('Optimization log will appear here...', 'media-toolkit'); ?></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Failed Images Section -->
+            <div class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm mt-6" id="failed-images-section">
+                <div class="flex items-center justify-between px-6 py-4 bg-gradient-to-b from-gray-50 to-gray-100 border-b border-gray-200">
+                    <div class="flex items-center gap-3">
+                        <span class="dashicons dashicons-warning text-red-500"></span>
+                        <h3 class="text-base font-semibold text-gray-900"><?php esc_html_e('Failed / Corrupted Images', 'media-toolkit'); ?></h3>
+                        <span class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-700" id="failed-images-count">0</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-all" id="btn-refresh-failed">
+                            <span class="dashicons dashicons-update text-sm"></span>
+                            <?php esc_html_e('Refresh', 'media-toolkit'); ?>
+                        </button>
+                        <button type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-amber-600 hover:bg-amber-700 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed" id="btn-reset-failed" disabled>
+                            <span class="dashicons dashicons-image-rotate text-sm"></span>
+                            <?php esc_html_e('Retry All Failed', 'media-toolkit'); ?>
+                        </button>
+                    </div>
+                </div>
+                <div class="p-6">
+                    <!-- Info Notice -->
+                    <div class="flex gap-3 p-4 rounded-xl bg-amber-50 text-amber-800 mb-4">
+                        <span class="dashicons dashicons-info text-amber-600 flex-shrink-0 mt-0.5"></span>
+                        <div>
+                            <strong class="block text-sm font-semibold mb-1"><?php esc_html_e('Why do images fail?', 'media-toolkit'); ?></strong>
+                            <p class="text-sm opacity-90 m-0">
+                                <?php esc_html_e('Images can fail due to corruption (invalid image data), missing files, permission issues, or unsupported formats. Use "Retry All Failed" to re-attempt optimization, or click "Edit" to manually inspect each image.', 'media-toolkit'); ?>
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Failed Images List -->
+                    <div id="failed-images-list" class="space-y-2">
+                        <div class="text-sm text-gray-500 text-center py-8" id="failed-images-loading">
+                            <span class="dashicons dashicons-update animate-spin"></span>
+                            <?php esc_html_e('Loading failed images...', 'media-toolkit'); ?>
+                        </div>
+                        <div class="text-sm text-gray-500 text-center py-8 hidden" id="failed-images-empty">
+                            <span class="dashicons dashicons-yes-alt text-green-500 text-2xl"></span>
+                            <p class="mt-2"><?php esc_html_e('No failed images! All images processed successfully.', 'media-toolkit'); ?></p>
+                        </div>
+                    </div>
+
+                    <!-- Pagination -->
+                    <div id="failed-images-pagination" class="hidden flex items-center justify-between pt-4 border-t border-gray-200 mt-4">
+                        <span class="text-sm text-gray-500" id="failed-images-info"></span>
+                        <div class="flex gap-2">
+                            <button type="button" class="px-3 py-1.5 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed" id="btn-failed-prev" disabled>&laquo; <?php esc_html_e('Previous', 'media-toolkit'); ?></button>
+                            <button type="button" class="px-3 py-1.5 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed" id="btn-failed-next" disabled><?php esc_html_e('Next', 'media-toolkit'); ?> &raquo;</button>
                         </div>
                     </div>
                 </div>

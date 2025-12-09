@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace Metodo\MediaToolkit\Media;
 
-use Metodo\MediaToolkit\Migration\Batch_Processor;
+use Metodo\MediaToolkit\Core\Batch_Processor;
 use Metodo\MediaToolkit\Storage\StorageInterface;
 use Metodo\MediaToolkit\Core\Settings;
 use Metodo\MediaToolkit\Core\Logger;
@@ -464,36 +464,24 @@ final class Image_Optimizer extends Batch_Processor
     /**
      * Get optimization statistics
      * 
-     * Ultra-performant: single option read + in-memory cache.
-     * No database queries on subsequent calls within same request.
+     * Uses centralized OptimizationTable::get_full_stats() for consistency
+     * across all pages (Dashboard, CloudSync, Batch Processor).
      */
     public function get_stats(): array
     {
-        $stats = $this->get_aggregated_stats();
-        
-        $total_images = $stats['total_images'];
-        $optimized_images = $stats['optimized_count'];
-        $total_saved = $stats['total_bytes_saved'];
-        $total_original_size = $stats['total_original_size'];
-        
-        $pending_images = max(0, $total_images - $optimized_images);
-        $progress = $total_images > 0 ? round(($optimized_images / $total_images) * 100, 1) : 0;
-        
-        // Calculate average savings percentage
-        $average_savings_percent = $total_original_size > 0 
-            ? round(($total_saved / $total_original_size) * 100, 1) 
-            : 0;
+        // Use centralized stats - single source of truth
+        $stats = OptimizationTable::get_full_stats();
 
         return [
-            'total_images' => $total_images,
-            'optimized_images' => $optimized_images,
-            'pending_images' => $pending_images,
-            'total_saved' => $total_saved,
-            'total_saved_formatted' => size_format($total_saved),
-            'total_original_size' => $total_original_size,
-            'total_original_size_formatted' => size_format($total_original_size),
-            'average_savings_percent' => $average_savings_percent,
-            'progress_percentage' => $progress,
+            'total_images' => $stats['total_images'],
+            'optimized_images' => $stats['optimized_images'],
+            'pending_images' => $stats['pending_images'],
+            'total_saved' => $stats['total_saved'],
+            'total_saved_formatted' => $stats['total_saved_formatted'],
+            'total_original_size' => $stats['total_original_size'],
+            'total_original_size_formatted' => size_format($stats['total_original_size']),
+            'average_savings_percent' => $stats['average_savings_percent'],
+            'progress_percentage' => $stats['progress_percentage'],
         ];
     }
 
@@ -758,23 +746,49 @@ final class Image_Optimizer extends Batch_Processor
         $batch_skipped = 0;
         $batch_errors = [];
         $batch_bytes_saved = 0;
+        $batch_results = []; // Detailed results for each image
 
         foreach ($items as $item) {
             $item_id = $this->get_item_id($item);
+            
+            // Get file info before processing
+            $file_path = get_attached_file($item_id);
+            $file_name = $file_path ? basename($file_path) : "ID {$item_id}";
+            $post_title = get_the_title($item_id) ?: $file_name;
+            
             $result = $this->process_item($item, $state['options']);
+
+            // Build detailed result for this image
+            $item_result = [
+                'id' => $item_id,
+                'file_name' => $file_name,
+                'title' => $post_title,
+                'edit_url' => admin_url("post.php?post={$item_id}&action=edit"),
+            ];
 
             if ($result['success']) {
                 if ($result['skipped'] ?? false) {
                     $batch_skipped++;
                     $state['skipped']++;
+                    $item_result['status'] = 'skipped';
+                    $item_result['reason'] = $result['reason'] ?? 'Skipped';
                 } else {
                     $batch_processed++;
                     $state['processed']++;
                     
                     // Track bytes saved
-                    if (!empty($result['bytes_saved'])) {
-                        $batch_bytes_saved += (int) $result['bytes_saved'];
-                    }
+                    $bytes_saved = (int) ($result['bytes_saved'] ?? 0);
+                    $batch_bytes_saved += $bytes_saved;
+                    
+                    $item_result['status'] = 'success';
+                    $item_result['original_size'] = $result['original_size'] ?? 0;
+                    $item_result['optimized_size'] = $result['optimized_size'] ?? 0;
+                    $item_result['bytes_saved'] = $bytes_saved;
+                    $item_result['percent_saved'] = $result['percent_saved'] ?? 0;
+                    $item_result['original_size_formatted'] = size_format($result['original_size'] ?? 0);
+                    $item_result['optimized_size_formatted'] = size_format($result['optimized_size'] ?? 0);
+                    $item_result['bytes_saved_formatted'] = size_format($bytes_saved);
+                    $item_result['thumbnails_count'] = $result['thumbnails_count'] ?? 0;
                 }
             } else {
                 $batch_failed++;
@@ -783,8 +797,11 @@ final class Image_Optimizer extends Batch_Processor
                     'item_id' => $item_id,
                     'error' => $result['error'] ?? 'Unknown error',
                 ];
+                $item_result['status'] = 'failed';
+                $item_result['error'] = $result['error'] ?? 'Unknown error';
             }
 
+            $batch_results[] = $item_result;
             $state['last_item_id'] = $item_id;
         }
 
@@ -805,6 +822,7 @@ final class Image_Optimizer extends Batch_Processor
             'batch_failed' => $batch_failed,
             'batch_skipped' => $batch_skipped,
             'batch_errors' => $batch_errors,
+            'batch_results' => $batch_results, // Detailed results for each image
             'batch_bytes_saved' => $batch_bytes_saved,
             'batch_bytes_saved_formatted' => size_format($batch_bytes_saved),
             'state' => $state,
@@ -814,15 +832,14 @@ final class Image_Optimizer extends Batch_Processor
     /**
      * Count pending items to optimize
      * 
-     * Uses custom table for efficient counting.
+     * Uses centralized OptimizationTable::get_full_stats() for consistency.
      */
     protected function count_pending_items(array $options = []): int
     {
-        // Count images not in table + images with pending status
-        $untracked_count = count(OptimizationTable::get_untracked_attachment_ids(10000, 0));
-        $pending_count = OptimizationTable::count_by_status('pending');
+        // Use centralized stats - single source of truth
+        $stats = OptimizationTable::get_full_stats();
         
-        return $untracked_count + $pending_count;
+        return $stats['pending_images'];
     }
 
     /**
@@ -922,6 +939,20 @@ final class Image_Optimizer extends Batch_Processor
         $settings = array_merge($this->get_optimization_settings(), $options);
         $mime_type = get_post_mime_type($attachment_id);
         
+        // Check if mime type is supported
+        $supported_types = $this->get_supported_mime_types();
+        if (!in_array($mime_type, $supported_types, true)) {
+            // Skip unsupported types instead of failing
+            OptimizationTable::mark_skipped($attachment_id, 'Unsupported type: ' . $mime_type);
+            $this->invalidate_stats_cache();
+            
+            return [
+                'success' => true,
+                'skipped' => true,
+                'reason' => 'Unsupported image type: ' . $mime_type,
+            ];
+        }
+        
         // First verify file exists before trying to get size
         if (!file_exists($file)) {
             $error_msg = sprintf(
@@ -959,16 +990,44 @@ final class Image_Optimizer extends Batch_Processor
             ];
         }
 
-        // Validate image file is readable
-        $image_info = @getimagesize($file);
-        if ($image_info === false) {
-            OptimizationTable::mark_failed($attachment_id, 'Failed to read file - image may be corrupted');
-            $this->invalidate_stats_cache();
+        // For SVG files, check if optimizer is available before attempting
+        if ($mime_type === 'image/svg+xml') {
+            $svg_optimizer = $this->optimizerManager->getBestOptimizer('svg');
+            if ($svg_optimizer === null) {
+                // No SVG optimizer available - skip instead of failing
+                OptimizationTable::mark_skipped($attachment_id, 'SVG optimization not available (install svgo)');
+                $this->invalidate_stats_cache();
+                
+                return [
+                    'success' => true,
+                    'skipped' => true,
+                    'reason' => 'SVG optimization not available (install svgo)',
+                ];
+            }
             
-            return [
-                'success' => false,
-                'error' => 'Failed to read the file - image may be corrupted',
-            ];
+            // SVG validation: check if file contains valid SVG content
+            $svg_content = @file_get_contents($file, false, null, 0, 1024);
+            if ($svg_content === false || (stripos($svg_content, '<svg') === false && stripos($svg_content, '<?xml') === false)) {
+                OptimizationTable::mark_failed($attachment_id, 'Invalid SVG file');
+                $this->invalidate_stats_cache();
+                
+                return [
+                    'success' => false,
+                    'error' => 'Invalid SVG file - does not contain valid SVG markup',
+                ];
+            }
+        } else {
+            // For non-SVG images, validate with getimagesize()
+            $image_info = @getimagesize($file);
+            if ($image_info === false) {
+                OptimizationTable::mark_failed($attachment_id, 'Failed to read file - image may be corrupted');
+                $this->invalidate_stats_cache();
+                
+                return [
+                    'success' => false,
+                    'error' => 'Failed to read the file - image may be corrupted',
+                ];
+            }
         }
 
         // Check max file size
@@ -993,7 +1052,7 @@ final class Image_Optimizer extends Batch_Processor
             'image/webp' => $this->optimize_webp($file, $settings),
             'image/avif' => $this->optimize_with_manager($file, 'avif', $settings),
             'image/svg+xml' => $this->optimize_svg($file, $settings),
-            default => ['success' => false, 'error' => 'Unsupported image type'],
+            default => ['success' => true, 'skipped' => true, 'reason' => 'Unsupported type'],
         };
 
         if (!$result['success']) {

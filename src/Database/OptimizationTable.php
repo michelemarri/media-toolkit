@@ -334,6 +334,93 @@ final class OptimizationTable
     }
 
     /**
+     * Get complete optimization statistics
+     * 
+     * CENTRALIZED SOURCE OF TRUTH for all optimization stats.
+     * Use this method everywhere instead of calculating stats separately.
+     * 
+     * @return array{
+     *     total_images: int,
+     *     optimized_images: int,
+     *     pending_images: int,
+     *     skipped_images: int,
+     *     failed_images: int,
+     *     untracked_images: int,
+     *     total_saved: int,
+     *     total_saved_formatted: string,
+     *     total_original_size: int,
+     *     average_savings_percent: float,
+     *     progress_percentage: float
+     * }
+     */
+    public static function get_full_stats(): array
+    {
+        global $wpdb;
+
+        $table_name = self::get_table_name();
+
+        // Get total images from posts table (always fresh)
+        $total_images = (int) $wpdb->get_var(
+            "SELECT COUNT(*) FROM {$wpdb->posts} 
+             WHERE post_type = 'attachment' 
+             AND post_mime_type LIKE 'image/%'"
+        );
+
+        // Get aggregate stats from optimization table (single efficient query)
+        $row = $wpdb->get_row(
+            "SELECT 
+                COUNT(*) as total_records,
+                SUM(CASE WHEN status = 'optimized' THEN 1 ELSE 0 END) as optimized_count,
+                SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending_in_table,
+                SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed_count,
+                SUM(CASE WHEN status = 'skipped' THEN 1 ELSE 0 END) as skipped_count,
+                COALESCE(SUM(original_size), 0) as total_original_size,
+                COALESCE(SUM(optimized_size), 0) as total_optimized_size,
+                COALESCE(SUM(bytes_saved), 0) as total_bytes_saved
+            FROM {$table_name}",
+            ARRAY_A
+        );
+
+        $optimized = $row ? (int) $row['optimized_count'] : 0;
+        $skipped = $row ? (int) $row['skipped_count'] : 0;
+        $failed = $row ? (int) $row['failed_count'] : 0;
+        $pending_in_table = $row ? (int) $row['pending_in_table'] : 0;
+        $total_records = $row ? (int) $row['total_records'] : 0;
+        $total_saved = $row ? (int) $row['total_bytes_saved'] : 0;
+        $total_original = $row ? (int) $row['total_original_size'] : 0;
+
+        // Untracked = images not yet in optimization table
+        $untracked = max(0, $total_images - $total_records);
+
+        // Pending = untracked + pending status in table (excludes skipped, failed, optimized)
+        $pending = $untracked + $pending_in_table;
+
+        // Progress percentage based on optimized vs total
+        $progress = $total_images > 0 
+            ? round(($optimized / $total_images) * 100, 1) 
+            : 0;
+
+        // Average savings percentage
+        $average_savings = $total_original > 0
+            ? round(($total_saved / $total_original) * 100, 1)
+            : 0;
+
+        return [
+            'total_images' => $total_images,
+            'optimized_images' => $optimized,
+            'pending_images' => $pending,
+            'skipped_images' => $skipped,
+            'failed_images' => $failed,
+            'untracked_images' => $untracked,
+            'total_saved' => $total_saved,
+            'total_saved_formatted' => size_format($total_saved),
+            'total_original_size' => $total_original,
+            'average_savings_percent' => $average_savings,
+            'progress_percentage' => $progress,
+        ];
+    }
+
+    /**
      * Get IDs of attachments not yet in optimization table
      * 
      * Efficient query to find images that haven't been processed.

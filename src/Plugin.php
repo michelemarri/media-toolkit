@@ -30,14 +30,13 @@ use Metodo\MediaToolkit\Media\Image_Resizer;
 use Metodo\MediaToolkit\Media\Media_Library;
 use Metodo\MediaToolkit\Media\Media_Library_UI;
 use Metodo\MediaToolkit\Media\Upload_Handler;
-use Metodo\MediaToolkit\Migration\Batch_Processor;
+use Metodo\MediaToolkit\Core\Batch_Processor;
 use Metodo\MediaToolkit\Migration\Migration;
 use Metodo\MediaToolkit\Migration\MigrationState;
 use Metodo\MediaToolkit\Migration\MigrationStatus;
 use Metodo\MediaToolkit\Migration\Reconciliation;
 use Metodo\MediaToolkit\Stats\Stats;
 use Metodo\MediaToolkit\Admin\Admin_Settings;
-use Metodo\MediaToolkit\Admin\Admin_Migration;
 use Metodo\MediaToolkit\Admin\Admin_Dashboard;
 use Metodo\MediaToolkit\Admin\Admin_AI_Metadata;
 use Metodo\MediaToolkit\Updater\GitHubUpdater;
@@ -72,6 +71,7 @@ final class Plugin
     private ?MetadataGenerator $metadata_generator = null;
     private ?AIUploadHandler $ai_upload_handler = null;
     private ?Admin_AI_Metadata $admin_ai_metadata = null;
+    private ?Storage\CloudSync $cloud_sync = null;
 
     /**
      * Debug logger (temporary)
@@ -97,6 +97,7 @@ final class Plugin
         add_action('admin_menu', [$this, 'register_admin_menu']);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_admin_assets']);
         add_action('admin_enqueue_scripts', [$this, 'deregister_third_party_styles'], 999);
+        add_action('admin_notices', [$this, 'show_cloudsync_notice']);
         
         // Cron job handlers
         add_action('media_toolkit_cleanup_logs', [$this, 'cleanup_logs']);
@@ -243,7 +244,18 @@ final class Plugin
                 $this->storage,
                 $this->settings,
                 $this->logger,
-                $this->history
+                $this->history,
+                $this->stats
+            );
+            
+            // CloudSync (unified migration/reconciliation tool)
+            $this->cloud_sync = new Storage\CloudSync(
+                $this->storage,
+                $this->settings,
+                $this->logger,
+                $this->history,
+                $this->error_handler,
+                $this->stats
             );
             
             // Media Library UI (admin only)
@@ -325,9 +337,6 @@ final class Plugin
                 $this->history,
                 $this->stats
             );
-            
-            self::debug_log('Creating Admin_Migration...');
-            new Admin_Migration($this->migration, $this->stats);
             
             self::debug_log('Creating Admin_Dashboard...');
             new Admin_Dashboard($this->stats, $this->settings);
@@ -443,20 +452,20 @@ final class Plugin
         
         add_submenu_page(
             'media-toolkit',
+            'CloudSync',
+            'CloudSync',
+            'manage_options',
+            'media-toolkit-cloudsync',
+            [$this, 'render_cloudsync_page']
+        );
+        
+        add_submenu_page(
+            'media-toolkit',
             'Settings',
             'Settings',
             'manage_options',
             'media-toolkit-settings',
             [$this, 'render_settings_page']
-        );
-        
-        add_submenu_page(
-            'media-toolkit',
-            'Storage Tools',
-            'Storage Tools',
-            'manage_options',
-            'media-toolkit-tools',
-            [$this, 'render_tools_page']
         );
         
         add_submenu_page(
@@ -506,11 +515,6 @@ final class Plugin
         include MEDIA_TOOLKIT_PATH . 'templates/settings-page.php';
     }
 
-    public function render_tools_page(): void
-    {
-        include MEDIA_TOOLKIT_PATH . 'templates/tools-page.php';
-    }
-
     public function render_logs_page(): void
     {
         include MEDIA_TOOLKIT_PATH . 'templates/logs-page.php';
@@ -529,6 +533,59 @@ final class Plugin
     public function render_ai_metadata_page(): void
     {
         include MEDIA_TOOLKIT_PATH . 'templates/ai-metadata-page.php';
+    }
+
+    public function render_cloudsync_page(): void
+    {
+        include MEDIA_TOOLKIT_PATH . 'templates/cloudsync-page.php';
+    }
+
+    /**
+     * Show admin notice if there are CloudSync integrity issues
+     */
+    public function show_cloudsync_notice(): void
+    {
+        // Only show to admins
+        if (!current_user_can('manage_options')) {
+            return;
+        }
+
+        // Check if storage is configured
+        if (!$this->settings || !$this->settings->is_configured()) {
+            return;
+        }
+
+        // Don't show on CloudSync page itself
+        $screen = get_current_screen();
+        if ($screen && str_contains($screen->id, 'media-toolkit-cloudsync')) {
+            return;
+        }
+
+        // Get saved sync status
+        $sync_status = Storage\CloudSync::get_saved_sync_status();
+        
+        if (empty($sync_status)) {
+            return;
+        }
+
+        $integrity_issues = $sync_status['integrity_issues'] ?? 0;
+
+        if ($integrity_issues > 0) {
+            $cloudsync_url = admin_url('admin.php?page=media-toolkit-cloudsync');
+            ?>
+            <div class="notice notice-warning is-dismissible">
+                <p>
+                    <strong><?php esc_html_e('Media Toolkit CloudSync:', 'media-toolkit'); ?></strong>
+                    <?php printf(
+                        esc_html__('%d files are marked as migrated but not found on cloud storage. %sRun CloudSync%s to fix.', 'media-toolkit'),
+                        $integrity_issues,
+                        '<a href="' . esc_url($cloudsync_url) . '">',
+                        '</a>'
+                    ); ?>
+                </p>
+            </div>
+            <?php
+        }
     }
 
     public function enqueue_admin_assets(string $hook): void
@@ -571,25 +628,6 @@ final class Plugin
         
         wp_localize_script('media-toolkit-settings', 'mediaToolkit', $localize_data);
         
-        // Load migration and reconciliation scripts on tools page
-        if (str_contains($hook, 'tools')) {
-            wp_enqueue_script(
-                'media-toolkit-migration',
-                MEDIA_TOOLKIT_URL . 'assets/migration.js',
-                ['jquery', 'media-toolkit-batch-processor', 'media-toolkit-settings'],
-                MEDIA_TOOLKIT_VERSION,
-                true
-            );
-            
-            wp_enqueue_script(
-                'media-toolkit-reconciliation',
-                MEDIA_TOOLKIT_URL . 'assets/reconciliation.js',
-                ['jquery', 'media-toolkit-batch-processor', 'media-toolkit-settings'],
-                MEDIA_TOOLKIT_VERSION,
-                true
-            );
-        }
-        
         // Load optimization scripts on optimize page
         if (str_contains($hook, 'optimize')) {
             wp_enqueue_script(
@@ -606,6 +644,17 @@ final class Plugin
             wp_enqueue_script(
                 'media-toolkit-ai-metadata',
                 MEDIA_TOOLKIT_URL . 'assets/ai-metadata.js',
+                ['jquery', 'media-toolkit-batch-processor', 'media-toolkit-settings'],
+                MEDIA_TOOLKIT_VERSION,
+                true
+            );
+        }
+        
+        // Load CloudSync scripts on CloudSync page
+        if (str_contains($hook, 'cloudsync')) {
+            wp_enqueue_script(
+                'media-toolkit-cloudsync',
+                MEDIA_TOOLKIT_URL . 'assets/cloudsync.js',
                 ['jquery', 'media-toolkit-batch-processor', 'media-toolkit-settings'],
                 MEDIA_TOOLKIT_VERSION,
                 true
@@ -826,6 +875,11 @@ final class Plugin
     public function get_admin_ai_metadata(): ?Admin_AI_Metadata
     {
         return $this->admin_ai_metadata;
+    }
+
+    public function get_cloud_sync(): ?Storage\CloudSync
+    {
+        return $this->cloud_sync;
     }
 
     /**

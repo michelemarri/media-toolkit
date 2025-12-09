@@ -13,7 +13,7 @@ use Metodo\MediaToolkit\Core\Logger;
 use Metodo\MediaToolkit\Core\Settings;
 use Metodo\MediaToolkit\History\History;
 use Metodo\MediaToolkit\History\HistoryAction;
-use Metodo\MediaToolkit\Migration\Batch_Processor;
+use Metodo\MediaToolkit\Core\Batch_Processor;
 
 /**
  * Batch processor for generating AI metadata for images
@@ -356,16 +356,44 @@ final class MetadataGenerator extends Batch_Processor
 
     /**
      * Get image URL for AI analysis
+     * Verifies cloud URL accessibility and falls back to local file if needed
      */
     private function get_image_url(int $attachment_id): string
     {
-        // Check if image is on cloud storage
+        // Check if image is marked as on cloud storage
         $cloud_url = get_post_meta($attachment_id, '_media_toolkit_url', true);
+        
         if (!empty($cloud_url)) {
-            return $cloud_url;
+            // Verify the cloud URL is accessible
+            if ($this->verify_url_accessible($cloud_url)) {
+                return $cloud_url;
+            }
+            
+            // Cloud URL not accessible, try local file as fallback
+            $local_file = get_attached_file($attachment_id);
+            if ($local_file && file_exists($local_file)) {
+                $this->logger->warning(
+                    'ai_metadata',
+                    sprintf('Cloud URL not accessible for #%d, using local file', $attachment_id)
+                );
+                
+                // Return the WordPress URL for the local file
+                $local_url = wp_get_attachment_url($attachment_id);
+                if (!empty($local_url)) {
+                    return $local_url;
+                }
+            }
+            
+            // Neither cloud nor local available
+            $this->logger->error(
+                'ai_metadata',
+                sprintf('Image #%d not accessible: cloud URL returns error and no local file', $attachment_id)
+            );
+            
+            return '';
         }
 
-        // Get WordPress URL
+        // No cloud URL, use local WordPress URL
         $image_src = wp_get_attachment_image_src($attachment_id, 'large');
         if ($image_src && !empty($image_src[0])) {
             return $image_src[0];
@@ -373,6 +401,39 @@ final class MetadataGenerator extends Batch_Processor
 
         // Fallback to full size
         return wp_get_attachment_url($attachment_id) ?: '';
+    }
+
+    /**
+     * Verify if a URL is accessible via HEAD request
+     * Uses caching to avoid repeated requests for the same URL
+     */
+    private function verify_url_accessible(string $url): bool
+    {
+        // Cache key based on URL hash
+        $cache_key = 'mt_url_check_' . md5($url);
+        $cached = get_transient($cache_key);
+        
+        if ($cached !== false) {
+            return $cached === 'yes';
+        }
+        
+        // Perform HEAD request with short timeout
+        $response = wp_remote_head($url, [
+            'timeout' => 5,
+            'sslverify' => false, // Some cloud CDNs may have SSL issues
+        ]);
+        
+        $accessible = false;
+        
+        if (!is_wp_error($response)) {
+            $status_code = wp_remote_retrieve_response_code($response);
+            $accessible = ($status_code >= 200 && $status_code < 400);
+        }
+        
+        // Cache result for 5 minutes (accessible) or 1 minute (not accessible)
+        set_transient($cache_key, $accessible ? 'yes' : 'no', $accessible ? 300 : 60);
+        
+        return $accessible;
     }
 
     /**

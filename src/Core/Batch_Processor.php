@@ -7,10 +7,7 @@
 
 declare(strict_types=1);
 
-namespace Metodo\MediaToolkit\Migration;
-
-use Metodo\MediaToolkit\Core\Logger;
-use Metodo\MediaToolkit\Core\Settings;
+namespace Metodo\MediaToolkit\Core;
 
 /**
  * Abstract class for batch processing operations

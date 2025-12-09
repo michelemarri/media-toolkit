@@ -50,41 +50,20 @@ final class Stats
             return $cached;
         }
 
-        global $wpdb;
+        // Use existing migration stats method as source of truth
+        $migration = $this->get_migration_stats();
+        
+        $wp_attachments = $migration['total_attachments'];
+        $migrated_via_plugin = $migration['migrated_attachments'];
 
-        // Count WordPress media attachments
-        $wp_attachments = (int) $wpdb->get_var(
-            "SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = 'attachment'"
-        );
-
-        // Count WordPress attachments that are marked as migrated to S3
-        $migrated_via_plugin = (int) $wpdb->get_var(
-            $wpdb->prepare(
-                "SELECT COUNT(*) FROM {$wpdb->postmeta} pm
-                 INNER JOIN {$wpdb->posts} p ON pm.post_id = p.ID AND p.post_type = 'attachment'
-                 WHERE pm.meta_key = %s AND pm.meta_value = %s",
-                '_media_toolkit_migrated',
-                '1'
-            )
-        );
-
-        // Check if we have real storage stats
+        // Get storage stats for hybrid logic
         $storage_stats = $this->settings?->get_cached_storage_stats();
-        $storage_synced_at = null;
-
-        // Storage bucket stats
-        if ($storage_stats !== null) {
+        $has_storage_stats = $storage_stats !== null;
             $storage_total_files = $storage_stats['files'] ?? 0;
             $storage_original_files = $storage_stats['original_files'] ?? $storage_total_files;
+        $storage_synced_at = $storage_stats['synced_at'] ?? null;
             $total_storage = $storage_stats['size'] ?? 0;
             $original_storage = $storage_stats['original_size'] ?? $total_storage;
-            $storage_synced_at = $storage_stats['synced_at'] ?? null;
-        } else {
-            $storage_total_files = 0;
-            $storage_original_files = 0;
-            $total_storage = 0;
-            $original_storage = 0;
-        }
 
         // HYBRID LOGIC: Determine the best estimate of files in storage
         // Priority: 1) Storage sync data (if available), 2) WordPress metadata (fallback)
@@ -92,7 +71,7 @@ final class Stats
         $estimated_in_storage = 0;
         $needs_reconciliation = false;
 
-        if ($storage_stats !== null) {
+        if ($has_storage_stats) {
             // We have real storage sync data - use it as the source of truth
             $sync_source = 'storage_sync';
             $estimated_in_storage = $storage_original_files;
@@ -217,18 +196,20 @@ final class Stats
     }
 
     /**
-     * Get migration stats
+     * Get migration stats - source of truth for migration data
+     * 
+     * All migration-related statistics should use this method.
      */
     public function get_migration_stats(): array
     {
         global $wpdb;
 
-        // Total attachments in WordPress
+        // Total WordPress attachments
         $total_attachments = (int) $wpdb->get_var(
             "SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = 'attachment'"
         );
 
-        // Attachments already migrated (only count meta for existing attachments)
+        // Attachments marked as migrated in WordPress metadata
         $migrated_attachments = (int) $wpdb->get_var(
             $wpdb->prepare(
                 "SELECT COUNT(*) FROM {$wpdb->postmeta} pm
@@ -238,6 +219,9 @@ final class Stats
                 '1'
             )
         );
+
+        // Pending based on WordPress metadata
+        $pending_attachments = max(0, $total_attachments - $migrated_attachments);
 
         // Get total size of non-migrated files
         $pending_size = $this->calculate_pending_migration_size();
@@ -250,7 +234,7 @@ final class Stats
         return [
             'total_attachments' => $total_attachments,
             'migrated_attachments' => min($migrated_attachments, $total_attachments),
-            'pending_attachments' => max(0, $total_attachments - $migrated_attachments),
+            'pending_attachments' => $pending_attachments,
             'pending_size' => $pending_size,
             'pending_size_formatted' => $this->format_bytes($pending_size),
             'progress_percentage' => $progress,
