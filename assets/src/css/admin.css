@@ -46,6 +46,15 @@
   color: #ff5f01;
 }
 
+/* Terminal links should use Tailwind colors */
+.mt-terminal a {
+  color: inherit;
+}
+
+.mt-terminal a:hover {
+  color: inherit;
+}
+
 /* ========================================
    Custom Components
    ======================================== */
@@ -84,7 +93,7 @@
 }
 
 .mt-terminal-line {
-  @apply flex items-start gap-2 mb-1;
+  @apply flex items-center gap-2 mb-1;
 }
 
 .mt-terminal-prompt {

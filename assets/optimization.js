@@ -352,6 +352,24 @@
             let html = '';
 
             if (item.status === 'success') {
+                // Determine savings display - handle edge cases
+                let savingsHtml = '';
+                const bytesSaved = item.bytes_saved || 0;
+                const percentSaved = item.percent_saved || 0;
+                const bytesSavedFormatted = item.bytes_saved_formatted || '0 B';
+                
+                if (bytesSaved > 0) {
+                    // Normal case: saved space
+                    savingsHtml = `<span class="text-emerald-400 font-medium">Saved ${bytesSavedFormatted} (${percentSaved}%)</span>`;
+                } else if (bytesSaved === 0) {
+                    // No change
+                    savingsHtml = `<span class="text-gray-400">No change (0%)</span>`;
+                } else {
+                    // Negative: file got larger (shouldn't happen with backend fix, but handle gracefully)
+                    const absPercent = Math.abs(percentSaved);
+                    savingsHtml = `<span class="text-amber-400">Increased (${absPercent}%)</span>`;
+                }
+                
                 // Success: show detailed stats
                 html = `
                     <div class="mt-terminal-line mt-terminal-image-result">
@@ -366,11 +384,11 @@
                     <div class="mt-terminal-line pl-6">
                         <span class="text-gray-500">├─</span>
                         <span class="text-gray-400">Size:</span>
-                        <span class="text-amber-400">${item.original_size_formatted}</span>
+                        <span class="text-amber-400">${item.original_size_formatted || '0 B'}</span>
                         <span class="text-gray-500">→</span>
-                        <span class="text-emerald-400">${item.optimized_size_formatted}</span>
+                        <span class="text-emerald-400">${item.optimized_size_formatted || '0 B'}</span>
                         <span class="text-gray-500">|</span>
-                        <span class="text-emerald-400 font-medium">Saved ${item.bytes_saved_formatted} (${item.percent_saved}%)</span>
+                        ${savingsHtml}
                         ${item.thumbnails_count > 0 ? `<span class="text-gray-500">|</span><span class="text-blue-400">${item.thumbnails_count} thumbnails</span>` : ''}
                     </div>
                     <div class="mt-terminal-line pl-6 mb-2">

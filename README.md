@@ -526,6 +526,16 @@ $skip = apply_filters('media_toolkit_skip_resize', false, $file_path, $mime_type
 
 ## Changelog
 
+### 2.13.0
+- **Fix**: Optimization now preserves original file when compression produces a larger result
+  - Creates temporary backup before optimization
+  - Automatically restores original if optimized file is larger
+  - Marks as "skipped" with reason showing the would-be increase percentage
+- **Fix**: Fixed "Saved false" display in optimization log when file size increased
+  - Now shows "No change" for zero savings
+  - Shows "Increased" with percentage for negative results (edge cases)
+  - Handles missing/undefined values gracefully
+
 ### 2.12.0
 - **New**: Content URL rewriting for CDN paths in HTML
   - Automatically rewrites relative storage paths (`media/production/wp-content/uploads/...`) to absolute CDN URLs in post content

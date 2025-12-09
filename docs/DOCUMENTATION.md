@@ -288,9 +288,14 @@ The Dashboard shows:
 #### Optimization Process
 
 1. Backup original (if enabled) as `filename_original.ext`
-2. Original image is compressed using best available tool
-3. All thumbnails are optimized
-4. WebP/AVIF versions generated (if enabled)
+2. Temporary backup is created before optimization
+3. Original image is compressed using best available tool
+4. **Size check**: If optimized file is larger than original, original is restored and image is marked as "skipped"
+5. All thumbnails are optimized (same size-check logic applies)
+6. WebP/AVIF versions generated (if enabled)
+
+**Smart Size Protection:**
+The optimizer automatically compares the file size before and after optimization. If compression results in a larger file (which can happen with already-optimized or highly-compressed images), the original is preserved and the image is skipped with a message indicating the would-be size increase.
 5. All files re-uploaded to S3
 6. Space savings are tracked
 
@@ -605,8 +610,14 @@ In the WordPress Media Library attachment modal:
 |--------|-------------|
 | ✓ Optimized | Image was successfully compressed |
 | Not optimized | Image has not been processed yet |
-| ⏭ Skipped | Image was skipped (e.g., file too large) |
+| ⏭ Skipped | Image was skipped (file too large, no size reduction, unsupported type) |
 | ✗ Failed | Optimization encountered an error |
+
+**Common Skip Reasons:**
+- File exceeds maximum size limit
+- No size reduction (optimization would make file larger)
+- Unsupported image type
+- SVG optimization not available (svgo not installed)
 
 ### Cost Estimation
 

@@ -1044,6 +1044,14 @@ final class Image_Optimizer extends Batch_Processor
             ];
         }
 
+        // Create temporary backup before optimization
+        // This protects the original if optimization produces a larger file
+        $temp_backup = wp_tempnam('opt_backup_');
+        $backup_created = false;
+        if ($temp_backup && copy($file, $temp_backup)) {
+            $backup_created = true;
+        }
+
         // Optimize based on mime type
         $result = match ($mime_type) {
             'image/jpeg', 'image/jpg' => $this->optimize_jpeg($file, $settings),
@@ -1056,6 +1064,12 @@ final class Image_Optimizer extends Batch_Processor
         };
 
         if (!$result['success']) {
+            // Restore from backup if optimization failed
+            if ($backup_created && file_exists($temp_backup)) {
+                @copy($temp_backup, $file);
+                @unlink($temp_backup);
+            }
+            
             // Log optimizer failure for debugging
             $this->logger->warning(
                 'optimization',
@@ -1072,6 +1086,22 @@ final class Image_Optimizer extends Batch_Processor
         clearstatcache(true, $file);
         
         if (!file_exists($file)) {
+            // Try to restore from backup
+            if ($backup_created && file_exists($temp_backup)) {
+                if (@copy($temp_backup, $file)) {
+                    @unlink($temp_backup);
+                    OptimizationTable::mark_skipped($attachment_id, 'File deleted by optimizer, restored from backup');
+                    $this->invalidate_stats_cache();
+                    
+                    return [
+                        'success' => true,
+                        'skipped' => true,
+                        'reason' => 'Optimizer deleted file, restored original',
+                    ];
+                }
+                @unlink($temp_backup);
+            }
+            
             $error_msg = 'File was deleted by optimizer (file no longer exists after optimization)';
             OptimizationTable::mark_failed($attachment_id, $error_msg);
             $this->invalidate_stats_cache();
@@ -1094,6 +1124,12 @@ final class Image_Optimizer extends Batch_Processor
         
         // Verify file is still readable after optimization
         if ($new_size === false) {
+            // Restore from backup
+            if ($backup_created && file_exists($temp_backup)) {
+                @copy($temp_backup, $file);
+                @unlink($temp_backup);
+            }
+            
             // Gather diagnostic info
             $file_exists = file_exists($file);
             $is_readable = is_readable($file);
@@ -1127,6 +1163,45 @@ final class Image_Optimizer extends Batch_Processor
         }
         
         $main_bytes_saved = $original_size - $new_size;
+        
+        // Check if optimization actually reduced file size
+        // If the optimized file is larger, restore the original
+        if ($main_bytes_saved < 0 && $backup_created && file_exists($temp_backup)) {
+            // Restore original file
+            @copy($temp_backup, $file);
+            @unlink($temp_backup);
+            
+            $size_increase = $new_size - $original_size;
+            $increase_percent = $original_size > 0 ? round(($size_increase / $original_size) * 100, 1) : 0;
+            
+            $this->logger->info(
+                'optimization',
+                sprintf(
+                    'Optimization skipped: file would increase by %s (+%s%%), original preserved',
+                    size_format($size_increase),
+                    $increase_percent
+                ),
+                $attachment_id,
+                basename($file)
+            );
+            
+            OptimizationTable::mark_skipped(
+                $attachment_id,
+                sprintf('No size reduction (would increase by %s%%)', $increase_percent)
+            );
+            $this->invalidate_stats_cache();
+            
+            return [
+                'success' => true,
+                'skipped' => true,
+                'reason' => sprintf('No size reduction (would increase by %s%%)', $increase_percent),
+            ];
+        }
+        
+        // Clean up temporary backup - optimization was successful
+        if ($backup_created && file_exists($temp_backup)) {
+            @unlink($temp_backup);
+        }
         $main_percent_saved = $original_size > 0 ? round(($main_bytes_saved / $original_size) * 100, 1) : 0;
 
         // Re-upload main image to S3 if already offloaded
