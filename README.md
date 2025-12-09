@@ -526,6 +526,16 @@ $skip = apply_filters('media_toolkit_skip_resize', false, $file_path, $mime_type
 
 ## Changelog
 
+### 2.12.0
+- **New**: Content URL rewriting for CDN paths in HTML
+  - Automatically rewrites relative storage paths (`media/production/wp-content/uploads/...`) to absolute CDN URLs in post content
+  - Fixes 404 errors reported by SEMrush and other SEO tools for images with relative URLs
+  - Applies to `the_content`, `the_excerpt`, and widget text content
+- **New**: Rank Math sitemap integration
+  - Filters `rank_math/sitemap/urlimages` to ensure correct CDN URLs in image sitemaps
+  - Handles multiple URL patterns: relative paths, paths with leading slash, and legacy site URLs
+  - Prevents SEO tools from reporting 404 errors for sitemap images
+
 ### 2.11.4
 - **Fixed**: Statistics consistency across all pages (Dashboard, CloudSync, Batch Processor)
   - Centralized `OptimizationTable::get_full_stats()` method for optimization stats

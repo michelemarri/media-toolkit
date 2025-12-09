@@ -52,6 +52,14 @@ final class Media_Library
         // Media Library JS data
         add_filter('wp_prepare_attachment_for_js', [$this, 'filter_attachment_for_js'], 10, 3);
         
+        // Content URL rewriting - fixes relative URLs in post content
+        add_filter('the_content', [$this, 'filter_content_urls'], 10, 1);
+        add_filter('the_excerpt', [$this, 'filter_content_urls'], 10, 1);
+        add_filter('widget_text_content', [$this, 'filter_content_urls'], 10, 1);
+        
+        // Rank Math sitemap integration - fix image URLs in sitemap
+        add_filter('rank_math/sitemap/urlimages', [$this, 'filter_sitemap_images'], 10, 2);
+        
         // Note: Cloud Storage fields are now rendered via Media_Library_UI::render_attachment_details_template()
         // to avoid duplication in the modal view
     }
@@ -295,6 +303,132 @@ final class Media_Library
         }
 
         return $keys;
+    }
+
+    /**
+     * Filter content to rewrite relative storage URLs to absolute CDN URLs
+     * 
+     * This fixes URLs like "media/production/wp-content/uploads/..." that were
+     * saved in post content without the CDN domain, which causes 404 errors
+     * when accessed relatively from the page URL.
+     */
+    public function filter_content_urls(string $content): string
+    {
+        if (empty($content)) {
+            return $content;
+        }
+
+        $base_url = $this->get_base_url();
+        if (empty($base_url)) {
+            return $content;
+        }
+
+        $storage_base_path = $this->settings->get_storage_base_path();
+        
+        // Pattern to match storage paths that need to be rewritten
+        // Matches: media/production/wp-content/uploads/... or /media/production/wp-content/uploads/...
+        // But NOT when already prefixed with http:// or https://
+        $patterns = [
+            // Relative path without leading slash (e.g., in src="media/production/...")
+            '#(src|href)=(["\'])(?!https?://|//)(' . preg_quote($storage_base_path, '#') . '/[^"\']+)(["\'])#i',
+            // Relative path with leading slash (e.g., in src="/media/production/...")
+            '#(src|href)=(["\'])(?!https?://|//)/' . preg_quote($storage_base_path, '#') . '/([^"\']+)(["\'])#i',
+        ];
+
+        // Replace relative storage paths with full CDN URLs
+        $content = preg_replace_callback(
+            $patterns[0],
+            function ($matches) use ($base_url) {
+                // $matches[1] = src or href
+                // $matches[2] = opening quote
+                // $matches[3] = the path (media/production/wp-content/uploads/...)
+                // $matches[4] = closing quote
+                return $matches[1] . '=' . $matches[2] . $base_url . '/' . $matches[3] . $matches[4];
+            },
+            $content
+        );
+
+        $content = preg_replace_callback(
+            $patterns[1],
+            function ($matches) use ($base_url, $storage_base_path) {
+                // $matches[1] = src or href
+                // $matches[2] = opening quote
+                // $matches[3] = the path after storage base (2024/05/image.jpg)
+                // $matches[4] = closing quote
+                return $matches[1] . '=' . $matches[2] . $base_url . '/' . $storage_base_path . '/' . $matches[3] . $matches[4];
+            },
+            $content
+        );
+
+        return $content ?: '';
+    }
+
+    /**
+     * Filter Rank Math sitemap images to use correct CDN URLs
+     * 
+     * Rank Math extracts image URLs from post content and may pick up
+     * relative storage paths. This filter ensures all image URLs in
+     * the sitemap are absolute CDN URLs.
+     */
+    public function filter_sitemap_images(array $images, int $post_id): array
+    {
+        if (empty($images)) {
+            return $images;
+        }
+
+        $base_url = $this->get_base_url();
+        if (empty($base_url)) {
+            return $images;
+        }
+
+        $storage_base_path = $this->settings->get_storage_base_path();
+        $site_url = site_url();
+
+        foreach ($images as &$image) {
+            if (!isset($image['src'])) {
+                continue;
+            }
+
+            $src = $image['src'];
+
+            // Check if URL contains storage path but is missing CDN domain
+            // Case 1: Relative URL like "media/production/wp-content/uploads/..."
+            if (str_starts_with($src, $storage_base_path . '/')) {
+                $image['src'] = $base_url . '/' . $src;
+                continue;
+            }
+
+            // Case 2: URL with leading slash "/media/production/wp-content/uploads/..."
+            if (str_starts_with($src, '/' . $storage_base_path . '/')) {
+                $image['src'] = $base_url . $src;
+                continue;
+            }
+
+            // Case 3: URL like "https://site.com/page/media/production/wp-content/uploads/..."
+            // This is the case from SEMrush - the storage path was appended to page URL
+            if (str_contains($src, '/' . $storage_base_path . '/') && !str_starts_with($src, $base_url)) {
+                // Extract the storage path portion
+                $pattern = '#^.*?(' . preg_quote($storage_base_path, '#') . '/.+)$#';
+                if (preg_match($pattern, $src, $matches)) {
+                    $image['src'] = $base_url . '/' . $matches[1];
+                }
+                continue;
+            }
+
+            // Case 4: URL with site URL but should be CDN (legacy URLs)
+            if (str_starts_with($src, $site_url) && str_contains($src, '/wp-content/uploads/')) {
+                // Try to find attachment by URL and get CDN URL
+                $attachment_id = attachment_url_to_postid($src);
+                if ($attachment_id > 0) {
+                    $cdn_url = wp_get_attachment_url($attachment_id);
+                    if ($cdn_url && $cdn_url !== $src) {
+                        $image['src'] = $cdn_url;
+                    }
+                }
+            }
+        }
+
+        return $images;
     }
 }
 

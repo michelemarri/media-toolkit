@@ -157,6 +157,31 @@ add_filter('media_toolkit_file_url', function(string $url, string $s3_key, int $
 
 ---
 
+### Content URL Filters
+
+The plugin automatically filters content to rewrite relative storage paths to absolute CDN URLs. This happens on:
+- `the_content` - Post/page content
+- `the_excerpt` - Post excerpts
+- `widget_text_content` - Widget text content
+
+This fixes URLs like `media/production/wp-content/uploads/...` that were saved without the CDN domain, preventing 404 errors.
+
+---
+
+### Sitemap Filters
+
+#### `rank_math/sitemap/urlimages` (Rank Math integration)
+
+The plugin automatically filters Rank Math sitemap images to ensure correct CDN URLs. This handles:
+- Relative paths: `media/production/wp-content/uploads/...`
+- Paths with leading slash: `/media/production/wp-content/uploads/...`
+- Malformed URLs: `https://site.com/page/media/production/...`
+- Legacy site URLs that should use CDN
+
+No configuration needed - this works automatically when Media Toolkit is active.
+
+---
+
 ### Migration Filters
 
 #### `media_toolkit_migration_batch_size`
