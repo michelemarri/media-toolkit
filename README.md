@@ -526,6 +526,11 @@ $skip = apply_filters('media_toolkit_skip_resize', false, $file_path, $mime_type
 
 ## Changelog
 
+### 2.13.1
+- **Fix**: PHP TypeError when WordPress passes attachment ID as string instead of int
+  - Fixed `filter_image_downsize()`, `filter_attachment_url()`, `filter_image_src()`, `filter_image_srcset()`, and `filter_image_sizes()` to accept both `int|string` and cast to int internally
+  - Resolves compatibility issues with plugins like ACF that may pass string IDs
+
 ### 2.13.0
 - **Fix**: Optimization now preserves original file when compression produces a larger result
   - Creates temporary backup before optimization

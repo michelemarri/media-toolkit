@@ -67,8 +67,10 @@ final class Media_Library
     /**
      * Filter attachment URL to use CloudFront/S3
      */
-    public function filter_attachment_url(string $url, int $attachment_id): string
+    public function filter_attachment_url(string $url, int|string $attachment_id): string
     {
+        $attachment_id = (int) $attachment_id;
+        
         // Check if migrated to S3 - use key to build URL dynamically
         $s3_key = get_post_meta($attachment_id, '_media_toolkit_key', true);
         
@@ -84,8 +86,10 @@ final class Media_Library
     /**
      * Filter image source array
      */
-    public function filter_image_src(?array $image, int $attachment_id, string|array $size, bool $icon): ?array
+    public function filter_image_src(?array $image, int|string $attachment_id, string|array $size, bool $icon): ?array
     {
+        $attachment_id = (int) $attachment_id;
+        
         if ($image === null || $image === false) {
             return $image;
         }
@@ -103,8 +107,10 @@ final class Media_Library
     /**
      * Filter image downsize
      */
-    public function filter_image_downsize(bool|array $downsize, int $attachment_id, string|array $size): bool|array
+    public function filter_image_downsize(bool|array $downsize, int|string $attachment_id, string|array $size): bool|array
     {
+        $attachment_id = (int) $attachment_id;
+        
         if ($downsize !== false) {
             // WordPress already has a result, just update URL
             if (is_array($downsize)) {
@@ -122,8 +128,10 @@ final class Media_Library
     /**
      * Filter image srcset for responsive images
      */
-    public function filter_image_srcset(array $sources, array $size_array, string $image_src, array $image_meta, int $attachment_id): array
+    public function filter_image_srcset(array $sources, array $size_array, string $image_src, array $image_meta, int|string $attachment_id): array
     {
+        $attachment_id = (int) $attachment_id;
+        
         if (empty($sources)) {
             return $sources;
         }
@@ -168,7 +176,7 @@ final class Media_Library
     /**
      * Filter image sizes attribute
      */
-    public function filter_image_sizes(string $sizes, array $size, string $image_src, array $image_meta, int $attachment_id): string
+    public function filter_image_sizes(string $sizes, array $size, string $image_src, array $image_meta, int|string $attachment_id): string
     {
         // Return sizes unchanged - this is the sizes attribute, not URLs
         return $sizes;
