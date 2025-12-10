@@ -74,22 +74,10 @@ final class Plugin
     private ?Storage\CloudSync $cloud_sync = null;
 
     /**
-     * Debug logger (temporary)
-     */
-    private static function debug_log(string $message): void
-    {
-        $log_file = MEDIA_TOOLKIT_PATH . 'logs/debug.log';
-        $timestamp = date('Y-m-d H:i:s');
-        file_put_contents($log_file, "[{$timestamp}] {$message}\n", FILE_APPEND);
-    }
-
-    /**
      * Initialize the plugin
      */
     public function init(): void
     {
-        self::debug_log('Plugin::init() started');
-        
         // Initialize core components
         add_action('plugins_loaded', [$this, 'load_components'], 20);
         
@@ -161,39 +149,22 @@ final class Plugin
 
     public function load_components(): void
     {
-        self::debug_log('load_components() started');
-        
         // Core services
-        self::debug_log('Creating Encryption...');
         $this->encryption = new Encryption();
-        
-        self::debug_log('Creating Settings...');
         $this->settings = new Settings($this->encryption);
-        
-        self::debug_log('Creating Logger...');
         $this->logger = new Logger();
-        
-        self::debug_log('Creating History...');
         $this->history = new History();
-        
-        self::debug_log('Creating Stats...');
         $this->stats = new Stats($this->logger, $this->history, $this->settings);
-        
-        self::debug_log('Creating Error_Handler...');
         $this->error_handler = new Error_Handler($this->logger);
-        
-        self::debug_log('Settings configured: ' . ($this->settings->is_configured() ? 'yes' : 'no'));
         
         // Only initialize storage if configured
         if ($this->settings->is_configured()) {
-            self::debug_log('Creating Storage via Factory...');
             $this->storage = StorageFactory::create(
                 $this->settings,
                 $this->error_handler,
                 $this->logger
             );
             
-            self::debug_log('Creating CDN_Manager...');
             $this->cdn_manager = new CDN_Manager($this->settings, $this->logger);
             
             // Media handlers - use storage interface where possible
@@ -296,20 +267,14 @@ final class Plugin
         // Register AJAX handler for clearing metadata (needs to work even if storage not configured)
         add_action('wp_ajax_media_toolkit_clear_migration_metadata', [$this, 'ajax_clear_migration_metadata']);
         
-        self::debug_log('Creating GitHubUpdater...');
         // Initialize updater (works regardless of storage configuration)
         $this->updater = new GitHubUpdater();
-        
-        self::debug_log('Calling GitHubUpdater->init()...');
         $this->updater->init();
-        self::debug_log('GitHubUpdater initialized');
         
         // AI Manager (works independently of storage)
-        self::debug_log('Creating AIManager...');
         $this->ai_manager = new AIManager($this->encryption, $this->logger);
         
         // Metadata Generator (batch processor for AI)
-        self::debug_log('Creating MetadataGenerator...');
         $this->metadata_generator = new MetadataGenerator(
             $this->logger,
             $this->settings,
@@ -318,7 +283,6 @@ final class Plugin
         );
         
         // AI Upload Handler (auto-generate on upload)
-        self::debug_log('Creating AIUploadHandler...');
         $this->ai_upload_handler = new AIUploadHandler(
             $this->ai_manager,
             $this->metadata_generator,
@@ -326,9 +290,7 @@ final class Plugin
         );
         
         // Admin components
-        self::debug_log('is_admin(): ' . (is_admin() ? 'yes' : 'no'));
         if (is_admin()) {
-            self::debug_log('Creating Admin_Settings...');
             new Admin_Settings(
                 $this->settings,
                 $this->encryption,
@@ -338,17 +300,13 @@ final class Plugin
                 $this->stats
             );
             
-            self::debug_log('Creating Admin_Dashboard...');
             new Admin_Dashboard($this->stats, $this->settings);
             
-            self::debug_log('Creating Admin_AI_Metadata...');
             $this->admin_ai_metadata = new Admin_AI_Metadata(
                 $this->ai_manager,
                 $this->metadata_generator
             );
         }
-        
-        self::debug_log('load_components() completed successfully');
     }
 
     /**
@@ -356,18 +314,13 @@ final class Plugin
      */
     public static function activate(): void
     {
-        self::debug_log('Plugin::activate() started');
-        
         // Create database tables (suppress any output)
         ob_start();
-        self::debug_log('Creating database tables...');
         self::create_tables();
-        self::debug_log('Database tables created');
         ob_end_clean();
         
         // Save plugin version
         update_option('media_toolkit_db_version', MEDIA_TOOLKIT_VERSION);
-        self::debug_log('Plugin::activate() completed');
     }
 
     /**
