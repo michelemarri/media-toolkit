@@ -314,9 +314,16 @@ final class Upload_Handler
 
     /**
      * Filter attached file path
+     * 
+     * Note: WordPress can pass `false` if attachment doesn't exist
      */
-    public function filter_attached_file(string $file, int $attachment_id): string
+    public function filter_attached_file(string|false $file, int $attachment_id): string|false
     {
+        // WordPress passes false if attachment doesn't exist
+        if ($file === false) {
+            return $file;
+        }
+        
         // If file doesn't exist locally but is on S3, return a virtual path
         // that the S3 client can recognize
         if (!file_exists($file)) {
@@ -333,9 +340,16 @@ final class Upload_Handler
 
     /**
      * Filter update attached file
+     * 
+     * Note: WordPress can pass `false` in edge cases
      */
-    public function filter_update_attached_file(string $file, int $attachment_id): string
+    public function filter_update_attached_file(string|false $file, int $attachment_id): string|false
     {
+        // WordPress may pass false in edge cases
+        if ($file === false) {
+            return $file;
+        }
+        
         // Store the local path reference
         return $file;
     }

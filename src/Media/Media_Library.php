@@ -86,7 +86,7 @@ final class Media_Library
     /**
      * Filter image source array
      */
-    public function filter_image_src(?array $image, int|string $attachment_id, string|array $size, bool $icon): ?array
+    public function filter_image_src(array|false|null $image, int|string $attachment_id, string|array $size, bool $icon): array|false|null
     {
         $attachment_id = (int) $attachment_id;
         
@@ -127,12 +127,15 @@ final class Media_Library
 
     /**
      * Filter image srcset for responsive images
+     * 
+     * Note: WordPress can pass `false` to disable srcset entirely
      */
-    public function filter_image_srcset(array $sources, array $size_array, string $image_src, array $image_meta, int|string $attachment_id): array
+    public function filter_image_srcset(array|false $sources, array $size_array, string $image_src, array $image_meta, int|string $attachment_id): array|false
     {
         $attachment_id = (int) $attachment_id;
         
-        if (empty($sources)) {
+        // WordPress passes false to disable srcset
+        if ($sources === false || empty($sources)) {
             return $sources;
         }
 
@@ -319,11 +322,13 @@ final class Media_Library
      * This fixes URLs like "media/production/wp-content/uploads/..." that were
      * saved in post content without the CDN domain, which causes 404 errors
      * when accessed relatively from the page URL.
+     * 
+     * Note: WordPress can pass null or empty string for content
      */
-    public function filter_content_urls(string $content): string
+    public function filter_content_urls(string|null $content): string
     {
-        if (empty($content)) {
-            return $content;
+        if ($content === null || $content === '') {
+            return $content ?? '';
         }
 
         $base_url = $this->get_base_url();

@@ -526,6 +526,14 @@ $skip = apply_filters('media_toolkit_skip_resize', false, $file_path, $mime_type
 
 ## Changelog
 
+### 2.13.2
+- **Fix**: PHP TypeError when WordPress passes `false` instead of expected types in filters
+  - Fixed `filter_image_src()` to accept `array|false|null` (WordPress returns `false` when attachment doesn't exist)
+  - Fixed `filter_image_srcset()` to accept `array|false` (plugins can return `false` to disable srcset)
+  - Fixed `filter_content_urls()` to accept `string|null` (edge cases in content filters)
+  - Fixed `filter_attached_file()` and `filter_update_attached_file()` to accept `string|false`
+  - Resolves fatal errors with ACF Icon Picker and other plugins that trigger image functions on non-existent attachments
+
 ### 2.13.1
 - **Fix**: PHP TypeError when WordPress passes attachment ID as string instead of int
   - Fixed `filter_image_downsize()`, `filter_attachment_url()`, `filter_image_src()`, `filter_image_srcset()`, and `filter_image_sizes()` to accept both `int|string` and cast to int internally
