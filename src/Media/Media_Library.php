@@ -69,11 +69,10 @@ final class Media_Library
         add_filter('rank_math/sitemap/urlimages', [$this, 'filter_sitemap_images'], 10, 2);
         
         // Output buffering for page builders (YooTheme, Elementor, etc.) that bypass standard filters
-        // DISABLED: Can cause issues with already processed content
-        // TODO: Investigate if needed and how to avoid double processing
-        // if (!is_admin() && !wp_doing_ajax() && !wp_doing_cron() && !defined('REST_REQUEST')) {
-        //     add_action('template_redirect', [$this, 'start_output_buffer'], 1);
-        // }
+        // Safe from double processing: patterns skip URLs already containing CDN base URL
+        if (!is_admin() && !wp_doing_ajax() && !wp_doing_cron() && !defined('REST_REQUEST')) {
+            add_action('template_redirect', [$this, 'start_output_buffer'], 1);
+        }
         
         // Note: Cloud Storage fields are now rendered via Media_Library_UI::render_attachment_details_template()
         // to avoid duplication in the modal view
@@ -444,19 +443,27 @@ final class Media_Library
 
         // 2. Corrupted absolute URLs with embedded page path
         // Example: https://site.com/some-page/media/production/wp-content/uploads/...
-        // Only run if storage path exists in content
         if (str_contains($content, $storage_base_path)) {
             $content = preg_replace_callback(
                 '#' . $escaped_site_url . '/.*?(' . $escaped_storage_path . '/[^\s"\'<>]+)#i',
                 fn($m) => str_starts_with($m[0], $base_url) ? $m[0] : $base_url . '/' . $m[1],
                 $content
             ) ?? $content;
+        }
 
-            // 3. Relative storage paths (with or without leading slash)
-            // Example: /media/production/wp-content/uploads/... or media/production/wp-content/uploads/...
+        // 3. Relative storage paths (with or without leading slash)
+        // Example: /media/production/wp-content/uploads/... or media/production/wp-content/uploads/...
+        // Run ALWAYS if storage path exists - critical for YooTheme relative URLs
+        if (str_contains($content, $storage_base_path)) {
             $content = preg_replace_callback(
-                '#(["\',=]\s*)/?(' . $escaped_storage_path . '/[^\s"\'<>,]+)#i',
-                fn($m) => $m[1] . $base_url . '/' . $m[2],
+                '#(["\'=,]\s*)/?(' . $escaped_storage_path . '/[^\s"\'<>,]+)#i',
+                function ($m) use ($base_url) {
+                    // Skip if already contains CDN URL
+                    if (str_contains($m[2], $base_url)) {
+                        return $m[0];
+                    }
+                    return $m[1] . $base_url . '/' . $m[2];
+                },
                 $content
             ) ?? $content;
         }

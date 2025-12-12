@@ -526,6 +526,12 @@ $skip = apply_filters('media_toolkit_skip_resize', false, $file_path, $mime_type
 
 ## Changelog
 
+### 2.13.15
+- **Fix**: Improved relative storage path rewriting for YooTheme
+  - Re-enabled output buffering (safe from double processing with CDN URL checks)
+  - Pattern 3 now also checks if URL already contains CDN base URL
+  - Better handling of YooTheme's relative URL format like `media/production/wp-content/uploads/...`
+
 ### 2.13.14
 - **Improvement**: Made debug logging conditional on `WP_DEBUG`
   - `AbstractAIProvider::logDebug()` now only logs when WP_DEBUG is enabled
