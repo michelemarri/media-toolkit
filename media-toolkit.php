@@ -6,7 +6,7 @@ declare(strict_types=1);
  * Plugin Name:       Media Toolkit
  * Plugin URI:        https://github.com/michelemarri/media-toolkit
  * Description:       Complete media management toolkit for WordPress. Multi-provider storage (S3, R2, Spaces, B2, Wasabi), CDN integration, image optimization, and advanced tools.
- * Version:           2.13.3
+ * Version:           2.13.6
  * Requires at least: 6.0
  * Tested up to:      6.9
  * Requires PHP:      8.2
@@ -28,7 +28,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Plugin constants
-define('MEDIA_TOOLKIT_VERSION', '2.13.3');
+define('MEDIA_TOOLKIT_VERSION', '2.13.6');
 define('MEDIA_TOOLKIT_PLUGIN_FILE', __FILE__);
 define('MEDIA_TOOLKIT_PATH', plugin_dir_path(__FILE__));
 define('MEDIA_TOOLKIT_URL', plugin_dir_url(__FILE__));

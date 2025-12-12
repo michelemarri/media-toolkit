@@ -526,6 +526,24 @@ $skip = apply_filters('media_toolkit_skip_resize', false, $file_path, $mime_type
 
 ## Changelog
 
+### 2.13.6
+- **Fix**: URL rewriting now works with page builders (YooTheme, Elementor, etc.)
+  - Added output buffering to catch content that bypasses standard WordPress filters
+  - Page builders often render content through their own templating systems
+  - Uses `template_redirect` hook with `ob_start` callback for final HTML filtering
+
+### 2.13.5
+- **Fix**: Content URL rewriting now correctly matches storage paths
+  - Removed duplicate `/wp-content/uploads/` in regex patterns
+  - `get_storage_base_path()` already includes `/wp-content/uploads` in its return value
+  - Fixes images not being rewritten to CDN URLs when using relative paths
+
+### 2.13.4
+- **Fix**: Content URL rewriting no longer matches plain text containing storage paths
+  - Changed regex patterns to only match URL contexts (quoted attributes, srcset commas, unquoted attributes)
+  - Removed space matching which could incorrectly rewrite prose text containing paths
+  - Example: "see directory media/production/..." is no longer rewritten
+
 ### 2.13.2
 - **Fix**: PHP TypeError when WordPress passes `false` instead of expected types in filters
   - Fixed `filter_image_src()` to accept `array|false|null` (WordPress returns `false` when attachment doesn't exist)

@@ -68,8 +68,31 @@ final class Media_Library
         // Rank Math sitemap integration - fix image URLs in sitemap
         add_filter('rank_math/sitemap/urlimages', [$this, 'filter_sitemap_images'], 10, 2);
         
+        // Output buffering for page builders (YooTheme, Elementor, etc.) that bypass standard filters
+        // Only on frontend, not admin
+        if (!is_admin() && !wp_doing_ajax() && !wp_doing_cron() && !defined('REST_REQUEST')) {
+            add_action('template_redirect', [$this, 'start_output_buffer'], 1);
+        }
+        
         // Note: Cloud Storage fields are now rendered via Media_Library_UI::render_attachment_details_template()
         // to avoid duplication in the modal view
+    }
+    
+    /**
+     * Start output buffering to catch page builder content
+     */
+    public function start_output_buffer(): void
+    {
+        ob_start([$this, 'filter_final_output']);
+    }
+    
+    /**
+     * Filter the final HTML output
+     * This catches content from page builders that bypass standard WordPress filters
+     */
+    public function filter_final_output(string $output): string
+    {
+        return $this->filter_content_urls($output);
     }
 
     /**
@@ -362,7 +385,8 @@ final class Media_Library
         
         // This pattern matches the site URL followed by anything, then the storage path
         // The key is using .*? (non-greedy) to match the shortest path before storage_base_path
-        $pattern_corrupted = '#' . $escaped_site_url . '/.*?(' . $escaped_storage_path . '/wp-content/uploads/[^\s"\'<>]+)#i';
+        // Note: storage_base_path already includes /wp-content/uploads
+        $pattern_corrupted = '#' . $escaped_site_url . '/.*?(' . $escaped_storage_path . '/[^\s"\'<>]+)#i';
         
         $content = preg_replace_callback(
             $pattern_corrupted,
@@ -379,30 +403,34 @@ final class Media_Library
 
         // SECOND: Fix relative paths with leading slash
         // These are paths like: /media/production/wp-content/uploads/...
-        // They appear in src, href, srcset, or any other attribute
-        $pattern_slash = '#(["\'\s,])/' . $escaped_storage_path . '/wp-content/uploads/([^\s"\'<>]+)#i';
+        // Match when preceded by: quote (attribute value), comma (srcset), or equals (unquoted attribute)
+        // Note: We intentionally don't match space (\s) to avoid false positives in plain text
+        // Note: storage_base_path already includes /wp-content/uploads
+        $pattern_slash = '#(["\',=])/' . $escaped_storage_path . '/([^\s"\'<>]+)#i';
         
         $content = preg_replace_callback(
             $pattern_slash,
             function ($matches) use ($base_url, $storage_base_path) {
-                $prefix = $matches[1]; // The character before (quote, space, or comma for srcset)
+                $prefix = $matches[1]; // The character before (quote, comma for srcset, or equals for unquoted)
                 $path = $matches[2];
-                return $prefix . $base_url . '/' . $storage_base_path . '/wp-content/uploads/' . $path;
+                return $prefix . $base_url . '/' . $storage_base_path . '/' . $path;
             },
             $content
         ) ?? $content;
 
         // THIRD: Fix relative paths without leading slash
         // These are paths like: media/production/wp-content/uploads/...
-        // Match when preceded by quote, space, or comma (for srcset)
-        $pattern_relative = '#(["\'\s,])' . $escaped_storage_path . '/wp-content/uploads/([^\s"\'<>]+)#i';
+        // Match when preceded by: quote (attribute value), comma (srcset), or equals (unquoted attribute)
+        // Note: We intentionally don't match space (\s) to avoid false positives in plain text
+        // Note: storage_base_path already includes /wp-content/uploads
+        $pattern_relative = '#(["\',=])' . $escaped_storage_path . '/([^\s"\'<>]+)#i';
         
         $content = preg_replace_callback(
             $pattern_relative,
             function ($matches) use ($base_url, $storage_base_path) {
                 $prefix = $matches[1];
                 $path = $matches[2];
-                return $prefix . $base_url . '/' . $storage_base_path . '/wp-content/uploads/' . $path;
+                return $prefix . $base_url . '/' . $storage_base_path . '/' . $path;
             },
             $content
         ) ?? $content;
@@ -464,6 +492,8 @@ final class Media_Library
             $src = $image['src'];
 
             // Check if URL contains storage path but is missing CDN domain
+            // Note: storage_base_path already includes /wp-content/uploads
+            
             // Case 1: Relative URL like "media/production/wp-content/uploads/..."
             if (str_starts_with($src, $storage_base_path . '/')) {
                 $image['src'] = $base_url . '/' . $src;
