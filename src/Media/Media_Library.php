@@ -69,10 +69,11 @@ final class Media_Library
         add_filter('rank_math/sitemap/urlimages', [$this, 'filter_sitemap_images'], 10, 2);
         
         // Output buffering for page builders (YooTheme, Elementor, etc.) that bypass standard filters
-        // Only on frontend, not admin
-        if (!is_admin() && !wp_doing_ajax() && !wp_doing_cron() && !defined('REST_REQUEST')) {
-            add_action('template_redirect', [$this, 'start_output_buffer'], 1);
-        }
+        // DISABLED: Can cause issues with already processed content
+        // TODO: Investigate if needed and how to avoid double processing
+        // if (!is_admin() && !wp_doing_ajax() && !wp_doing_cron() && !defined('REST_REQUEST')) {
+        //     add_action('template_redirect', [$this, 'start_output_buffer'], 1);
+        // }
         
         // Note: Cloud Storage fields are now rendered via Media_Library_UI::render_attachment_details_template()
         // to avoid duplication in the modal view
@@ -409,10 +410,11 @@ final class Media_Library
 
         // SECOND: Fix relative paths with leading slash
         // These are paths like: /media/production/wp-content/uploads/...
-        // Match when preceded by: quote (attribute value), comma (srcset), or equals (unquoted attribute)
+        // Match when preceded by: quote (attribute value), comma+space (srcset), or equals (unquoted attribute)
         // Note: We intentionally don't match space (\s) to avoid false positives in plain text
         // Note: storage_base_path already includes /wp-content/uploads
-        $pattern_slash = '#(["\',=])/' . $escaped_storage_path . '/([^\s"\'<>]+)#i';
+        // Note: [^\s"\'<>,]+ excludes comma to avoid capturing srcset width descriptors
+        $pattern_slash = '#(["\',=]\s*)/' . $escaped_storage_path . '/([^\s"\'<>,]+)#i';
         
         $content = preg_replace_callback(
             $pattern_slash,
@@ -426,10 +428,11 @@ final class Media_Library
 
         // THIRD: Fix relative paths without leading slash
         // These are paths like: media/production/wp-content/uploads/...
-        // Match when preceded by: quote (attribute value), comma (srcset), or equals (unquoted attribute)
+        // Match when preceded by: quote (attribute value), comma+space (srcset), or equals (unquoted attribute)
         // Note: We intentionally don't match space (\s) to avoid false positives in plain text
         // Note: storage_base_path already includes /wp-content/uploads
-        $pattern_relative = '#(["\',=])' . $escaped_storage_path . '/([^\s"\'<>]+)#i';
+        // Note: [^\s"\'<>,]+ excludes comma to avoid capturing srcset width descriptors
+        $pattern_relative = '#(["\',=]\s*)' . $escaped_storage_path . '/([^\s"\'<>,]+)#i';
         
         $content = preg_replace_callback(
             $pattern_relative,

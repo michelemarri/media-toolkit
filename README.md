@@ -526,6 +526,12 @@ $skip = apply_filters('media_toolkit_skip_resize', false, $file_path, $mime_type
 
 ## Changelog
 
+### 2.13.8
+- **Fix**: Improved regex patterns for content URL rewriting
+  - Added comma to exclusion pattern `[^\s"\'<>,]+` to avoid capturing srcset width descriptors
+  - Added `\s*` after prefix to handle whitespace after comma in srcset
+  - Disabled output buffering (was causing double processing issues)
+
 ### 2.13.7
 - **Fix**: Prevent double URL rewriting in `filter_image_srcset()`
   - Added check to skip URLs that already start with CDN base URL
