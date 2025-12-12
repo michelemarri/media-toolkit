@@ -526,6 +526,12 @@ $skip = apply_filters('media_toolkit_skip_resize', false, $file_path, $mime_type
 
 ## Changelog
 
+### 2.13.7
+- **Fix**: Prevent double URL rewriting in `filter_image_srcset()`
+  - Added check to skip URLs that already start with CDN base URL
+  - Fixes corrupted srcset URLs like `...uploads https://...uploads/...`
+  - Also improved thumb_keys lookup logic with explicit found flag
+
 ### 2.13.6
 - **Fix**: URL rewriting now works with page builders (YooTheme, Elementor, etc.)
   - Added output buffering to catch content that bypasses standard WordPress filters

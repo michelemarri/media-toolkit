@@ -181,22 +181,28 @@ final class Media_Library
         $s3_base_dir = dirname($s3_key);
 
         foreach ($sources as $width => &$source) {
+            // Skip if already a CDN URL
+            if (str_starts_with($source['url'], $base_url)) {
+                continue;
+            }
+            
             // Try to find matching thumbnail
-            $source_file = basename(wp_parse_url($source['url'], PHP_URL_PATH));
+            $source_file = basename(wp_parse_url($source['url'], PHP_URL_PATH) ?? '');
             
             // Check if this size has a known S3 key
+            $found_in_thumb_keys = false;
             foreach ($thumb_keys as $size_name => $thumb_key) {
                 if (str_contains($thumb_key, $source_file)) {
                     $source['url'] = $base_url . '/' . $thumb_key;
+                    $found_in_thumb_keys = true;
                     break;
                 }
             }
 
-            // If not found in thumb_keys, construct URL
-            if (str_contains($source['url'], '/wp-content/uploads/')) {
+            // If not found in thumb_keys and still a local URL, construct storage URL
+            if (!$found_in_thumb_keys && str_contains($source['url'], '/wp-content/uploads/')) {
                 // Extract relative path and construct storage URL
                 $upload_dir = wp_upload_dir();
-                $base_dir = $upload_dir['basedir'];
                 $relative_url = str_replace($upload_dir['baseurl'], '', $source['url']);
 
                 $storage_path = $this->settings->get_storage_base_path() . $relative_url;
