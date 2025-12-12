@@ -167,8 +167,7 @@ final class Admin_AI_Metadata
      */
     public function ajax_generate_single(): void
     {
-        // Log to PHP error log for debugging 500 errors
-        error_log('[Media Toolkit AI] ajax_generate_single called');
+        $this->debug_log('ajax_generate_single called');
         
         // Wrap everything in try-catch to prevent 500 errors
         try {
@@ -183,7 +182,7 @@ final class Admin_AI_Metadata
             $attachment_id = isset($_POST['attachment_id']) ? (int) $_POST['attachment_id'] : 0;
             $overwrite = isset($_POST['overwrite']) && $_POST['overwrite'] === 'true';
 
-            error_log('[Media Toolkit AI] Processing attachment #' . $attachment_id);
+            $this->debug_log('Processing attachment #' . $attachment_id);
 
             if ($attachment_id <= 0) {
                 $this->log_error('Invalid attachment ID: ' . $attachment_id);
@@ -192,18 +191,18 @@ final class Admin_AI_Metadata
             }
 
             if (!$this->is_available()) {
-                error_log('[Media Toolkit AI] No provider configured');
+                $this->debug_log('No provider configured');
                 $this->log_error('No AI provider configured');
                 wp_send_json_error(['message' => __('No AI provider configured. Please configure at least one provider in Settings.', 'media-toolkit')]);
                 return;
             }
 
-            error_log('[Media Toolkit AI] Starting generation...');
+            $this->debug_log('Starting generation...');
             $this->log_info('Starting AI generation for attachment #' . $attachment_id);
             
             $result = $this->metadata_generator->generate_single($attachment_id, $overwrite);
 
-            error_log('[Media Toolkit AI] Result: ' . wp_json_encode($result));
+            $this->debug_log('Result: ' . wp_json_encode($result));
 
             if ($result['success']) {
                 $this->log_info('AI generation successful for attachment #' . $attachment_id);
@@ -217,7 +216,7 @@ final class Admin_AI_Metadata
                 ]);
             }
         } catch (\Metodo\MediaToolkit\AI\AIProviderException $e) {
-            error_log('[Media Toolkit AI] AIProviderException: ' . $e->getMessage());
+            $this->debug_log('AIProviderException: ' . $e->getMessage());
             $this->log_error('AIProviderException: ' . $e->getMessage() . ' (Type: ' . $e->getErrorType() . ')');
             wp_send_json_error([
                 'message' => $e->getMessage() ?: __('AI provider error', 'media-toolkit'),
@@ -232,8 +231,8 @@ final class Admin_AI_Metadata
                 $e->getFile(),
                 $e->getLine()
             );
-            error_log('[Media Toolkit AI] FATAL: ' . $error_msg);
-            error_log('[Media Toolkit AI] Stack trace: ' . $e->getTraceAsString());
+            $this->debug_log('FATAL: ' . $error_msg);
+            $this->debug_log('Stack trace: ' . $e->getTraceAsString());
             $this->log_error('Fatal error: ' . $error_msg);
             wp_send_json_error([
                 'message' => $e->getMessage() ?: __('Unexpected error occurred', 'media-toolkit'),
@@ -243,11 +242,21 @@ final class Admin_AI_Metadata
     }
 
     /**
+     * Log debug message (only when WP_DEBUG is enabled)
+     */
+    private function debug_log(string $message): void
+    {
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('[Media Toolkit AI] ' . $message);
+        }
+    }
+
+    /**
      * Log info message
      */
     private function log_info(string $message): void
     {
-        error_log('[Media Toolkit AI] INFO: ' . $message);
+        $this->debug_log('INFO: ' . $message);
         media_toolkit()->get_logger()?->info('ai_metadata', $message);
     }
 
@@ -256,7 +265,7 @@ final class Admin_AI_Metadata
      */
     private function log_error(string $message): void
     {
-        error_log('[Media Toolkit AI] ERROR: ' . $message);
+        $this->debug_log('ERROR: ' . $message);
         media_toolkit()->get_logger()?->error('ai_metadata', $message);
     }
 }

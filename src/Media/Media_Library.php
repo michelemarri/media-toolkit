@@ -101,6 +101,11 @@ final class Media_Library
      */
     public function filter_attachment_url(string $url, int|string $attachment_id): string
     {
+        // Skip if YooTheme is handling its own images
+        if ($this->is_yootheme_image_request()) {
+            return $url;
+        }
+        
         $attachment_id = (int) $attachment_id;
         
         // Check if migrated to S3 - use key to build URL dynamically
@@ -109,6 +114,22 @@ final class Media_Library
         if (!empty($s3_key)) {
             // Build URL dynamically using current CDN/storage settings
             return $this->get_base_url() . '/' . ltrim($s3_key, '/');
+        }
+
+        // Fallback: if marked as migrated but key is missing, construct URL from path
+        // This handles edge cases where metadata might be incomplete
+        $is_migrated = get_post_meta($attachment_id, '_media_toolkit_migrated', true);
+        if (!empty($is_migrated)) {
+            $base_url = $this->get_base_url();
+            if (!empty($base_url) && str_contains($url, '/wp-content/uploads/')) {
+                $upload_dir = wp_upload_dir();
+                $relative_path = str_replace($upload_dir['baseurl'], '', $url);
+                if ($relative_path !== $url) {
+                    // Successfully extracted relative path
+                    $storage_path = $this->settings->get_storage_base_path() . $relative_path;
+                    return $base_url . '/' . ltrim($storage_path, '/');
+                }
+            }
         }
 
         // Not migrated yet, return original
@@ -120,6 +141,11 @@ final class Media_Library
      */
     public function filter_image_src(array|false|null $image, int|string $attachment_id, string|array $size, bool $icon): array|false|null
     {
+        // Skip if YooTheme is handling its own images
+        if ($this->is_yootheme_image_request()) {
+            return $image;
+        }
+        
         $attachment_id = (int) $attachment_id;
         
         if ($image === null || $image === false) {
@@ -141,6 +167,11 @@ final class Media_Library
      */
     public function filter_image_downsize(bool|array $downsize, int|string $attachment_id, string|array $size): bool|array
     {
+        // Skip if YooTheme is handling its own images
+        if ($this->is_yootheme_image_request()) {
+            return $downsize;
+        }
+        
         $attachment_id = (int) $attachment_id;
         
         if ($downsize !== false) {
@@ -158,6 +189,27 @@ final class Media_Library
     }
 
     /**
+     * Check if current request is from YooTheme image processing
+     */
+    private function is_yootheme_image_request(): bool
+    {
+        // Check if this is a YooTheme REST API request
+        if (defined('REST_REQUEST') && REST_REQUEST) {
+            $request_uri = $_SERVER['REQUEST_URI'] ?? '';
+            if (str_contains($request_uri, '/wp-json/yootheme/')) {
+                return true;
+            }
+        }
+        
+        // Check if YooTheme is currently rendering (has its own image handling)
+        if (doing_filter('yootheme_image') || doing_filter('yootheme_source')) {
+            return true;
+        }
+        
+        return false;
+    }
+
+    /**
      * Filter image srcset for responsive images
      * 
      * Note: WordPress can pass `false` to disable srcset entirely
@@ -165,6 +217,11 @@ final class Media_Library
     public function filter_image_srcset(array|false $sources, array $size_array, string $image_src, array $image_meta, int|string $attachment_id): array|false
     {
         $attachment_id = (int) $attachment_id;
+        
+        // Skip if YooTheme is handling its own images
+        if ($this->is_yootheme_image_request()) {
+            return $sources;
+        }
         
         // WordPress passes false to disable srcset
         if ($sources === false || empty($sources)) {
@@ -376,75 +433,100 @@ final class Media_Library
 
         $storage_base_path = $this->settings->get_storage_base_path();
         $site_url = rtrim(site_url(), '/');
-        
-        // Debug: enable to log what's being processed
-        if (defined('WP_DEBUG') && WP_DEBUG && str_contains($content, $storage_base_path)) {
-            error_log('[Media Toolkit] filter_content_urls - base_url: ' . $base_url . ', storage_path: ' . $storage_base_path . ', site_url: ' . $site_url);
-            error_log('[Media Toolkit] Content contains storage path, will rewrite');
-        }
-        
-        // FIRST: Fix corrupted absolute URLs (most specific pattern first)
-        // These are URLs like: https://site.com/some-page/media/production/wp-content/uploads/...
-        // Where /some-page/ is the current page path incorrectly embedded
-        // Match any URL starting with site_url that contains the storage path
         $escaped_site_url = preg_quote($site_url, '#');
         $escaped_storage_path = preg_quote($storage_base_path, '#');
-        
-        // This pattern matches the site URL followed by anything, then the storage path
-        // The key is using .*? (non-greedy) to match the shortest path before storage_base_path
-        // Note: storage_base_path already includes /wp-content/uploads
-        $pattern_corrupted = '#' . $escaped_site_url . '/.*?(' . $escaped_storage_path . '/[^\s"\'<>]+)#i';
-        
-        $content = preg_replace_callback(
-            $pattern_corrupted,
-            function ($matches) use ($base_url, $site_url) {
-                $storage_path = $matches[1];
-                // Don't replace if it's already the CDN URL
-                if (str_starts_with($matches[0], $base_url)) {
-                    return $matches[0];
-                }
-                return $base_url . '/' . $storage_path;
-            },
-            $content
-        ) ?? $content;
 
-        // SECOND: Fix relative paths with leading slash
-        // These are paths like: /media/production/wp-content/uploads/...
-        // Match when preceded by: quote (attribute value), comma+space (srcset), or equals (unquoted attribute)
-        // Note: We intentionally don't match space (\s) to avoid false positives in plain text
-        // Note: storage_base_path already includes /wp-content/uploads
-        // Note: [^\s"\'<>,]+ excludes comma to avoid capturing srcset width descriptors
-        $pattern_slash = '#(["\',=]\s*)/' . $escaped_storage_path . '/([^\s"\'<>,]+)#i';
-        
-        $content = preg_replace_callback(
-            $pattern_slash,
-            function ($matches) use ($base_url, $storage_base_path) {
-                $prefix = $matches[1]; // The character before (quote, comma for srcset, or equals for unquoted)
-                $path = $matches[2];
-                return $prefix . $base_url . '/' . $storage_base_path . '/' . $path;
-            },
-            $content
-        ) ?? $content;
+        // 1. YooTheme image API URLs → direct CDN URLs
+        // Example: /wp-json/yootheme/image?src={"file":"wp-content/uploads/..."}
+        if (str_contains($content, '/wp-json/yootheme/image')) {
+            $content = $this->rewrite_yootheme_image_urls($content, $base_url, $storage_base_path);
+        }
 
-        // THIRD: Fix relative paths without leading slash
-        // These are paths like: media/production/wp-content/uploads/...
-        // Match when preceded by: quote (attribute value), comma+space (srcset), or equals (unquoted attribute)
-        // Note: We intentionally don't match space (\s) to avoid false positives in plain text
-        // Note: storage_base_path already includes /wp-content/uploads
-        // Note: [^\s"\'<>,]+ excludes comma to avoid capturing srcset width descriptors
-        $pattern_relative = '#(["\',=]\s*)' . $escaped_storage_path . '/([^\s"\'<>,]+)#i';
-        
-        $content = preg_replace_callback(
-            $pattern_relative,
-            function ($matches) use ($base_url, $storage_base_path) {
-                $prefix = $matches[1];
-                $path = $matches[2];
-                return $prefix . $base_url . '/' . $storage_base_path . '/' . $path;
-            },
-            $content
-        ) ?? $content;
+        // 2. Corrupted absolute URLs with embedded page path
+        // Example: https://site.com/some-page/media/production/wp-content/uploads/...
+        // Only run if storage path exists in content
+        if (str_contains($content, $storage_base_path)) {
+            $content = preg_replace_callback(
+                '#' . $escaped_site_url . '/.*?(' . $escaped_storage_path . '/[^\s"\'<>]+)#i',
+                fn($m) => str_starts_with($m[0], $base_url) ? $m[0] : $base_url . '/' . $m[1],
+                $content
+            ) ?? $content;
+
+            // 3. Relative storage paths (with or without leading slash)
+            // Example: /media/production/wp-content/uploads/... or media/production/wp-content/uploads/...
+            $content = preg_replace_callback(
+                '#(["\',=]\s*)/?(' . $escaped_storage_path . '/[^\s"\'<>,]+)#i',
+                fn($m) => $m[1] . $base_url . '/' . $m[2],
+                $content
+            ) ?? $content;
+        }
+
+        // 4. Any HTTP(S) URL with /wp-content/uploads/ → CDN URL
+        // Example: https://staging.example.com/wp-content/uploads/2025/09/file.png
+        // Handles domain mismatches (staging vs production, different subdomains)
+        if (str_contains($content, '/wp-content/uploads/')) {
+            $content = preg_replace_callback(
+                '#(["\'])\s*(https?://[^/]+)/wp-content/uploads/([^\s"\'<>,]+)#i',
+                function ($m) use ($base_url, $storage_base_path) {
+                    // Skip if already a CDN URL
+                    return str_starts_with($m[2], $base_url) 
+                        ? $m[0] 
+                        : $m[1] . $base_url . '/' . $storage_base_path . '/' . $m[3];
+                },
+                $content
+            ) ?? $content;
+        }
 
         return $content;
+    }
+
+    /**
+     * Rewrite YooTheme image API URLs to direct CDN URLs
+     * 
+     * YooTheme uses URLs like:
+     * https://site.com/wp-json/yootheme/image?src={"file":"wp-content/uploads/2025/02/image.png","thumbnail":"768,434"}&hash=xxx
+     * 
+     * This extracts the file path and converts to:
+     * https://cdn.com/media/{env}/wp-content/uploads/2025/02/image.png
+     * 
+     * Note: This bypasses YooTheme's dynamic image processing (resize, etc.)
+     * but allows images to be served directly from CDN
+     */
+    private function rewrite_yootheme_image_urls(string $content, string $base_url, string $storage_base_path): string
+    {
+        // Pattern to match YooTheme image API URLs
+        // The src parameter is URL-encoded JSON
+        $pattern = '#https?://[^/]+/wp-json/yootheme/image\?src=([^&"\'>\s]+)(?:&amp;|&)hash=[a-f0-9]+#i';
+        
+        return preg_replace_callback(
+            $pattern,
+            function ($matches) use ($base_url, $storage_base_path) {
+                $encoded_src = $matches[1];
+                
+                // URL decode the src parameter
+                $decoded_src = urldecode($encoded_src);
+                
+                // Parse the JSON
+                $src_data = json_decode($decoded_src, true);
+                
+                if (!is_array($src_data) || empty($src_data['file'])) {
+                    // Can't parse, return original
+                    return $matches[0];
+                }
+                
+                $file_path = $src_data['file'];
+                
+                // Extract path after wp-content/uploads/
+                if (str_contains($file_path, 'wp-content/uploads/')) {
+                    $relative_path = substr($file_path, strpos($file_path, 'wp-content/uploads/') + strlen('wp-content/uploads/'));
+                    return $base_url . '/' . $storage_base_path . '/' . $relative_path;
+                }
+                
+                // Fallback: just use the file path as-is
+                return $base_url . '/' . $storage_base_path . '/' . ltrim($file_path, '/');
+            },
+            $content
+        ) ?? $content;
     }
 
     /**

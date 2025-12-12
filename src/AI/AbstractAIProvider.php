@@ -556,9 +556,14 @@ PROMPT;
 
     /**
      * Log debug information to error_log and plugin logger
+     * Only logs to error_log when WP_DEBUG is enabled
      */
     protected function logDebug(string $message, array $context = []): void
     {
+        if (!defined('WP_DEBUG') || !WP_DEBUG) {
+            return;
+        }
+        
         $logMessage = sprintf('[Media Toolkit %s] %s', $this->getName(), $message);
         
         if (!empty($context)) {

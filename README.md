@@ -526,6 +526,47 @@ $skip = apply_filters('media_toolkit_skip_resize', false, $file_path, $mime_type
 
 ## Changelog
 
+### 2.13.14
+- **Improvement**: Made debug logging conditional on `WP_DEBUG`
+  - `AbstractAIProvider::logDebug()` now only logs when WP_DEBUG is enabled
+  - `Admin_AI_Metadata` refactored to use centralized `debug_log()` method
+  - Reduces log noise in production environments
+
+### 2.13.13
+- **Refactor**: Cleaned up and optimized `filter_content_urls()` method
+  - Reduced from 5 to 4 patterns with early-exit checks using `str_contains()`
+  - Combined relative path patterns (with/without leading slash) into one
+  - Removed redundant site_url pattern (covered by generic URL pattern)
+  - Used arrow functions for cleaner callback syntax
+  - Better code organization with numbered comments
+
+### 2.13.12
+- **Fix**: Rewrite ANY URL with `/wp-content/uploads/` to CDN
+  - Added fifth pattern to catch URLs where domain doesn't match `site_url()`
+  - Fixes staging/production URL mismatches (e.g., `staging.example.com` vs `example.com`)
+  - Skips URLs already pointing to CDN
+
+### 2.13.11
+- **Feature**: Rewrite YooTheme image API URLs to direct CDN URLs
+  - Added `rewrite_yootheme_image_urls()` method
+  - Intercepts YooTheme's `/wp-json/yootheme/image?src={...}` URLs
+  - Extracts file path from JSON-encoded src parameter
+  - Converts to direct CDN URL: `cdn.com/media/{env}/wp-content/uploads/...`
+  - Note: Bypasses YooTheme's dynamic resize but serves images from CDN
+
+### 2.13.10
+- **Fix**: YooTheme compatibility - skip URL rewriting when YooTheme handles images
+  - Added `is_yootheme_image_request()` detection method
+  - Skip processing in `filter_attachment_url`, `filter_image_src`, `filter_image_downsize`, `filter_image_srcset`
+  - Skip content filtering when YooTheme image API URLs detected
+  - Prevents interference with YooTheme's proprietary image handling system
+
+### 2.13.9
+- **Fix**: Rewrite site URLs with `/wp-content/uploads/` to CDN URLs
+  - Added fourth pattern to convert `site_url/wp-content/uploads/...` → `cdn_url/storage_path/...`
+  - Fixes `src` attribute not being rewritten when srcset works
+  - Added fallback in `filter_attachment_url` for migrated attachments with incomplete metadata
+
 ### 2.13.8
 - **Fix**: Improved regex patterns for content URL rewriting
   - Added comma to exclusion pattern `[^\s"\'<>,]+` to avoid capturing srcset width descriptors
