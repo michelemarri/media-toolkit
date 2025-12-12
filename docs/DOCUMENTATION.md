@@ -150,6 +150,29 @@ Original: https://example.com/wp-content/uploads/2024/01/image.jpg
 Rewritten: https://cdn.example.com/media/production/wp-content/uploads/2024/01/image.jpg
 ```
 
+#### URL Rewriting Hooks
+
+| Hook | Description |
+|------|-------------|
+| `wp_get_attachment_url` | Main attachment URL |
+| `wp_get_attachment_image_src` | Image source array |
+| `wp_calculate_image_srcset` | Responsive images srcset |
+| `wp_prepare_attachment_for_js` | Media Library JS data |
+| `the_content` | Post content URLs |
+| `the_excerpt` | Excerpt URLs |
+| `widget_text_content` | Widget text URLs |
+
+#### Content URL Rewriting
+
+The plugin automatically fixes image URLs in post content that may have been saved incorrectly. This handles:
+
+1. **Relative paths without slash**: `src="media/production/wp-content/uploads/..."`
+2. **Relative paths with slash**: `src="/media/production/wp-content/uploads/..."`
+3. **srcset attributes**: Responsive image URLs in srcset
+4. **Corrupted absolute URLs**: `src="https://site.com/page/media/production/wp-content/uploads/..."`
+
+The last case (corrupted URLs) occurs when relative storage paths are resolved against the current page URL, resulting in URLs like `https://site.com/some-page/media/production/...`. The plugin detects and fixes these by extracting the storage path and rewriting with the correct CDN base URL.
+
 ### Post Meta Storage
 
 For each migrated attachment, the plugin stores:

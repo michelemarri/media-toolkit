@@ -323,6 +323,12 @@ final class Media_Library
      * saved in post content without the CDN domain, which causes 404 errors
      * when accessed relatively from the page URL.
      * 
+     * Handles:
+     * - src="media/production/..." (relative without leading slash)
+     * - src="/media/production/..." (relative with leading slash)
+     * - srcset="media/production/..." (responsive images)
+     * - Corrupted URLs where page path is embedded (e.g., site.com/page/media/production/...)
+     * 
      * Note: WordPress can pass null or empty string for content
      */
     public function filter_content_urls(string|null $content): string
@@ -337,43 +343,120 @@ final class Media_Library
         }
 
         $storage_base_path = $this->settings->get_storage_base_path();
+        $site_url = site_url();
         
-        // Pattern to match storage paths that need to be rewritten
-        // Matches: media/production/wp-content/uploads/... or /media/production/wp-content/uploads/...
-        // But NOT when already prefixed with http:// or https://
-        $patterns = [
-            // Relative path without leading slash (e.g., in src="media/production/...")
-            '#(src|href)=(["\'])(?!https?://|//)(' . preg_quote($storage_base_path, '#') . '/[^"\']+)(["\'])#i',
-            // Relative path with leading slash (e.g., in src="/media/production/...")
-            '#(src|href)=(["\'])(?!https?://|//)/' . preg_quote($storage_base_path, '#') . '/([^"\']+)(["\'])#i',
-        ];
-
-        // Replace relative storage paths with full CDN URLs
+        // Pattern 1: Relative path without leading slash in src, href, or srcset
+        // Matches: src="media/production/..." or srcset="media/production/... 1x, media/production/... 2x"
+        $pattern_relative = '#(src|href|srcset)=(["\'])(?!https?://|//)(' . preg_quote($storage_base_path, '#') . '/[^"\']+)(["\'])#i';
+        
         $content = preg_replace_callback(
-            $patterns[0],
+            $pattern_relative,
             function ($matches) use ($base_url) {
-                // $matches[1] = src or href
-                // $matches[2] = opening quote
-                // $matches[3] = the path (media/production/wp-content/uploads/...)
-                // $matches[4] = closing quote
-                return $matches[1] . '=' . $matches[2] . $base_url . '/' . $matches[3] . $matches[4];
+                $attr = $matches[1];
+                $quote = $matches[2];
+                $path = $matches[3];
+                
+                // For srcset, we need to handle multiple URLs separated by commas
+                if (strtolower($attr) === 'srcset') {
+                    $path = $this->rewrite_srcset_urls($path, $base_url);
+                } else {
+                    $path = $base_url . '/' . $path;
+                }
+                
+                return $attr . '=' . $quote . $path . $matches[4];
             },
             $content
-        );
+        ) ?? $content;
 
+        // Pattern 2: Relative path with leading slash
+        // Matches: src="/media/production/..."
+        $pattern_slash = '#(src|href|srcset)=(["\'])(?!https?://|//)/' . preg_quote($storage_base_path, '#') . '/([^"\']+)(["\'])#i';
+        
         $content = preg_replace_callback(
-            $patterns[1],
+            $pattern_slash,
             function ($matches) use ($base_url, $storage_base_path) {
-                // $matches[1] = src or href
-                // $matches[2] = opening quote
-                // $matches[3] = the path after storage base (2024/05/image.jpg)
-                // $matches[4] = closing quote
-                return $matches[1] . '=' . $matches[2] . $base_url . '/' . $storage_base_path . '/' . $matches[3] . $matches[4];
+                $attr = $matches[1];
+                $quote = $matches[2];
+                $path = $matches[3];
+                
+                // For srcset, we need to handle multiple URLs separated by commas
+                if (strtolower($attr) === 'srcset') {
+                    // In this pattern, the storage_base_path is not in $path, so reconstruct
+                    $full_srcset = '/' . $storage_base_path . '/' . $path;
+                    $path = $this->rewrite_srcset_urls($full_srcset, $base_url, true);
+                } else {
+                    $path = $base_url . '/' . $storage_base_path . '/' . $path;
+                }
+                
+                return $attr . '=' . $quote . $path . $matches[4];
             },
             $content
-        );
+        ) ?? $content;
 
-        return $content ?: '';
+        // Pattern 3: Corrupted absolute URLs where page path is embedded
+        // Matches: src="https://site.com/page/media/production/..." where /page/ shouldn't be there
+        // This happens when relative URLs are resolved against the current page URL
+        $escaped_site_url = preg_quote($site_url, '#');
+        $escaped_storage_path = preg_quote($storage_base_path, '#');
+        
+        $pattern_corrupted = '#(src|href|srcset)=(["\'])' . $escaped_site_url . '/[^"\']*?(' . $escaped_storage_path . '/[^"\']+)(["\'])#i';
+        
+        $content = preg_replace_callback(
+            $pattern_corrupted,
+            function ($matches) use ($base_url) {
+                $attr = $matches[1];
+                $quote = $matches[2];
+                $storage_path = $matches[3]; // media/production/wp-content/uploads/...
+                
+                // For srcset, handle multiple URLs
+                if (strtolower($attr) === 'srcset') {
+                    $fixed_url = $this->rewrite_srcset_urls($storage_path, $base_url);
+                } else {
+                    $fixed_url = $base_url . '/' . $storage_path;
+                }
+                
+                return $attr . '=' . $quote . $fixed_url . $matches[4];
+            },
+            $content
+        ) ?? $content;
+
+        return $content;
+    }
+
+    /**
+     * Rewrite srcset URLs to use CDN base URL
+     * 
+     * srcset format: "url1 1x, url2 2x" or "url1 300w, url2 600w"
+     */
+    private function rewrite_srcset_urls(string $srcset, string $base_url, bool $has_leading_slash = false): string
+    {
+        $storage_base_path = $this->settings->get_storage_base_path();
+        
+        // Split by comma to get individual entries
+        $entries = array_map('trim', explode(',', $srcset));
+        $rewritten = [];
+        
+        foreach ($entries as $entry) {
+            // Each entry is "url descriptor" where descriptor is optional (e.g., "1x", "2x", "300w")
+            $parts = preg_split('/\s+/', trim($entry), 2);
+            $url = $parts[0] ?? '';
+            $descriptor = $parts[1] ?? '';
+            
+            // Only rewrite if URL contains storage path
+            if (str_contains($url, $storage_base_path)) {
+                // Extract just the storage path portion
+                if (preg_match('#(' . preg_quote($storage_base_path, '#') . '/.+)$#', $url, $matches)) {
+                    $url = $base_url . '/' . ltrim($matches[1], '/');
+                }
+            } elseif ($has_leading_slash && str_starts_with($url, '/')) {
+                // Handle leading slash case
+                $url = $base_url . $url;
+            }
+            
+            $rewritten[] = $descriptor ? "$url $descriptor" : $url;
+        }
+        
+        return implode(', ', $rewritten);
     }
 
     /**

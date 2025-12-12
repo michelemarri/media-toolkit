@@ -539,6 +539,16 @@ $skip = apply_filters('media_toolkit_skip_resize', false, $file_path, $mime_type
   - Fixed `filter_image_downsize()`, `filter_attachment_url()`, `filter_image_src()`, `filter_image_srcset()`, and `filter_image_sizes()` to accept both `int|string` and cast to int internally
   - Resolves compatibility issues with plugins like ACF that may pass string IDs
 
+### 2.13.3
+- **Fix**: Content URL rewriting now handles `srcset` attribute for responsive images
+  - Previously only `src` and `href` were rewritten
+  - Now properly rewrites all URLs in srcset (e.g., "url 1x, url 2x")
+- **Fix**: Content URL rewriting now fixes corrupted absolute URLs
+  - Handles URLs like `https://site.com/page/media/production/wp-content/uploads/...`
+  - These occur when relative storage paths are resolved against the page URL
+  - Extracts storage path portion and rewrites with correct CDN base URL
+- **Improved**: More robust URL pattern matching in post content
+
 ### 2.13.0
 - **Fix**: Optimization now preserves original file when compression produces a larger result
   - Creates temporary backup before optimization

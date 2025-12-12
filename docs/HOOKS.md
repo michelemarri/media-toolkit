@@ -159,12 +159,21 @@ add_filter('media_toolkit_file_url', function(string $url, string $s3_key, int $
 
 ### Content URL Filters
 
-The plugin automatically filters content to rewrite relative storage paths to absolute CDN URLs. This happens on:
+The plugin automatically filters content to rewrite storage paths to absolute CDN URLs. This happens on:
 - `the_content` - Post/page content
 - `the_excerpt` - Post excerpts
 - `widget_text_content` - Widget text content
 
-This fixes URLs like `media/production/wp-content/uploads/...` that were saved without the CDN domain, preventing 404 errors.
+**Handled URL patterns:**
+
+| Pattern | Example | Description |
+|---------|---------|-------------|
+| Relative without slash | `src="media/production/..."` | Storage path saved without domain |
+| Relative with slash | `src="/media/production/..."` | Storage path with leading slash |
+| srcset attribute | `srcset="media/production/... 1x"` | Responsive images |
+| Corrupted absolute | `src="https://site.com/page/media/production/..."` | Page path embedded in URL |
+
+The last pattern (corrupted absolute URLs) occurs when relative paths are resolved against the current page URL by the browser or SEO crawlers, resulting in URLs like `https://site.com/some-page/media/production/...`. The plugin detects the storage path portion and rewrites with the correct CDN base URL.
 
 ---
 
